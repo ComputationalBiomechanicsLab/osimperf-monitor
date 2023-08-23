@@ -29,7 +29,7 @@ pub struct Args {
     #[arg(long, default_value = ".osimperf.conf")]
     pub config: String,
 
-    #[arg(long, default_value = "../../../../../software/opensim-core-main")]
+    #[arg(long, default_value = "software/opensim-core-main")]
     pub opensim_core: String,
 
     #[arg(long, default_value = "throwaway")]
