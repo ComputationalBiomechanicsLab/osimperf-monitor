@@ -43,3 +43,6 @@ results/**
 # Rubbish
 *.log
 **/compile_commands.json
+
+# Executable
+osimperf-monitor
