@@ -1,0 +1,208 @@
+// mod table;
+
+use std::{
+    fs::{self, create_dir},
+    path::{Path, PathBuf},
+};
+
+use crate::{read_config, write_config, Command, Commit, Folders};
+use anyhow::{anyhow, Context, Result};
+use serde::{Deserialize, Serialize};
+
+// Go over subfolders of tests/ to find "osimperf-test.conf"
+static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
+
+// Env vars that will be subsitututed per commit case.
+static ENV_VAR_INSTALL: &str = "OSIMPERF_INSTALL";
+static ENV_VAR_TEST_OUTPUT: &str = "OSIMPERF_OUTPUT";
+// static ENV_VAR_TEST_SETUP: &str = "OSIMPERF_SETUP"; // TODO broken
+static ENV_VAR_TEST_ROOT: &str = "OSIMPERF_ROOT";
+
+// Search for "TEST_SETUP_FILE_NAME" in directory and subdirectories.
+fn find_perf_test_setup_files(root_dir: &Path) -> Vec<PathBuf> {
+    let mut result = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(root_dir) {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+
+            if entry_path.is_dir() {
+                result.extend(find_perf_test_setup_files(&entry_path));
+            } else if entry_path.file_name() == Some(TEST_SETUP_FILE_NAME.as_ref()) {
+                result.push(entry_path);
+            }
+        }
+    }
+
+    result
+}
+
+pub fn read_perf_test_setup(folders: &Folders) -> Result<Vec<BenchTestSetup>> {
+    let paths = find_perf_test_setup_files(&folders.tests);
+    let mut setups = Vec::new();
+    for path in paths {
+        let setup = read_config::<ReadBenchTestSetup>(path.as_path())
+            .context("failed to parse perf test setup file")
+            .context(format!("setup file path: {:?}", path))?;
+        setups.push(BenchTestSetup {
+            name: setup.name.clone(),
+            cmd: setup.cmd.clone(),
+            path: path.clone(),
+        });
+    }
+    Ok(setups)
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ReadBenchTestSetup {
+    pub name: String,
+    pub cmd: Vec<Command>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BenchTestSetup {
+    pub name: String,
+    pub cmd: Vec<Command>,
+    /// Path to the test config file.
+    ///
+    /// Used to subsitutute [ENV_VAR_TEST_SETUP].
+    pub path: PathBuf,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct BenchTestResult {
+    pub duration: f64,
+    pub iteration: usize,
+    pub status: bool,
+    pub log: String,
+}
+
+pub fn run_test(
+    folders: &Folders,
+    setup: &BenchTestSetup,
+    commit: &Commit,
+    log: &mut String,
+) -> Result<BenchTestResult> {
+    let test_root_dir = test_environment_root_dir(folders, setup, commit);
+    let test_output_dir = test_root_dir.join("output");
+    let test_install_dir = commit.get_archive_folder(folders).join("install");
+    // let test_setup_dir = setup.path.clone();
+
+    if !test_root_dir.exists() {
+        create_dir(&test_root_dir)?;
+        create_dir(&test_output_dir)?;
+    }
+
+    let test_install_dir_str = test_install_dir.to_str().unwrap();
+
+    for i in 0..setup.cmd.len() {
+        // let mut cmd = Command::new("env");
+        // cmd.add_arg("-C");
+        // cmd.add_arg(test_root_dir.to_str().unwrap());
+        // cmd.add_arg(&setup.cmd[i].cmd);
+        // cmd.add_args(setup.cmd[i].args.iter());
+
+        // TODO copy original env vars over as well.
+        let mut cmd = setup.cmd[i].clone();
+
+        // Replace environmental variables:
+        cmd.add_env(ENV_VAR_TEST_OUTPUT, test_output_dir.to_str().unwrap());
+        cmd.add_env(ENV_VAR_TEST_ROOT, test_root_dir.to_str().unwrap());
+        // cmd.add_env(ENV_VAR_TEST_SETUP, test_setup_dir.to_str().unwrap());
+        cmd.add_env(ENV_VAR_INSTALL, test_install_dir_str);
+        cmd.add_env(
+            "PATH",
+            format!(
+                "/bin:{}:{}/lib:{}/include",
+                test_install_dir_str, test_install_dir_str, test_install_dir_str
+            ),
+        );
+        cmd.add_env(
+            "LD_LIBRARY_PATH",
+            format!(
+                "/bin:{}:{}/lib:{}/include",
+                test_install_dir_str, test_install_dir_str, test_install_dir_str
+            ),
+        );
+
+        if i + 1 == setup.cmd.len() {
+            match cmd.run_extend_log(log) {
+                Ok(duration) => {
+                    println!(
+                        "Test completed in {} seconds: {:?}, {:?}",
+                        duration, commit, setup
+                    );
+                    println!("     Root folder: {:?}", test_root_dir);
+                    // println!("     SETUP folder: {:?}", test_setup_dir);
+                    println!("     intssll folder: {:?}", test_install_dir_str);
+                    println!("     output: {:#?}", log);
+                    return Ok(BenchTestResult {
+                        duration,
+                        status: true,
+                        log: log.drain(..).collect(),
+                        iteration: 1,
+                    });
+                }
+                Err(err) => {
+                    println!("Test failed: {:?}, {:?}", commit, setup);
+                    println!("    with error: {:?}", err);
+                    println!("     output: {:#?}", log);
+                    return Ok(BenchTestResult {
+                        duration: f64::NAN,
+                        status: false,
+                        log: log.drain(..).collect(),
+                        iteration: 0,
+                    });
+                }
+            }
+            println!("");
+        }
+
+        cmd.run_extend_log(log)?;
+    }
+    Err(anyhow!("Not possible to end up here!"))
+}
+
+/// Returns the directory that is used as root during test execution.
+/// Something like:
+/// osimperf-home/results/results-DATE-COMMIT/TEST_NAME
+pub fn test_environment_root_dir(
+    folders: &Folders,
+    setup: &BenchTestSetup,
+    commit: &Commit,
+) -> PathBuf {
+    commit
+        .get_results_folder(folders)
+        .join(Path::new(&setup.name))
+}
+
+/// Path to final [BenchTestResult] of this test.
+///
+/// Something like
+/// `SIMPERF_HOME/results/results-DATE-HASH/TEST_NAME/osimperf-result.data`
+pub fn test_result_output_file_path(
+    folders: &Folders,
+    setup: &BenchTestSetup,
+    commit: &Commit,
+) -> PathBuf {
+    test_environment_root_dir(folders, setup, commit).join("osimperf-results.data")
+}
+
+/// Write test result to file.
+pub fn update_test_result(
+    folders: &Folders,
+    setup: &BenchTestSetup,
+    commit: &Commit,
+    mut result: BenchTestResult,
+) -> Result<()> {
+    let path = test_result_output_file_path(folders, setup, commit);
+    if let Ok(prev_result) = read_config::<BenchTestResult>(Path::new(&path)) {
+        if prev_result.status {
+            result.iteration += prev_result.iteration;
+            result.duration += prev_result.duration;
+            result.duration *= 0.5;
+        }
+    }
+    write_config::<BenchTestResult>(Path::new(&path), &result)?;
+    Ok(())
+}
