@@ -36,6 +36,10 @@ throwaway/**
 archive/**
 results/**
 
+!archive/.osimperf-archive
+!throwaway/.osimperf-throwaway
+!results/.osimperf-results
+
 # Rubbish
 *.log
 **/compile_commands.json
