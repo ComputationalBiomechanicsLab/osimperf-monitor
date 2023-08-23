@@ -1,5 +1,7 @@
 use crate::{Command, Folders};
 use anyhow::{ensure, Context, Result};
+use log::debug;
+use log::trace;
 use std::{
     fs::{self, remove_dir_all, OpenOptions},
     path::{Path, PathBuf},
@@ -8,7 +10,7 @@ use std::{
 pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
 pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";
 
-pub fn collect_commits_to_test(folders: &Folders, start_date: &String) -> Result<Vec<Commit>> {
+pub fn collect_last_daily_commit(folders: &Folders, start_date: &String) -> Result<Vec<Commit>> {
     let mut cmd = Command::new(format!(
         "{}/{}",
         folders.scripts.to_str().unwrap(),
@@ -16,18 +18,24 @@ pub fn collect_commits_to_test(folders: &Folders, start_date: &String) -> Result
     ));
     cmd.add_arg(start_date);
     cmd.add_arg(folders.opensim_core.to_str().unwrap());
+    trace!("Setting up command for collecting commits, cmd=\n{:?}", cmd);
 
     let mut commits = Vec::<Commit>::new();
-    for (i, c) in Commit::parse(cmd.run()?)
-        .context("Failed to obtain commits per date.")?
-        .iter()
-        .enumerate()
+    for (i, c) in Commit::parse(
+        cmd.run()
+            .context("failed to run command for collecting commits")?,
+    )
+    .context("Failed to parse output of command that collected the commits.")?
+    .iter()
+    .enumerate()
     {
         if i > 0 {
             if commits.last().unwrap().date == c.date {
+                trace!("Duplicate date: skipping {:?}", c);
                 continue;
             }
         }
+        trace!("Keeping: {:?}", c);
         commits.push(c.clone());
     }
     Ok(commits)
@@ -42,11 +50,19 @@ pub struct Commit {
 impl Commit {
     fn parse(string: String) -> Result<Vec<Self>> {
         let mut commits = Vec::new();
-        for line in string.lines() {
+        for (i, line) in string.lines().enumerate() {
             let mut it = line.split(",");
             commits.push(Commit {
-                date: String::from(it.next().context("failed to parse last commit line-date")?),
-                hash: String::from(it.next().context("failed to parse last commit line-hash")?),
+                date: String::from(
+                    it.next()
+                        .context("failed to parse line {i}")
+                        .context("failed to parse date")?,
+                ),
+                hash: String::from(
+                    it.next()
+                        .context("failed to parse line {i}")
+                        .context("failed to parse hash")?,
+                ),
             });
         }
 
@@ -63,7 +79,6 @@ impl Commit {
             self.date, self.hash
         )))
     }
-
 
     /// The folder containing the install of this commit.
     ///
@@ -91,15 +106,22 @@ impl Commit {
 
     pub fn remove_archive_dir(&self, folders: &Folders) -> Result<()> {
         let dir = self.get_archive_folder(folders);
+        debug!("Removing archive: {:?}", dir);
         if !dir.exists() {
+            trace!("Nothing to do: archive did not exist");
             return Ok(());
         }
+        let verification_file = dir.join(ARCHIVE_TOUCH_FILE);
         ensure!(
-            dir.join(Path::new(&ARCHIVE_TOUCH_FILE)).as_path().exists(),
+            verification_file.exists(),
             format!(
                 "Tried to remove directory {:?}, but doesnt look like an archive directory",
                 dir
             )
+        );
+        trace!(
+            "Verified that {:?} exists -> ok to remove archive.",
+            verification_file
         );
         remove_dir_all(&dir).context(format!("Failed to remove archive directory: {:?}", dir))?;
         Ok(())
@@ -126,8 +148,9 @@ impl Commit {
     }
 
     pub fn verify_compiled_version(&self, folders: &Folders) -> Result<bool> {
+        debug!("Start verification of archived opensim-cmd version.");
         if !self.archive_exists(folders) {
-            println!("    DBG: verify_compiled_version: archive did not exist: {:?}", &self);
+            debug!("Failed to verify: archive does not exist: {:?}", &self);
             return Ok(false);
         }
 
@@ -139,16 +162,17 @@ impl Commit {
         let output = if let Ok(res) = cmd.run() {
             res
         } else {
-            println!("    DBG: failed to execute command: {:?} of {:?}", cmd, &self);
+            debug!("Failed to execute command: {:?} of {:?}", cmd, &self);
             return Ok(false);
         };
 
+        trace!("Compare hash to output of 'opensim-cmd --version'");
         let short_hash_len = 9;
         let short = self.hash.split_at(short_hash_len).0;
-        println!("    DBG: verify_compiled_version short = {:?}", short);
-        println!("    DBG: verify_compiled_version output = {:?}", output);
+        trace!("    Short hash = {:?}", short);
+        trace!("    Cmd output = {:?}", output);
         ensure!(short.len() == short_hash_len, "error taking short hash");
-        println!("    DBG: verify_compiled_version successfully verified compiled_version");
+        debug!("Successfully verified compiled_version");
 
         Ok(output.as_str().contains(short))
     }

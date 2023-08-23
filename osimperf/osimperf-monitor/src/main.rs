@@ -13,13 +13,13 @@ use std::path::{Path, PathBuf};
 // pub use cleanup::{cleanup, create_build_dir};
 pub use cmake::{compile_opensim_core, run_cmake_cmd, OSimCoreCmakeConfig};
 pub use cmd::Command;
-pub use commit::{collect_commits_to_test, Commit};
+pub use commit::{collect_last_daily_commit, Commit};
 pub use config::*;
 pub use folders::Folders;
-pub use git::{checkout_commit, switch_main};
 
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
+use log::{debug, info, trace, warn};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -61,51 +61,60 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    println!("Run simperf.");
     do_main().context("main exited with error")
 }
 
 fn do_main() -> Result<()> {
+    info!("Starting OSimPerf-Monitor.");
+
     let args = Args::parse();
-    println!("args = {:#?}", args);
+    debug!("Command line arguments:\n{:#?}", args);
 
     let folders = Folders::new(&args)?;
+    trace!("Folder layour:\n{:#?}", folders);
 
-    let path_to_cmake_config = folders.home.join(Path::new(cmake::CMAKE_CONFIG_FILE));
+    let compile_flags_path = folders.home.join(cmake::CMAKE_CONFIG_FILE);
     if args.write_default_config {
-        write_default_config::<OSimCoreCmakeConfig>(&path_to_cmake_config)?; // TODO change all strings to Paths, and PathBuf to Path
-        println!("Default config written to: {:?}", path_to_cmake_config);
+        write_default_config::<OSimCoreCmakeConfig>(&compile_flags_path)?; // TODO change all strings to Paths, and PathBuf to Path
+        info!(
+            "Default compilation flags written to: {:?}",
+            compile_flags_path
+        );
         return Ok(());
     }
 
+    debug!("Reading compilation flags from = {:#?}", compile_flags_path);
+    let compile_flags = read_config(&compile_flags_path)?;
+    trace!("Compilation flags: {:#?}", compile_flags);
+
     let tests = bench_tests::read_perf_test_setup(&folders)?;
-    println!("Found {} benchmark tests: ", tests.len());
+    info!("Found {} benchmark tests: ", tests.len());
     for t in tests.iter() {
-        println!("    {:#?}", t.name);
+        info!("    {:#?}", t.name);
     }
 
     // Switch to main branch on opensim-core repo, and pull.
-    git::switch_main(Path::new(&folders.opensim_core))?;
-    let commits: Vec<Commit> = collect_commits_to_test(&folders, &args.start_date)?;
+    info!("Switching {:?} to main branch.", folders.opensim_core);
+    git::switch_opensim_core_to_main(&folders)
+        .context("Failed to switch opensim-core to main branch.")?;
 
-    println!("Start compiling {} versions of opensim", commits.len());
+    trace!("Start collecting opensim-core versions (commits) for compiling");
+    let commits: Vec<Commit> = collect_last_daily_commit(&folders, &args.start_date)?;
+    info!("Start compiling {} versions of opensim", commits.len());
     for c in commits.iter() {
-        println!("    {:#?}", c.date);
+        debug!("    {:#?}", c.date);
     }
 
     if args.force_remove_archive {
+        warn!("Removing archive.");
+        panic!(); // TODO remove panic.
         for c in commits.iter() {
-            println!("!!!REMOVING ARCHIVE!!!");
-            panic!();
+            debug!("Removing: {:?}", c.get_archive_folder(&folders));
             c.remove_archive_dir(&folders)?;
             c.create_archive_dir(&folders)?;
         }
     }
 
-    let opensim_config = read_config(&path_to_cmake_config)?;
-    println!("config = {:#?}", opensim_config);
-
-    println!("\nStart compilation step");
     for c in commits.iter() {
         println!("Start installing opensim-core {:?}", c);
 
@@ -125,7 +134,7 @@ fn do_main() -> Result<()> {
         c.create_archive_dir(&folders)?;
 
         let mut log = String::new();
-        match compile_opensim_core(&folders, c, &opensim_config, &mut log) {
+        match compile_opensim_core(&folders, c, &compile_flags, &mut log) {
             Err(err) => println!(
                 "Error:\n{:?}\nFailed to compile opensim core ( {:?} )",
                 err, c

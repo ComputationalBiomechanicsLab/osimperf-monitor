@@ -1,5 +1,6 @@
 use crate::{cmd::pipe_commands, folders, Command, Commit, Folders};
 use anyhow::{ensure, Context, Result};
+use log::{debug, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, str};
 
@@ -28,25 +29,35 @@ fn verify_current_commit(repo: &Path, commit: &str) -> Result<bool> {
     Ok(read_commit? == commit)
 }
 
-pub fn switch_main(repo: &Path) -> Result<()> {
-    verify_opensim_repository(repo)?;
+pub fn switch_opensim_core_to_main(folders: &Folders) -> Result<()> {
+    let repo = Path::new(&folders.opensim_core);
+    debug!("Switch opensim-core to main branch: repo = {:?}", repo);
+    is_the_opensim_core_repository(repo);
+    // .context("failed to switch opensim-core to main branch")?;
     if !verify_current_branch(repo, "main").unwrap_or(false) {
+        debug!("Opensim core repository is not on main branch: attempt to switch to main now.");
         let mut switch = Command::new("git");
         switch.add_arg("-C");
         switch.add_arg(repo.to_str().unwrap());
         switch.add_arg("switch");
         switch.add_arg("main");
-        let _res = switch.run().context("Failed to switch to main branch");
+        let res = switch.run();
+        trace!(
+            "Executed command to switch opensim-core to main: output=\n{:?}",
+            res
+        );
         ensure!(
-            verify_current_branch(repo, "main")?,
-            "failed to switch to main branch"
+            verify_current_branch(repo, "main")
+                .context("failed to execute branch verification after switching to main")?,
+            "Verification returned false: we did not switch to main branch"
         );
     }
+    debug!("Succesfully switched opensim-core to main");
     Ok(())
 }
 
 pub fn checkout_commit(repo: &Path, commit: &Commit) -> Result<()> {
-    verify_opensim_repository(repo).context("failed to verify opensim-core")?;
+    is_the_opensim_core_repository(repo).context("failed to verify opensim-core")?;
     if !verify_current_commit(repo, &commit.hash).unwrap_or(false) {
         // Checkout commit.
         let mut checkout = Command::new("git");
@@ -66,8 +77,10 @@ pub fn checkout_commit(repo: &Path, commit: &Commit) -> Result<()> {
     Ok(())
 }
 
-fn verify_opensim_repository(repo: &Path) -> Result<()> {
-    ensure!(repo.exists(), "repo does not exist");
+/// This function verifies that the given path is indeed the "opensim-core" repository.
+///  This can be used to prevent accidentally performing git actions on an unwanted repository.
+fn is_the_opensim_core_repository(repo: &Path) -> Result<()> {
+    ensure!(repo.exists(), "repo does not exist: path = {:?}", repo);
 
     let mut git_remote_v = Command::new("git");
     git_remote_v.add_arg("-C");
