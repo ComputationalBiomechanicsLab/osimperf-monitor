@@ -1,7 +1,6 @@
-use crate::{cmd::pipe_commands, folders, Command, Commit, Folders};
+use crate::{cmd::pipe_commands, Command, Commit, Folders};
 use anyhow::{ensure, Context, Result};
-use log::{debug, info, trace, warn};
-use serde::{Deserialize, Serialize};
+use log::{debug, trace};
 use std::{path::Path, str};
 
 fn verify_current_branch(repo: &Path, branch: &str) -> Result<bool> {

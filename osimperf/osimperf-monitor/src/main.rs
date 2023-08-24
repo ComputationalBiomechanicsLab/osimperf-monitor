@@ -1,13 +1,11 @@
 pub mod bench_tests;
-pub mod time;
 mod cmake;
 mod cmd;
 mod commit;
 mod config;
 mod folders;
 mod git;
-
-use std::path::{Path, PathBuf};
+pub mod time;
 
 pub use cmake::{compile_opensim_core, run_cmake_cmd, OSimCoreCmakeConfig};
 pub use cmd::Command;
@@ -17,8 +15,9 @@ pub use folders::Folders;
 
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
-use log::{debug, info, trace, warn};
 use env_logger::Env;
+use log::{debug, info, trace, warn};
+use std::io;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -60,7 +59,7 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    env_logger::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info"));
 
     do_main().context("main exited with error")
 }
@@ -152,7 +151,7 @@ fn do_main() -> Result<()> {
         c.remove_results_dir(&folders)?;
         c.create_results_dir(&folders)?;
 
-        for i in 0..2 {
+        for _ in 0..2 {
             for t in tests.iter() {
                 let test_result = bench_tests::run_test(&folders, t, c, &mut log)
                     .context("Failed to run test")?;
@@ -163,32 +162,9 @@ fn do_main() -> Result<()> {
         }
     }
 
+    let mut stdout = io::stdout().lock();
+
+    bench_tests::table::print_results(&folders, &commits, &tests, &mut stdout)?;
+
     return Ok(());
 }
-
-// TODO compilation:
-// - parse percentage to a bar [====>***]
-// - store build logs somewhere
-
-// TODO Dashboard: table
-// - status of versions (compiling, broken, etc)
-
-// TODO Add opensim lab as thing to test against.
-
-// Compile opensim-core versions
-// Compile benchtests-source
-
-// Run bench tests -> means running profiler!
-// Generate table with compilation overview
-
-// Add install script: folder layout, opensim-core submodule,
-
-// Add bench tests: Raja, IK, Basic millard,
-
-// Add web-interface
-// - status (compiling)
-// - blacklisted
-//
-// version | status | hopper | rajagopal | ...
-
-// Add ubuntu package

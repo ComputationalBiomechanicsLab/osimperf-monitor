@@ -53,12 +53,12 @@ impl Commit {
             commits.push(Commit {
                 date: String::from(
                     it.next()
-                        .context("failed to parse line {i}")
+                        .context(format!("failed to parse line {}", i))
                         .context("failed to parse date")?,
                 ),
                 hash: String::from(
                     it.next()
-                        .context("failed to parse line {i}")
+                        .context(format!("failed to parse line {}",i))
                         .context("failed to parse hash")?,
                 ),
             });

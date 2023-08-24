@@ -159,7 +159,7 @@ pub fn pipe_commands(cmds: &[Command]) -> Result<String> {
         return Ok(String::new());
     }
 
-    let mut child = std::process::Command::new(&cmds[0].cmd)
+    let child = std::process::Command::new(&cmds[0].cmd)
         .args(&cmds[0].args)
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -174,7 +174,7 @@ pub fn pipe_commands(cmds: &[Command]) -> Result<String> {
     ))?;
 
     for i in 1..cmds.len() {
-        let mut parent = std::process::Command::new(&cmds[i].cmd)
+        let parent = std::process::Command::new(&cmds[i].cmd)
             .args(&cmds[i].args)
             .stdin(std::process::Stdio::from(last_child))
             .stdout(std::process::Stdio::piped())
