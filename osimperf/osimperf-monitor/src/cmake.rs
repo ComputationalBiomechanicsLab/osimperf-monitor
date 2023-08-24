@@ -41,8 +41,7 @@ pub fn run_cmake_cmd<T: ToString>(
     cmake_confgure_cmd.add_args(cmake_args.map(|a| format!("-D{}", a.to_string())));
     println!("cmake configure: {:#?}", cmake_confgure_cmd);
     cmake_confgure_cmd
-        .run_print(log, true)
-        .context("cmake failed")
+        .run_print(log)
         .context("failed to generate project configuration files")?;
 
     // Cmake build step.
@@ -56,8 +55,7 @@ pub fn run_cmake_cmd<T: ToString>(
     cmake_build_cmd.add_arg(format!("-j{}", num_jobs));
     println!("cmake build: {:#?}", cmake_build_cmd);
     cmake_build_cmd
-        .run_print(log, true)
-        .context("cmake failed")
+        .run_print(log)
         .context("failed to build project")?;
 
     // TODO Test step.

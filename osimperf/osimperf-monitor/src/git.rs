@@ -31,9 +31,7 @@ fn verify_current_commit(repo: &Path, commit: &str) -> Result<bool> {
 
 pub fn switch_opensim_core_to_main(folders: &Folders) -> Result<()> {
     let repo = Path::new(&folders.opensim_core);
-    debug!("Switch opensim-core to main branch: repo = {:?}", repo);
-    is_the_opensim_core_repository(repo);
-    // .context("failed to switch opensim-core to main branch")?;
+    is_the_opensim_core_repository(repo).context("failed to verify opensim-core")?;
     if !verify_current_branch(repo, "main").unwrap_or(false) {
         debug!("Opensim core repository is not on main branch: attempt to switch to main now.");
         let mut switch = Command::new("git");
@@ -79,7 +77,7 @@ pub fn checkout_commit(repo: &Path, commit: &Commit) -> Result<()> {
 
 /// This function verifies that the given path is indeed the "opensim-core" repository.
 ///  This can be used to prevent accidentally performing git actions on an unwanted repository.
-fn is_the_opensim_core_repository(repo: &Path) -> Result<()> {
+pub fn is_the_opensim_core_repository(repo: &Path) -> Result<()> {
     ensure!(repo.exists(), "repo does not exist: path = {:?}", repo);
 
     let mut git_remote_v = Command::new("git");

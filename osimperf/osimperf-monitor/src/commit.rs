@@ -1,3 +1,4 @@
+use crate::folders::{ARCHIVE_TOUCH_FILE, RESULTS_TOUCH_FILE};
 use crate::{Command, Folders};
 use anyhow::{ensure, Context, Result};
 use log::debug;
@@ -6,9 +7,6 @@ use std::{
     fs::{self, remove_dir_all, OpenOptions},
     path::{Path, PathBuf},
 };
-
-pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
-pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";
 
 pub fn collect_last_daily_commit(folders: &Folders, start_date: &String) -> Result<Vec<Commit>> {
     let mut cmd = Command::new(format!(

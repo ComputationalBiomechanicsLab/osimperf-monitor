@@ -1,7 +1,17 @@
+use crate::git::is_the_opensim_core_repository;
 use crate::{Args, Command};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use std::path::{Path, PathBuf};
 
+pub static HOME_TOUCH_FILE: &str = ".osimperf-home";
+pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
+pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";
+
+/// Folder layout of osimperf-monitor.
+///
+/// TODO: Careful, folders are checked when generated.
+/// Manually changing should be followed by calling [check()] again.
+/// Or fix the interface.
 #[derive(Clone, Debug)]
 pub struct Folders {
     /// Home of osimperf service.
@@ -67,6 +77,7 @@ impl Folders {
             results: parse_folder_arg(&home, &args.results)?,
             home,
         })
+        .and_then(|folders| folders.check().map(|_| folders))
     }
 
     pub fn get_opensim_dependencies_source(&self) -> PathBuf {
@@ -87,6 +98,24 @@ impl Folders {
 
     pub fn get_tests_build(&self) -> PathBuf {
         self.get_build_dir().join(Path::new("tests"))
+    }
+
+    /// Check if folders look like osimperf-folders.
+    fn check(&self) -> Result<()> {
+        ensure!(
+            self.home.join(HOME_TOUCH_FILE).exists(),
+            "Home does not look like home."
+        );
+        ensure!(
+            self.archive.join(ARCHIVE_TOUCH_FILE).exists(),
+            "The archive does not look like an archive."
+        );
+        ensure!(
+            self.results.join(RESULTS_TOUCH_FILE).exists(),
+            "The results folder does not look like the results folder."
+        );
+        is_the_opensim_core_repository(&self.opensim_core)?;
+        Ok(())
     }
 }
 

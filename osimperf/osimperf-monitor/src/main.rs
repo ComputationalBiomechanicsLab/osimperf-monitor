@@ -1,6 +1,5 @@
 pub mod bench_tests;
 pub mod time;
-// mod cleanup;
 mod cmake;
 mod cmd;
 mod commit;
@@ -10,7 +9,6 @@ mod git;
 
 use std::path::{Path, PathBuf};
 
-// pub use cleanup::{cleanup, create_build_dir};
 pub use cmake::{compile_opensim_core, run_cmake_cmd, OSimCoreCmakeConfig};
 pub use cmd::Command;
 pub use commit::{collect_last_daily_commit, Commit};
@@ -20,6 +18,7 @@ pub use folders::Folders;
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
 use log::{debug, info, trace, warn};
+use env_logger::Env;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -50,7 +49,7 @@ pub struct Args {
     #[arg(long, default_value = "results")]
     pub results: String,
 
-    #[arg(long, default_value = "2023/07/01")]
+    #[arg(long, default_value = "2023/07/18")]
     pub start_date: String,
 
     #[arg(long)]
@@ -61,6 +60,8 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
+    env_logger::from_env(Env::default().default_filter_or("info")).init();
+
     do_main().context("main exited with error")
 }
 
@@ -71,7 +72,7 @@ fn do_main() -> Result<()> {
     debug!("Command line arguments:\n{:#?}", args);
 
     let folders = Folders::new(&args)?;
-    trace!("Folder layour:\n{:#?}", folders);
+    debug!("Folder layout:\n{:#?}", folders);
 
     let compile_flags_path = folders.home.join(cmake::CMAKE_CONFIG_FILE);
     if args.write_default_config {
@@ -98,7 +99,7 @@ fn do_main() -> Result<()> {
     git::switch_opensim_core_to_main(&folders)
         .context("Failed to switch opensim-core to main branch.")?;
 
-    trace!("Start collecting opensim-core versions (commits) for compiling");
+    debug!("Start collecting opensim-core versions (commits) for compiling");
     let commits: Vec<Commit> = collect_last_daily_commit(&folders, &args.start_date)?;
     info!("Start compiling {} versions of opensim", commits.len());
     for c in commits.iter() {
@@ -107,7 +108,6 @@ fn do_main() -> Result<()> {
 
     if args.force_remove_archive {
         warn!("Removing archive.");
-        panic!(); // TODO remove panic.
         for c in commits.iter() {
             debug!("Removing: {:?}", c.get_archive_folder(&folders));
             c.remove_archive_dir(&folders)?;
@@ -124,7 +124,6 @@ fn do_main() -> Result<()> {
         }
 
         println!("Start compilation of {:?}", c);
-        panic!();
 
         // Switch opensim-core repo to correct commit.
         git::checkout_commit(&folders.opensim_core, c)?;
@@ -153,7 +152,7 @@ fn do_main() -> Result<()> {
         c.remove_results_dir(&folders)?;
         c.create_results_dir(&folders)?;
 
-        for i in 0..1 {
+        for i in 0..2 {
             for t in tests.iter() {
                 let test_result = bench_tests::run_test(&folders, t, c, &mut log)
                     .context("Failed to run test")?;

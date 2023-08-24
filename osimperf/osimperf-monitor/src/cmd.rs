@@ -1,4 +1,5 @@
 use anyhow::{ensure, Context, Result};
+use log::trace;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::process::Stdio;
@@ -40,7 +41,7 @@ impl Command {
         self.env.get_or_insert(Vec::new()).push((key, value));
     }
 
-    pub fn run_print(&self, log: &mut String, loading_bar: bool) -> Result<()> {
+    pub fn run_print(&self, log: &mut String) -> Result<()> {
         let mut cmd = std::process::Command::new(&self.cmd);
         cmd.args(&self.args);
         let mut child = cmd
@@ -89,41 +90,40 @@ impl Command {
                 cmd.env(key, value);
             }
         }
-        println!("Preparing to run command:");
-        println!("    CMD: {}", self.cmd);
-        println!("    with args:");
+
+        trace!("Preparing to run command:");
+        trace!("CMD: {}", self.cmd);
+        trace!("with args:");
+
         for arg in self.args.iter() {
             println!("        {}", arg);
         }
 
-        let start = crate::time::duration_since_boot().context("Failed to read system clock before running command")?;
+        let start = crate::time::duration_since_boot()
+            .context("Failed to read system clock before running command")?;
 
         let output = cmd.output();
 
-
-        let end = crate::time::duration_since_boot().context("Failed to read system clock after running command")?;
+        let end = crate::time::duration_since_boot()
+            .context("Failed to read system clock after running command")?;
         let duration = (end - start).as_nanos() as f64;
+
+        trace!("completed cmd in {duration} seconds");
+        trace!("cmd output = {:#?}", output);
 
         let output = match output {
             Err(err) => return Err(err).context("dude")?,
             Ok(output) => output,
         };
 
-        if output.stderr.len() > 0 {
-            println!("Command has nonzero stderr output: {:?}, len = {}", output.stderr, output.stderr.len());
-        }
-
-        if !output.status.success() {
-            println!("Command raised unsuccesful flag: status = {:?}", output.status);
-        }
-
         ensure!(
             output.stderr.len() == 0 && output.status.success(),
             format!(
-                "Command {:?} exited with error:\n--->{},\nAnd output\n--->{}",
+                "Command {:?} exited with error:\n    stderr: {},\n    stdout: {}\n    status: {}",
                 cmd,
                 String::from(str::from_utf8(&output.stderr)?.trim()),
                 String::from(str::from_utf8(&output.stdout)?.trim()),
+                output.status,
             )
         );
         log.push_str(str::from_utf8(&output.stdout)?.trim());

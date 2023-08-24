@@ -180,12 +180,24 @@ pub fn test_environment_root_dir(
 ///
 /// Something like
 /// `SIMPERF_HOME/results/results-DATE-HASH/TEST_NAME/osimperf-result.data`
-pub fn test_result_output_file_path(
+fn test_result_output_file_path(
     folders: &Folders,
     setup: &BenchTestSetup,
     commit: &Commit,
 ) -> PathBuf {
     test_environment_root_dir(folders, setup, commit).join("osimperf-results.data")
+}
+
+pub fn read_test_result(
+    folders: &Folders,
+    setup: &BenchTestSetup,
+    commit: &Commit,
+) -> Result<Option<BenchTestResult>> {
+    let path = test_result_output_file_path(folders, setup, commit);
+    if path.exists() {
+        return Some(read_config::<BenchTestResult>(Path::new(&path))).transpose();
+    }
+    Ok(None)
 }
 
 /// Write test result to file.
@@ -196,7 +208,7 @@ pub fn update_test_result(
     mut result: BenchTestResult,
 ) -> Result<()> {
     let path = test_result_output_file_path(folders, setup, commit);
-    if let Ok(prev_result) = read_config::<BenchTestResult>(Path::new(&path)) {
+    if let Some(prev_result) = read_test_result(folders, setup, commit)? {
         if prev_result.status {
             result.iteration += prev_result.iteration;
             result.duration += prev_result.duration;
