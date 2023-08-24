@@ -1,4 +1,4 @@
-// mod table;
+pub mod table;
 
 use std::{
     fs::{self, create_dir},
@@ -155,7 +155,6 @@ pub fn run_test(
                     });
                 }
             }
-            println!("");
         }
 
         cmd.run_extend_log(log)?;
