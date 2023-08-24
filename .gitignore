@@ -45,4 +45,4 @@ results/**
 **/compile_commands.json
 
 # Executable
-osimperf-monitor
+bin/**
