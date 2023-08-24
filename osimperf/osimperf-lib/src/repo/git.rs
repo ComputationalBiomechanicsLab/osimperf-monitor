@@ -3,8 +3,11 @@ use anyhow::{ensure, Context, Result};
 use log::{debug, trace};
 use std::path::Path;
 
-pub fn read_current_branch(
-    repo: &Path) -> Result<String> {
+pub static OPENSIM_CORE_URL: &str = "https://github.com/opensim-org/opensim-core.git";
+pub static BIO_LAB_URL: &str =
+"git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
+
+pub fn read_current_branch(repo: &Path) -> Result<String> {
     let mut cmd = Command::new("git");
     cmd.add_arg("-C");
     cmd.add_arg(repo.to_str().unwrap());
@@ -14,14 +17,67 @@ pub fn read_current_branch(
     Ok(cmd.run_trim()?)
 }
 
-pub fn read_current_commit(
-    repo: &Path) -> Result<String> {
+pub fn read_current_commit(repo: &Path) -> Result<String> {
     let mut cmd = Command::new("git");
     cmd.add_arg("-C");
     cmd.add_arg(repo.to_str().unwrap());
     cmd.add_arg("rev-parse");
     cmd.add_arg("HEAD");
     Ok(cmd.run_trim()?)
+}
+
+pub fn verify_current_branch(repo: &Path, branch: &str) -> Result<bool> {
+    Ok(read_current_branch(repo)? == branch)
+}
+
+pub fn verify_current_commit(repo: &Path, commit: &str) -> Result<bool> {
+    Ok(read_current_commit(repo)? == commit)
+}
+
+pub fn checkout_commit(repo: &Path, commit: &str) -> Result<()> {
+    let mut cmd = Command::new("git");
+    cmd.add_arg("-C");
+    cmd.add_arg(repo.to_str().unwrap());
+    cmd.add_arg("checkout");
+    cmd.add_arg(&commit);
+    cmd.run()?;
+    Ok(())
+}
+
+pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
+    let mut cmd = Command::new("git");
+    cmd.add_arg("-C");
+    cmd.add_arg(repo.to_str().unwrap());
+    cmd.add_arg("switch");
+    cmd.add_arg("main");
+    let _res = cmd.run()?;
+    Ok(())
+}
+
+pub fn switch_branch_checked(repo: &Path, branch: &str) -> Result<()> {
+    if !verify_current_branch(repo, branch)
+        .context("failed to verify branch before attempting to switch branch")?
+    {
+        switch_branch(repo, branch)?;
+        ensure!(
+            verify_current_branch(repo, branch).context("failed to verify switching branch")?,
+            "Verification returned false: we did not switch to branch"
+        );
+    }
+    Ok(())
+}
+
+pub fn checkout_commit_checked(repo: &Path, commit: &str) -> Result<()> {
+    if !verify_current_commit(repo, &commit)
+        .context("failed to verify commit before attempting to checkout")?
+    {
+        checkout_commit(repo, commit)?;
+        ensure!(
+            verify_current_commit(repo, &commit)?,
+            format!("failed to checkout {:?}", commit)
+        );
+    }
+    Ok(())
 }
 
 pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<Commit>> {
@@ -71,4 +127,32 @@ pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<Co
     }
 
     Ok(commits)
+}
+
+pub fn read_repo_url(repo: &Path) -> Result<String> {
+    ensure!(repo.exists(), "repo does not exist: path = {:?}", repo);
+
+    let mut git_remote_v = Command::new("git");
+    git_remote_v.add_arg("-C");
+    git_remote_v.add_arg(repo.to_str().unwrap());
+    git_remote_v.add_arg("remote");
+    git_remote_v.add_arg("-v");
+
+    let mut grep = Command::new("grep");
+    grep.add_arg("fetch");
+
+    let mut awk = Command::new("awk");
+    awk.add_arg("{print $2}");
+
+    PipedCommands::new(vec![git_remote_v, grep, awk]).run_trim()
+}
+
+pub fn verify_repository(repo: &Path, expected_url: &str) -> Result<()> {
+    let url = read_repo_url(repo)?;
+    Some(()).filter(|_| url == expected_url)
+        .with_context(|| format!("repo path = {:?}", repo))
+        .with_context(|| format!("repo url = {:?}", url))
+        .with_context(|| format!("expected url = {:?}", expected_url))
+        .context("failed to verify path points to correct repo")?;
+    Ok(())
 }
