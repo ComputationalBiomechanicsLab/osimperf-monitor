@@ -1,3 +1,11 @@
+mod piped_command;
+mod single_command;
+mod time;
+
+pub use piped_command::{PipedCommands, PipedCommandsExecutor};
+pub use single_command::{Command, CommandExecutor};
+pub use time::duration_since_boot;
+
 use std::{
     fmt::Debug,
     fs::File,
@@ -5,8 +13,7 @@ use std::{
     path::Path,
 };
 
-use crate::time::duration_since_boot;
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -62,24 +69,44 @@ impl CommandOutput {
 pub trait CommandTrait {
     type Executor: CommandExecutorTrait + Debug;
 
+    fn print_command(&self) -> String;
+
     fn create_executor(&self) -> Self::Executor;
 
-    fn run(&self) -> Result<CommandOutput> {
+    fn run_and_time(&self) -> Result<CommandOutput> {
         let cmd = self.create_executor();
-        let dbg_msg = format!("failed to execute command: {:#?}", &cmd);
         let start = duration_since_boot()?;
         let output = cmd.execute();
         let end = duration_since_boot()?;
         let duration = (end - start).as_secs_f64();
         Ok(CommandOutput {
             duration,
-            output: output.context(dbg_msg)?,
+            output: output
+                .with_context(|| format!("failed to execute command: {}", self.print_command()))?,
         })
+    }
+
+    fn run_stdout(&self) -> Result<Vec<u8>> {
+        let output = self.run_and_time()?;
+        Some(())
+            .filter(|_| output.success())
+            .with_context(|| format!("stdout: {:#?}", output.stdout_str_clone()))
+            .with_context(|| format!("stderr: {:#?}", output.stderr_str_clone()))
+            .with_context(|| format!("returned exit code: {:#?}", output.output.status))
+            .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
+        Ok(output.output.stdout)
+    }
+
+    fn run(&self) -> Result<String> {
+        Ok(String::from_utf8(self.run_stdout()?).unwrap())
+    }
+
+    fn run_trim(&self) -> Result<String> {
+        Ok(String::from(self.run()?.trim()))
     }
 
     fn run_and_stream(&self, mut stream: impl Write) -> Result<CommandOutput> {
         let cmd = self.create_executor();
-        let dbg_msg = format!("failed to execute command: {:#?}", &cmd);
         let start = duration_since_boot()?;
         let mut child = cmd.start_execute()?;
 
@@ -90,8 +117,8 @@ pub trait CommandTrait {
             stream.write_all(line.as_bytes())?;
             if child
                 .try_wait()
-                .context("error attempting to wait for command.")
-                .context(dbg_msg.clone())?
+                .with_context(|| format!("failed to execute command: {}", self.print_command()))
+                .context("error while waiting for child")?
                 .is_some()
             {
                 break;
@@ -100,8 +127,8 @@ pub trait CommandTrait {
 
         let output = child
             .wait_with_output()
-            .context("Failed waiting for child output")
-            .context(dbg_msg)?;
+            .context("error waiting for command output")
+            .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
         let end = duration_since_boot()?;
         let duration = (end - start).as_nanos() as f64;
         Ok(CommandOutput { duration, output })
