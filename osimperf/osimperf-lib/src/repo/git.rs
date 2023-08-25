@@ -1,5 +1,5 @@
 use crate::{Command, CommandTrait, Commit, Date, PipedCommands, RepositoryPath};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, anyhow, Context, Result};
 use log::{debug, trace};
 use std::path::Path;
 
@@ -99,7 +99,17 @@ pub fn get_commits_since(
     let mut commits = Vec::new();
     for (date, hash) in dates.lines().zip(hashes.lines()) {
         let commit = (String::from(hash), fmt_date(date)?, String::from(branch));
-        println!("{:?}", commit);
+        if commit.0.chars().count() != 40 {
+            let local_msg = git_after.run()?;
+            return Err(anyhow!("dude"))
+                .with_context(|| {
+                    format!(
+                        "hash = {:?}, date = {:?}, branch = {:?}",
+                        commit.0, commit.1, commit.2
+                    )
+                })
+                .context(local_msg);
+        }
         commits.push(commit);
     }
 
