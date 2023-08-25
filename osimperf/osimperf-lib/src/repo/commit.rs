@@ -1,8 +1,55 @@
+use crate::git;
+use crate::Repository;
+use anyhow::Result;
+
 #[derive(Clone, Debug)]
 pub struct Commit {
-    pub hash: String,
-    pub date: String,
-    pub branch: String,
+    hash: String,
+    date: String,
+    branch: String,
+}
+
+impl Commit {
+    /// Private interface.
+    fn from_tuple(tuple: (String, String, String)) -> Self {
+        Self {
+            hash: tuple.0,
+            date: tuple.1,
+            branch: tuple.2,
+        }
+    }
+
+    pub fn commits_between(
+        repo: &Repository,
+        after_date: Option<&str>,
+        before_date: Option<&str>,
+    ) -> Result<Vec<Self>> {
+        Ok(
+            git::get_commits_since(&repo.path()?, &repo.branch()?, after_date, before_date)?
+                .drain(..)
+                .map(|tuple| Self::from_tuple(tuple))
+                .collect::<Vec<Self>>(),
+        )
+    }
+
+    pub fn last_commit(repo: &Repository) -> Result<Self> {
+        Ok(Self::commits_between(repo, None, None)?
+            .drain(..)
+            .next()
+            .unwrap())
+    }
+
+    pub fn hash(&self) -> &str {
+        self.hash.as_ref()
+    }
+
+    pub fn date(&self) -> &str {
+        self.date.as_ref()
+    }
+
+    pub fn branch(&self) -> &str {
+        self.branch.as_ref()
+    }
 }
 
 #[derive(Clone, Debug)]

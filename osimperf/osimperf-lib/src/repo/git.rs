@@ -4,8 +4,7 @@ use log::{debug, trace};
 use std::path::Path;
 
 pub static OPENSIM_CORE_URL: &str = "https://github.com/opensim-org/opensim-core.git";
-pub static BIO_LAB_URL: &str =
-"git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
+pub static BIO_LAB_URL: &str = "git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
 
 pub fn read_current_branch(repo: &Path) -> Result<String> {
     let mut cmd = Command::new("git");
@@ -24,14 +23,6 @@ pub fn read_current_commit(repo: &Path) -> Result<String> {
     cmd.add_arg("rev-parse");
     cmd.add_arg("HEAD");
     Ok(cmd.run_trim()?)
-}
-
-pub fn verify_current_branch(repo: &Path, branch: &str) -> Result<bool> {
-    Ok(read_current_branch(repo)? == branch)
-}
-
-pub fn verify_current_commit(repo: &Path, commit: &str) -> Result<bool> {
-    Ok(read_current_commit(repo)? == commit)
 }
 
 pub fn checkout_commit(repo: &Path, commit: &str) -> Result<()> {
@@ -54,40 +45,33 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn switch_branch_checked(repo: &Path, branch: &str) -> Result<()> {
-    if !verify_current_branch(repo, branch)
-        .context("failed to verify branch before attempting to switch branch")?
-    {
-        switch_branch(repo, branch)?;
-        ensure!(
-            verify_current_branch(repo, branch).context("failed to verify switching branch")?,
-            "Verification returned false: we did not switch to branch"
-        );
-    }
-    Ok(())
-}
-
-pub fn checkout_commit_checked(repo: &Path, commit: &str) -> Result<()> {
-    if !verify_current_commit(repo, &commit)
-        .context("failed to verify commit before attempting to checkout")?
-    {
-        checkout_commit(repo, commit)?;
-        ensure!(
-            verify_current_commit(repo, &commit)?,
-            format!("failed to checkout {:?}", commit)
-        );
-    }
-    Ok(())
+fn fmt_date(date: &str) -> Result<String> {
+    let mut cmd = Command::new("date");
+    cmd.add_arg("-d");
+    cmd.add_arg(date);
+    cmd.add_arg("+%Y_%m_%d");
+    Ok(cmd.run_trim()?)
 }
 
 /// returns Vec<(hash, date, branch)>
-pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<(String, String, String)>> {
+pub fn get_commits_since(
+    repo: &Path,
+    branch: &str,
+    after_date: Option<&str>,
+    before_date: Option<&str>,
+) -> Result<Vec<(String, String, String)>> {
     let mut git_after = Command::new("git");
     git_after.add_arg("-C");
     git_after.add_arg(repo.to_str().unwrap());
     git_after.add_arg("log");
     git_after.add_arg(branch);
-    git_after.add_arg(format!("--after={}", date));
+    if let Some(date) = after_date {
+        git_after.add_arg(format!("--after={}", date));
+    }
+    if let Some(date) = before_date {
+        git_after.add_arg(format!("--before={}", date));
+    }
+    git_after.add_arg("--date=short");
     let git_after_output = git_after.run()?;
 
     let mut echo = Command::new("echo");
@@ -98,7 +82,7 @@ pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<(S
     grep_date.add_arg("Date");
 
     let mut awk_date = Command::new("awk");
-    awk_date.add_arg("{print $4, $3, $6}");
+    awk_date.add_arg("{print $2}");
 
     // Dates in awkward format: "2023 Aug 02"
     let dates = PipedCommands::new(vec![echo.clone(), grep_date, awk_date]).run()?;
@@ -114,14 +98,7 @@ pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<(S
 
     let mut commits = Vec::new();
     for (date, hash) in dates.lines().zip(hashes.lines()) {
-        let mut cmd = Command::new("date");
-        cmd.add_arg("-d");
-        cmd.add_arg(date);
-        cmd.add_arg("+%Y_%m_%d");
-        let commit = (
-            String::from(hash), // hash
-            String::from(cmd.run_trim()?), // date: YYYY_MM_DD
-            String::from(branch)); // branch
+        let commit = (String::from(hash), fmt_date(date)?, String::from(branch));
         println!("{:?}", commit);
         commits.push(commit);
     }
@@ -149,7 +126,8 @@ pub fn read_repo_url(repo: &Path) -> Result<String> {
 
 pub fn verify_repository(repo: &Path, expected_url: &str) -> Result<()> {
     let url = read_repo_url(repo)?;
-    Some(()).filter(|_| url == expected_url)
+    Some(())
+        .filter(|_| url == expected_url)
         .with_context(|| format!("repo path = {:?}", repo))
         .with_context(|| format!("repo url = {:?}", url))
         .with_context(|| format!("expected url = {:?}", expected_url))
