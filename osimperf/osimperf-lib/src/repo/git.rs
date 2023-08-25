@@ -80,7 +80,8 @@ pub fn checkout_commit_checked(repo: &Path, commit: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<Commit>> {
+/// returns Vec<(hash, date, branch)>
+pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<(String, String, String)>> {
     let mut git_after = Command::new("git");
     git_after.add_arg("-C");
     git_after.add_arg(repo.to_str().unwrap());
@@ -117,11 +118,10 @@ pub fn get_commits_since(repo: &Path, branch: &str, date: &str) -> Result<Vec<Co
         cmd.add_arg("-d");
         cmd.add_arg(date);
         cmd.add_arg("+%Y_%m_%d");
-        let commit = Commit {
-            hash: String::from(hash),
-            date: String::from(cmd.run_trim()?),
-            branch: String::from(branch),
-        };
+        let commit = (
+            String::from(hash), // hash
+            String::from(cmd.run_trim()?), // date: YYYY_MM_DD
+            String::from(branch)); // branch
         println!("{:?}", commit);
         commits.push(commit);
     }
