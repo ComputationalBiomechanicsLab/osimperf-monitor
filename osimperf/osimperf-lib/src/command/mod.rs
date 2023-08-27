@@ -54,14 +54,10 @@ impl CommandOutput {
         Ok(())
     }
 
-    pub fn write_logs(&self, path: &Path) -> Result<()> {
-        let mut file = File::open(path).context(format!(
-            "failed to open file for writing stderr logs at path = {:?}",
-            path
-        ))?;
-        file.write_all(&self.output.stderr)?;
-        file.write_all(&self.output.stdout)?;
-        file.write_all(format!("{:#?}", self.output.status).as_bytes())?;
+    pub fn write_logs(&self, buffer: &mut impl Write) -> Result<()> {
+        buffer.write_all(&self.output.stderr)?;
+        buffer.write_all(&self.output.stdout)?;
+        buffer.write_all(format!("{:#?}", self.output.status).as_bytes())?;
         Ok(())
     }
 }
@@ -69,7 +65,11 @@ impl CommandOutput {
 pub trait CommandTrait {
     type Executor: CommandExecutorTrait + Debug;
 
-    fn print_command(&self) -> String;
+    fn print_command_with_delim(&self, arg_delim: &str) -> String;
+
+    fn print_command(&self) -> String {
+        self.print_command_with_delim(" ")
+    }
 
     fn create_executor(&self) -> Self::Executor;
 
@@ -105,7 +105,7 @@ pub trait CommandTrait {
         Ok(String::from(self.run()?.trim()))
     }
 
-    fn run_and_stream(&self, mut stream: impl Write) -> Result<CommandOutput> {
+    fn run_and_stream(&self, stream: &mut impl Write) -> Result<CommandOutput> {
         let cmd = self.create_executor();
         let start = duration_since_boot()?;
         let mut child = cmd.start_execute()?;
@@ -139,4 +139,20 @@ pub trait CommandExecutorTrait {
     fn execute(self) -> Result<std::process::Output>;
 
     fn start_execute(self) -> Result<std::process::Child>;
+}
+
+pub(crate) fn substitute_if_present(string: &mut String, key: &str, value: &str) -> Option<()> {
+    let start = string.find(key)?;
+    let end = start + key.len();
+    let start = string.find(key)?;
+    string.replace_range(start..end, value);
+    Some(())
+}
+
+pub(crate) fn substitute_all(string: &str, key_value: &[(String, String)]) -> String {
+    let mut out = String::from(string);
+    for (key, value) in key_value.iter() {
+        _ = substitute_if_present(&mut out, key, value);
+    }
+    out
 }

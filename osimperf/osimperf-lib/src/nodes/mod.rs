@@ -1,6 +1,6 @@
 use std::{io::Read, sync::{Arc, RwLock, Mutex}};
 
-use crate::{Commit, Date, Hash, Repository};
+use crate::{Hash, Repository};
 
 pub struct Nodes {}
 

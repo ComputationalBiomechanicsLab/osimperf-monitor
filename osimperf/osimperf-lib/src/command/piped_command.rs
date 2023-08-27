@@ -73,11 +73,22 @@ impl CommandExecutorTrait for PipedCommandsExecutor {
 
 impl PipedCommands {
     pub fn new(cmds: Vec<Command>) -> Self {
-        Self { cmds}
+        Self { cmds }
     }
 
     pub fn push(&mut self, cmd: Command) {
         self.cmds.push(cmd);
+    }
+
+    pub fn parse(string: &str) -> Self {
+        let mut pipe = Self { cmds: Vec::new() };
+        let mut split = string.split('|');
+        for s in split {
+            if !s.is_empty() {
+                pipe.cmds.push(Command::parse(s));
+            }
+        }
+        pipe
     }
 }
 
@@ -95,17 +106,16 @@ impl CommandTrait for PipedCommands {
         Self::Executor { cmds }
     }
 
-    fn print_command(&self) -> String {
+    fn print_command_with_delim(&self, arg_delim: &str) -> String {
         if self.cmds.len() == 0 {
             return String::from("empty command");
         }
         let mut iter = self.cmds.iter();
-        let mut msg = iter.next().unwrap().print_command();
+        let mut msg = iter.next().unwrap().print_command_with_delim(arg_delim);
         for arg in iter {
             msg.push_str(" | ");
-            msg.push_str(&arg.print_command());
+            msg.push_str(&arg.print_command_with_delim(arg_delim));
         }
         msg
     }
 }
-

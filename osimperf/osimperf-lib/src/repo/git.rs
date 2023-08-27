@@ -1,19 +1,35 @@
-use crate::{Command, CommandTrait, Commit, Date, PipedCommands, RepositoryPath};
-use anyhow::{ensure, anyhow, Context, Result};
+use crate::{Command, CommandTrait, PipedCommands, RepositoryPath};
+use anyhow::{anyhow, ensure, Context, Result};
 use log::{debug, trace};
 use std::path::Path;
 
-pub static OPENSIM_CORE_URL: &str = "https://github.com/opensim-org/opensim-core.git";
-pub static BIO_LAB_URL: &str = "git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
-
 pub fn read_current_branch(repo: &Path) -> Result<String> {
+    // git rev-parse --abbrev-ref HEAD
     let mut cmd = Command::new("git");
     cmd.add_arg("-C");
     cmd.add_arg(repo.to_str().unwrap());
-    cmd.add_arg("symbolic-ref");
-    cmd.add_arg("--short");
+    cmd.add_arg("rev-parse");
+    cmd.add_arg("--abbrev-ref");
     cmd.add_arg("HEAD");
     Ok(cmd.run_trim()?)
+}
+
+pub fn commit_merged_to(repo: &Path, commit: &str) -> Result<String> {
+    PipedCommands::parse(&format!(
+        r#"git -C {} branch --contains {} --no-color|sed -E s/\*//"#,
+        repo.to_str().unwrap(),
+        commit
+    ))
+    .run()
+}
+
+pub fn was_commit_merged_to_branch(repo: &Path, branch: &str, commit: &str) -> Result<bool> {
+    let output = commit_merged_to(repo, commit)?;
+    Ok(output.lines().any(|line| line.trim() == branch))
+}
+
+pub fn read_repo_name(repo: &Path) -> Result<String> {
+    Command::parse("basename `git rev-parse --show-toplevel`").run_trim()
 }
 
 pub fn read_current_commit(repo: &Path) -> Result<String> {
@@ -23,6 +39,19 @@ pub fn read_current_commit(repo: &Path) -> Result<String> {
     cmd.add_arg("rev-parse");
     cmd.add_arg("HEAD");
     Ok(cmd.run_trim()?)
+}
+
+fn date_of_commit_unformatted(repo: &Path, hash: &str) -> Result<String> {
+    let path: &str = repo.to_str().unwrap();
+    Command::parse(&format!("git -C {} show -s --format=%cs {}", path, hash)).run_trim()
+}
+
+fn fmt_date(unformatted_date: &str) -> Result<String> {
+    Command::parse(&format!("date -d {} +%Y_%m_%d", unformatted_date)).run_trim()
+}
+
+pub fn date_of_commit(repo: &Path, hash: &str) -> Result<String> {
+    date_of_commit_unformatted(repo, hash).and_then(|date| fmt_date(&date))
 }
 
 pub fn checkout_commit(repo: &Path, commit: &str) -> Result<()> {
@@ -45,72 +74,27 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
-fn fmt_date(date: &str) -> Result<String> {
-    let mut cmd = Command::new("date");
-    cmd.add_arg("-d");
-    cmd.add_arg(date);
-    cmd.add_arg("+%Y_%m_%d");
-    Ok(cmd.run_trim()?)
-}
-
-/// returns Vec<(hash, date, branch)>
+/// returns Vec<commit-hash>
 pub fn get_commits_since(
     repo: &Path,
     branch: &str,
     after_date: Option<&str>,
     before_date: Option<&str>,
-) -> Result<Vec<(String, String, String)>> {
-    let mut git_after = Command::new("git");
-    git_after.add_arg("-C");
-    git_after.add_arg(repo.to_str().unwrap());
-    git_after.add_arg("log");
-    git_after.add_arg(branch);
+) -> Result<Vec<String>> {
+    let path: &str = repo.to_str().unwrap();
+    let mut cmd = Command::parse(&format!(
+            "git -C {path} log {branch} --pretty=format:%H"));
     if let Some(date) = after_date {
-        git_after.add_arg(format!("--after={}", date));
+        cmd.add_arg(format!("--after={}", date));
     }
     if let Some(date) = before_date {
-        git_after.add_arg(format!("--before={}", date));
+        cmd.add_arg(format!("--before={}", date));
     }
-    git_after.add_arg("--date=short");
-    let git_after_output = git_after.run()?;
-
-    let mut echo = Command::new("echo");
-    echo.add_arg(git_after_output);
-
-    // Grep the dates.
-    let mut grep_date = Command::new("grep");
-    grep_date.add_arg("Date");
-
-    let mut awk_date = Command::new("awk");
-    awk_date.add_arg("{print $2}");
-
-    // Dates in awkward format: "2023 Aug 02"
-    let dates = PipedCommands::new(vec![echo.clone(), grep_date, awk_date]).run()?;
-
-    // Grep the commits
-    let mut grep_commit = Command::new("grep");
-    grep_commit.add_arg("commit");
-
-    let mut awk_hash = Command::new("awk");
-    awk_hash.add_arg("{print $2}");
-
-    let hashes = PipedCommands::new(vec![echo.clone(), grep_commit, awk_hash]).run()?;
+    let output = cmd.run()?;
 
     let mut commits = Vec::new();
-    for (date, hash) in dates.lines().zip(hashes.lines()) {
-        let commit = (String::from(hash), fmt_date(date)?, String::from(branch));
-        if commit.0.chars().count() != 40 {
-            let local_msg = git_after.run()?;
-            return Err(anyhow!("dude"))
-                .with_context(|| {
-                    format!(
-                        "hash = {:?}, date = {:?}, branch = {:?}",
-                        commit.0, commit.1, commit.2
-                    )
-                })
-                .context(local_msg);
-        }
-        commits.push(commit);
+    for line in output.lines() {
+        commits.push(String::from(line));
     }
 
     Ok(commits)

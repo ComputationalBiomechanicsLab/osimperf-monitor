@@ -2,6 +2,7 @@
 
 members = [
 	"osimperf-monitor",
+	"osimperf-lib",
 ]
 
 [profile.dev]
