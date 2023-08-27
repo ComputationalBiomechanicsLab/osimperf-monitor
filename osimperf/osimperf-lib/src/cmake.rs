@@ -1,7 +1,7 @@
 use anyhow::{anyhow, ensure, Context, Result};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::{fs::OpenOptions, io::Write, path::PathBuf, str};
+use std::{fs::OpenOptions, io::{Write, self}, path::PathBuf, str};
 
 use crate::{
     erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, PipedCommands, Repository,
@@ -12,10 +12,20 @@ pub static CMAKE_CONFIG_FILE: &str = ".osimperf-cmake.conf";
 
 #[derive(Clone, Debug, Default)]
 pub struct ProgressStreamer {
+    process_name: String,
+    process_step: String,
     buffer: String,
 }
 
 impl ProgressStreamer {
+    fn set_process_name(&mut self, name: &str) {
+        self.process_name= name.to_string();
+    }
+
+    fn set_process_step(&mut self, name: &str) {
+        self.process_step= name.to_string();
+    }
+
     fn pop_line(&mut self) -> Result<()> {
         // Check if a complete line is present in the buffer
         if self.buffer.contains('\n') {
@@ -28,7 +38,10 @@ impl ProgressStreamer {
                 let percentage =
                     PipedCommands::parse(r#"echo {line}|grep -o '\[ [0-9]*%'|sed 's/[^0-9]//g'"#)
                         .run_trim()?;
-                println!("{}%", percentage);
+                print!("{} {}: {}%", self.process_step,
+                    self.process_name, percentage);
+                io::stdout().flush().context("Failed to flush stdout")?; // Flush the buffer
+                print!("\r");
             }
 
             // Keep the last incomplete line in the buffer
@@ -83,6 +96,7 @@ pub fn run_cmake_cmd<T: ToString>(
     ));
     cmake_confgure_cmd.add_args(cmake_args.map(|a| format!("-D{}", a.to_string())));
     debug!("cmake configure: {:#?}", cmake_confgure_cmd);
+    progress.set_process_step("configuring");
     let config_output = cmake_confgure_cmd
         .run_and_stream(progress)
         .context("failed to generate project configuration files")?;
@@ -105,6 +119,7 @@ pub fn run_cmake_cmd<T: ToString>(
     }
     cmake_build_cmd.add_arg(format!("-j{}", num_jobs));
     debug!("cmake build: {:#?}", cmake_build_cmd);
+    progress.set_process_step("building");
     let build_output = cmake_build_cmd
         .run_and_stream(progress)
         .context("failed to build project")?;
@@ -193,6 +208,7 @@ pub fn compile_opensim_core(
     let mut stream = ProgressStreamer::default();
 
     // Compile dependencies.
+    stream.set_process_name("dependencies");
     let duration_deps = run_cmake_cmd(
         &&CmakeDirs {
             source: repo.path()?.join("dependencies"),
@@ -228,6 +244,7 @@ pub fn compile_opensim_core(
         .open(install.join("opensim-build.log"))
         .with_context(|| format!("failed to create opensim log at {:?}", install))?;
     let target = Some("install");
+    stream.set_process_name("opensim core");
     let duration_opensim = run_cmake_cmd(
         &CmakeDirs {
             source: repo.path()?.to_path_buf(),
@@ -259,6 +276,7 @@ pub fn compile_opensim_core(
         .create(true)
         .open(install.join("tests-build.log"))
         .with_context(|| format!("failed to create tests log at {:?}", install))?;
+    stream.set_process_name("tests source");
     let duration_tests = run_cmake_cmd(
         &CmakeDirs {
             source: repo.path()?.to_path_buf(),
