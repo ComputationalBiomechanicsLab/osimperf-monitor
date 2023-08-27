@@ -277,18 +277,19 @@ pub fn compile_opensim_core(
         .open(install.join("tests-build.log"))
         .with_context(|| format!("failed to create tests log at {:?}", install))?;
     stream.set_process_name("tests source");
+    let instal_prefix = format!(
+        "CMAKE_INSTALL_PREFIX={}:{}",
+        install_opensim_core.to_str().unwrap(),
+        install_dependencies.to_str().unwrap()
+    );
     let duration_tests = run_cmake_cmd(
         &CmakeDirs {
             source: repo.path()?.to_path_buf(),
             build: build.path()?.join("tests"),
-            dependency: Some(PathBuf::from(format!(
-                "{}:{}",
-                install_opensim_core.to_str().unwrap(),
-                install_dependencies.to_str().unwrap()
-            ))),
-            install,
+            install: install_tests_source,
+            dependency: None,
         },
-        config.common.iter(),
+        config.common.iter().chain(&[instal_prefix]),
         config.num_jobs,
         target,
         &mut source_log,
