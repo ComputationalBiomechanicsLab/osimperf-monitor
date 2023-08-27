@@ -3,23 +3,52 @@ use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::{fs::OpenOptions, io::Write, path::PathBuf, str};
 
-use crate::{erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, Repository};
+use crate::{
+    erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, PipedCommands, Repository,
+};
 
 // Expexted to be in OSIMPERF_HOME directory.
 pub static CMAKE_CONFIG_FILE: &str = ".osimperf-cmake.conf";
 
-pub struct ProgressStreamer {}
+#[derive(Clone, Debug, Default)]
+pub struct ProgressStreamer {
+    buffer: String,
+}
+
+impl ProgressStreamer {
+    fn pop_line(&mut self) -> Result<()> {
+        // Check if a complete line is present in the buffer
+        if self.buffer.contains('\n') {
+            // Split the buffer into lines and process each complete line
+            let lines: Vec<&str> = self.buffer.split('\n').collect();
+            let num_lines = lines.len();
+
+            // Print and remove all complete lines except the last one (if it's incomplete)
+            for line in lines.iter().take(num_lines - 1) {
+                let percentage =
+                    PipedCommands::parse(r#"echo {line}|grep -o '\[ [0-9]*%'|sed 's/[^0-9]//g'"#)
+                        .run_trim()?;
+                println!("{}%", percentage);
+            }
+
+            // Keep the last incomplete line in the buffer
+            self.buffer = lines[num_lines - 1].to_string();
+        }
+        Ok(())
+    }
+}
 
 impl Write for ProgressStreamer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if buf.len() > 0 {
-            let string = str::from_utf8(buf).unwrap();
-            println!("{}", string);
+            self.buffer.push_str(str::from_utf8(buf).unwrap());
         }
+        self.pop_line().map_err(|_| std::io::ErrorKind::NotFound)?; // TODO different error kind.
         Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
+        self.pop_line().map_err(|_| std::io::ErrorKind::NotFound)?; // TODO different error kind.
         Ok(())
     }
 }
@@ -86,7 +115,12 @@ pub fn run_cmake_cmd<T: ToString>(
             "configure-cmd = {}",
             cmake_confgure_cmd.print_command_with_delim(" \\\n")
         )))
-        .with_context(|| format!("build-cmd = {}", cmake_build_cmd.print_command_with_delim(" \\\n")))
+        .with_context(|| {
+            format!(
+                "build-cmd = {}",
+                cmake_build_cmd.print_command_with_delim(" \\\n")
+            )
+        })
         .context("cmake build step failed")?;
     }
     ensure!(build_output.success(), "cmake build step failed");
@@ -156,7 +190,7 @@ pub fn compile_opensim_core(
         .open(install.join("simbody-build.log"))
         .with_context(|| format!("failed to create dependencies log at {:?}", install))?;
 
-    let mut stream = ProgressStreamer {};
+    let mut stream = ProgressStreamer::default();
 
     // Compile dependencies.
     let duration_deps = run_cmake_cmd(
