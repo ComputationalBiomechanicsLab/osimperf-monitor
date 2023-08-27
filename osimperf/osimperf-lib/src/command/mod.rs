@@ -115,6 +115,7 @@ pub trait CommandTrait {
         for line in lines {
             let line = line?;
             stream.write_all(line.as_bytes())?;
+            stream.write_all('\n'.to_string().as_bytes())?;
             if child
                 .try_wait()
                 .with_context(|| format!("failed to execute command: {}", self.print_command()))

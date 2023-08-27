@@ -1,7 +1,12 @@
 use anyhow::{anyhow, ensure, Context, Result};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::{fs::OpenOptions, io::{Write, self}, path::PathBuf, str};
+use std::{
+    fs::OpenOptions,
+    io::{self, Write},
+    path::PathBuf,
+    str,
+};
 
 use crate::{
     erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, PipedCommands, Repository,
@@ -15,15 +20,19 @@ pub struct ProgressStreamer {
     process_name: String,
     process_step: String,
     buffer: String,
+    percentage: Option<f64>,
 }
 
 impl ProgressStreamer {
     fn set_process_name(&mut self, name: &str) {
-        self.process_name= name.to_string();
+        self.percentage = None;
+        self.process_name = name.to_string();
     }
 
     fn set_process_step(&mut self, name: &str) {
-        self.process_step= name.to_string();
+        self.percentage = None;
+        self.process_step = name.to_string();
+        // println!("Start {} {}", self.process_step, self.process_name);
     }
 
     fn pop_line(&mut self) -> Result<()> {
@@ -35,13 +44,33 @@ impl ProgressStreamer {
 
             // Print and remove all complete lines except the last one (if it's incomplete)
             for line in lines.iter().take(num_lines - 1) {
-                let percentage =
-                    PipedCommands::parse(r#"echo {line}|grep -o '\[ [0-9]*%'|sed 's/[^0-9]//g'"#)
-                        .run_trim()?;
-                print!("{} {}: {}%", self.process_step,
-                    self.process_name, percentage);
-                io::stdout().flush().context("Failed to flush stdout")?; // Flush the buffer
-                print!("\r");
+                let mut cmd_echo = Command::parse("echo");
+                cmd_echo.add_arg(format!(r#""{}""#, line));
+
+                let mut cmd_grep = Command::new("grep");
+                cmd_grep.add_arg("-o");
+                cmd_grep.add_arg("\\[ [0-9]*%");
+
+                let mut cmd_sed = Command::new("sed");
+                cmd_sed.add_arg("s/[^0-9]//g");
+
+                let cmd = PipedCommands::new(vec![cmd_echo, cmd_grep, cmd_sed]);
+                let percentage = cmd.run_trim()?;
+                if percentage.len() > 0 {
+                    let parsed_percentage = percentage
+                        .parse::<f64>()
+                        .with_context(|| format!("failed to parse percentage {percentage}"))?;
+                    if self.percentage.is_some() {
+                        print!("\r");
+                    }
+                    let percentage = self.percentage.get_or_insert(0.);
+                    *percentage = percentage.max(parsed_percentage);
+                    print!(
+                        "{} {}: {}%",
+                        self.process_step, self.process_name, percentage
+                    );
+                    io::stdout().flush().context("Failed to flush stdout")?; // Flush the buffer
+                }
             }
 
             // Keep the last incomplete line in the buffer
