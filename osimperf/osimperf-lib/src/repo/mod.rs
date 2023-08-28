@@ -35,7 +35,7 @@ impl RepositoryPath {
 #[derive(Clone, Debug)]
 pub struct Repository {
     name: String,
-    path: PathBuf,
+    pub path: PathBuf,
     url: String,
     branch: String,
     hash: String,

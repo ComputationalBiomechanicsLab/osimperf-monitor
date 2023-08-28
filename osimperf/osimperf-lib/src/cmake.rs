@@ -203,7 +203,7 @@ impl Default for OSimCoreCmakeConfig {
                 "BUILD_TESTING=ON".to_string(),
             ],
             dependencies: Vec::new(),
-            num_jobs: 4,
+            num_jobs: 2,
         }
     }
 }
