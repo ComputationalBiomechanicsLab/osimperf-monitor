@@ -131,13 +131,12 @@ fn do_main() -> Result<()> {
         c.remove_archive_dir(&folders)?;
         c.create_archive_dir(&folders)?;
 
-        let mut log = String::new();
-        match compile_opensim_core(&folders, c, &compile_flags, &mut log) {
+        match compile_opensim_core(&folders, c, &compile_flags) {
             Err(err) => println!(
                 "Error:\n{:?}\nFailed to compile opensim core ( {:?} )",
                 err, c
             ),
-            Ok(()) => {
+            Ok(compile_times) => {
                 ensure!(c.verify_compiled_version(&folders)?,
                     format!("Post install check failed: Failed to verify version of installed opensim-cmd for {:?}", c));
                 println!("Succesfully compiled opensim core ( {:?} )", c);
@@ -145,7 +144,6 @@ fn do_main() -> Result<()> {
         }
     }
 
-    let mut log = String::new();
     for c in commits.iter() {
         // Update all results --> should be swapped out instead.
         c.remove_results_dir(&folders)?;
@@ -153,7 +151,7 @@ fn do_main() -> Result<()> {
 
         for _ in 0..2 {
             for t in tests.iter() {
-                let test_result = bench_tests::run_test(&folders, t, c, &mut log)
+                let test_result = bench_tests::run_test(&folders, t, c)
                     .context("Failed to run test")?;
                 bench_tests::update_test_result(&folders, t, c, test_result)
                     .context("failed to update test result")?;
@@ -163,7 +161,6 @@ fn do_main() -> Result<()> {
     }
 
     let mut stdout = io::stdout().lock();
-
     bench_tests::table::print_results(&folders, &commits, &tests, &mut stdout)?;
 
     return Ok(());

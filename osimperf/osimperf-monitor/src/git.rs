@@ -11,7 +11,7 @@ fn verify_current_branch(repo: &Path, branch: &str) -> Result<bool> {
     verify.add_arg("--short");
     verify.add_arg("HEAD");
     let read_branch = verify
-        .run()
+        .run_to_string()
         .context(format!("Failed to verify main branch"))?;
     Ok(read_branch == branch)
 }
@@ -23,7 +23,7 @@ fn verify_current_commit(repo: &Path, commit: &str) -> Result<bool> {
     verify.add_arg("rev-parse");
     verify.add_arg("HEAD");
     let read_commit = verify
-        .run()
+        .run_to_string()
         .context(format!("Failed to verify current commit"));
     Ok(read_commit? == commit)
 }
@@ -38,7 +38,7 @@ pub fn switch_opensim_core_to_main(folders: &Folders) -> Result<()> {
         switch.add_arg(repo.to_str().unwrap());
         switch.add_arg("switch");
         switch.add_arg("main");
-        let res = switch.run();
+        let res = switch.run_to_string();
         trace!(
             "Executed command to switch opensim-core to main: output=\n{:?}",
             res
@@ -63,7 +63,7 @@ pub fn checkout_commit(repo: &Path, commit: &Commit) -> Result<()> {
         checkout.add_arg("checkout");
         checkout.add_arg(&commit.hash);
         // Switching gives a warning to stderr?
-        let res = checkout.run();
+        let res = checkout.run_to_string();
         println!("checkout: {:?}", res);
         ensure!(
             verify_current_commit(repo, &commit.hash)?,
@@ -91,14 +91,18 @@ pub fn is_the_opensim_core_repository(repo: &Path) -> Result<()> {
     let mut awk = Command::new("awk");
     awk.add_arg("{print $2}");
 
-    let output = pipe_commands(&[git_remote_v, grep, awk])?;
+    let mut x = Vec::<u8>::new();
+    let mut y = Vec::<u8>::new();
+    pipe_commands(&[git_remote_v, grep, awk], &mut x, &mut y)?;
+    let stdout = String::from_utf8(x)?;
+    let stderr = String::from_utf8(y)?;
 
     let url = "https://github.com/opensim-org/opensim-core.git";
     ensure!(
-        url == output,
+        url == stdout,
         format!(
-            "Path to source does not look like the opensim repository:\npath = {:?}\noutput={:?}",
-            repo, output
+            "Path to source does not look like the opensim repository:\npath = {:?}\nstdout={:?},\nstderr={:?}",
+            repo, stdout, stderr
         )
     );
 

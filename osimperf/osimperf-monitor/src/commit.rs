@@ -20,7 +20,7 @@ pub fn collect_last_daily_commit(folders: &Folders, start_date: &String) -> Resu
 
     let mut commits = Vec::<Commit>::new();
     for (i, c) in Commit::parse(
-        cmd.run()
+        cmd.run_to_string()
             .context("failed to run command for collecting commits")?,
     )
     .context("Failed to parse output of command that collected the commits.")?
@@ -157,7 +157,7 @@ impl Commit {
             self.get_archive_folder(folders).to_str().unwrap()
         ));
         cmd.add_arg("--version");
-        let output = if let Ok(res) = cmd.run() {
+        let output = if let Ok(res) = cmd.run_to_string() {
             res
         } else {
             debug!("Failed to execute command: {:?} of {:?}", cmd, &self);

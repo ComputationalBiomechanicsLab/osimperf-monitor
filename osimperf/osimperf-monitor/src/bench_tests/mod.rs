@@ -1,13 +1,14 @@
 pub mod table;
 
 use std::{
-    fs::{self, create_dir},
+    fs::{self, create_dir, File},
     path::{Path, PathBuf},
 };
 
 use crate::{read_config, write_config, Command, Commit, Folders};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use log::{info, debug };
 
 // Go over subfolders of tests/ to find "osimperf-test.conf"
 static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
@@ -74,18 +75,18 @@ pub struct BenchTestResult {
     pub duration: f64,
     pub iteration: usize,
     pub status: bool,
-    pub log: String,
 }
 
 pub fn run_test(
     folders: &Folders,
     setup: &BenchTestSetup,
     commit: &Commit,
-    log: &mut String,
 ) -> Result<BenchTestResult> {
     let test_root_dir = test_environment_root_dir(folders, setup, commit);
     let test_output_dir = test_root_dir.join("output");
     let test_install_dir = commit.get_archive_folder(folders).join("install");
+    let mut log_stdout = File::open(test_root_dir.join("log_stdout")).context("unable to open stdout log")?;
+    let mut log_stderr = File::open(test_root_dir.join("log_stderr")).context("unable to open stderr log")?;
     // let test_setup_dir = setup.path.clone();
 
     if !test_root_dir.exists() {
@@ -126,38 +127,33 @@ pub fn run_test(
         );
 
         if i + 1 == setup.cmd.len() {
-            match cmd.run_extend_log(log) {
+            match cmd.run_extend_log(&mut log_stdout, &mut log_stderr) {
                 Ok(duration) => {
-                    println!(
+                    info!(
                         "Test completed in {} seconds: {:?}, {:?}",
                         duration, commit, setup
                     );
-                    println!("     Root folder: {:?}", test_root_dir);
-                    // println!("     SETUP folder: {:?}", test_setup_dir);
-                    println!("     intssll folder: {:?}", test_install_dir_str);
-                    println!("     output: {:#?}", log);
+                    debug!("     Root folder: {:?}", test_root_dir);
+                    debug!("     intssll folder: {:?}", test_install_dir_str);
                     return Ok(BenchTestResult {
                         duration,
                         status: true,
-                        log: log.drain(..).collect(),
                         iteration: 1,
                     });
                 }
                 Err(err) => {
-                    println!("Test failed: {:?}, {:?}", commit, setup);
-                    println!("    with error: {:?}", err);
-                    println!("     output: {:#?}", log);
+                    info!("Test failed: {:?}, {:?}", commit, setup);
+                    info!("    with error: {:?}", err);
                     return Ok(BenchTestResult {
                         duration: f64::NAN,
                         status: false,
-                        log: log.drain(..).collect(),
                         iteration: 0,
                     });
                 }
             }
         }
 
-        cmd.run_extend_log(log)?;
+        cmd.run_extend_log(&mut log_stdout, &mut log_stderr)?;
     }
     Err(anyhow!("Not possible to end up here!"))
 }

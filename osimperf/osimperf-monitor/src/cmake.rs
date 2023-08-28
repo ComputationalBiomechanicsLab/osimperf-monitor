@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
+use log::{debug, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::{
+    io::Write,
     path::{Path, PathBuf},
-    str,
+    str, fs::File,
 };
 
 use crate::{Command, Commit, Folders};
@@ -20,10 +22,12 @@ pub struct CmakeInstallDirs {
 pub fn run_cmake_cmd<T: ToString>(
     cmake_dirs: &CmakeInstallDirs,
     cmake_args: impl Iterator<Item = T>,
-    log: &mut String,
     num_jobs: usize,
     target: &str,
-) -> Result<()> {
+    mut stdout_log: impl Write,
+    mut stderr_log: impl Write,
+    mut stream: impl Write,
+) -> Result<f64> {
     // Cmake configuration step.
     let mut cmake_confgure_cmd = Command::new("cmake");
     cmake_confgure_cmd.add_arg("-B");
@@ -39,9 +43,9 @@ pub fn run_cmake_cmd<T: ToString>(
     ));
     // cmake_confgure_cmd.add_arg("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON");
     cmake_confgure_cmd.add_args(cmake_args.map(|a| format!("-D{}", a.to_string())));
-    println!("cmake configure: {:#?}", cmake_confgure_cmd);
-    cmake_confgure_cmd
-        .run_print(log)
+    debug!("cmake configure: {:#?}", cmake_confgure_cmd);
+    let configure_duration = cmake_confgure_cmd
+        .run_stream_output(&mut stdout_log, &mut stderr_log, &mut stream)
         .context("failed to generate project configuration files")?;
 
     // Cmake build step.
@@ -53,13 +57,13 @@ pub fn run_cmake_cmd<T: ToString>(
         cmake_build_cmd.add_arg(target);
     }
     cmake_build_cmd.add_arg(format!("-j{}", num_jobs));
-    println!("cmake build: {:#?}", cmake_build_cmd);
-    cmake_build_cmd
-        .run_print(log)
+    debug!("cmake build: {:#?}", cmake_build_cmd);
+    let build_duration = cmake_build_cmd
+        .run_stream_output(&mut stdout_log, &mut stderr_log, &mut stream)
         .context("failed to build project")?;
 
     // TODO Test step.
-    Ok(())
+    Ok(configure_duration + build_duration)
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -94,17 +98,29 @@ impl Default for OSimCoreCmakeConfig {
     }
 }
 
+pub struct CompileTimes {
+    pub dependencies: f64,
+    pub opensim_core: f64,
+    pub tests: f64,
+}
+
 pub fn compile_opensim_core(
     folders: &Folders,
     commit: &Commit,
     config: &OSimCoreCmakeConfig,
-    log: &mut String,
-) -> Result<()> {
+) -> Result<CompileTimes> {
     let install = commit
         .get_archive_folder(folders)
         .join(Path::new("install"));
+    debug!("Set archive to {:?}", &install);
+    debug!("Start compilation of OpenSim dependencies.");
+
+    let mut stdout_log = File::open(install.join("stdout.log"))?;
+    let mut stderr_log = File::open(install.join("stderr.log"))?;
+    let mut stream = std::io::stdout().lock();
+
     // Compile dependencies.
-    run_cmake_cmd(
+    let duration_deps = run_cmake_cmd(
         &CmakeInstallDirs {
             source: folders.get_opensim_dependencies_source(),
             build: folders.get_opensim_dependencies_build(),
@@ -116,18 +132,25 @@ pub fn compile_opensim_core(
             .iter()
             .chain(config.dependencies.iter())
             .chain(config.common_opensim.iter()),
-        log,
         config.num_jobs,
         "",
+        &mut stdout_log,
+        &mut stderr_log,
+        &mut stream,
     )
     .context("failed to compile opensim dependencies")?;
+    debug!(
+        "Opensim dependencies compilation completed in {} seconds",
+        duration_deps
+    );
 
     // Compile opensim-core.
+    debug!("Start compilation of OpenSim-core.");
     let deps_arg = [format!(
         "OPENSIM_DEPENDENCIES_DIR={}",
         install.to_str().unwrap()
     )];
-    run_cmake_cmd(
+    let duration_opensim = run_cmake_cmd(
         &CmakeInstallDirs {
             source: folders.opensim_core.clone(),
             build: folders.get_opensim_core_build_dir(),
@@ -140,14 +163,21 @@ pub fn compile_opensim_core(
             .chain(config.opensim.iter())
             .chain(config.common_opensim.iter())
             .chain(deps_arg.iter()),
-        log,
         config.num_jobs,
         "install",
+        &mut stdout_log,
+        &mut stderr_log,
+        &mut stream,
     )
     .context("failed to compile opensim core")?;
+    debug!(
+        "Opensim-core compilation completed in {} seconds",
+        duration_opensim
+    );
 
     // Compile bench tests from source.
-    run_cmake_cmd(
+    debug!("Start compilation of tests from source.");
+    let duration_tests = run_cmake_cmd(
         &CmakeInstallDirs {
             source: folders.source.clone(),
             build: folders.get_tests_build(),
@@ -155,11 +185,21 @@ pub fn compile_opensim_core(
             install,
         },
         config.common.iter(),
-        log,
         config.num_jobs,
         "install",
+        stdout_log,
+        stderr_log,
+        stream,
     )
     .context("failed to compile benchmark tests from source")?;
+    debug!(
+        "Tests from source compilation completed in {} seconds",
+        duration_tests
+    );
 
-    Ok(())
+    Ok(CompileTimes {
+        dependencies: duration_deps,
+        opensim_core: duration_opensim,
+        tests: duration_tests,
+    })
 }

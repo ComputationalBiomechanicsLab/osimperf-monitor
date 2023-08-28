@@ -77,7 +77,7 @@ impl Folders {
             results: parse_folder_arg(&home, &args.results)?,
             home,
         })
-        .and_then(|folders| folders.check().map(|_| folders))
+        .and_then(|folders| folders.check_add_context().map(|_| folders))
     }
 
     pub fn get_opensim_dependencies_source(&self) -> PathBuf {
@@ -102,9 +102,11 @@ impl Folders {
 
     /// Check if folders look like osimperf-folders.
     fn check(&self) -> Result<()> {
+        let home_touch = self.home.join(HOME_TOUCH_FILE);
         ensure!(
-            self.home.join(HOME_TOUCH_FILE).exists(),
-            "Home does not look like home."
+            home_touch.exists(),
+            "Home does not look like home: looking for file {:?}",
+            home_touch
         );
         ensure!(
             self.archive.join(ARCHIVE_TOUCH_FILE).exists(),
@@ -117,11 +119,16 @@ impl Folders {
         is_the_opensim_core_repository(&self.opensim_core)?;
         Ok(())
     }
+
+    fn check_add_context(&self) -> Result<()> {
+        self.check()
+            .context(format!("incorrect folders:\n{:?}", self))
+    }
 }
 
 fn get_current_dir() -> Result<PathBuf> {
     println!("Using current directory as home");
-    Ok(PathBuf::from(Command::new("pwd").run()?))
+    Ok(PathBuf::from(Command::new("pwd").run_to_string()?))
 }
 
 fn parse_folder_arg(home: &PathBuf, folder: &String) -> Result<PathBuf> {
