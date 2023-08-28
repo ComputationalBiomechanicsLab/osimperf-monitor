@@ -47,12 +47,8 @@ pub fn run_cmake_compilation<'a>(
                 for r in res.iter() {
                     warn!("{:?}", r);
                 }
-                panic!();
-                return Ok(res);
             }
         }
-        break;
     }
-    panic!();
     Ok(res)
 }
