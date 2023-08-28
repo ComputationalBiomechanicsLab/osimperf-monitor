@@ -1,12 +1,10 @@
 pub mod git;
-mod hash;
-pub use hash::Hash;
 
 use anyhow::{ensure, Context, Result};
 use log::{debug, info, trace, warn};
 use std::path::PathBuf;
 
-use crate::{git::date_of_commit, Archive, Folder, ResultsFolder, Command, CommandTrait};
+use crate::{Archive, Command, CommandTrait, Folder, ResultsFolder};
 
 pub static OPENSIM_CORE_URL: &str = "https://github.com/opensim-org/opensim-core.git";
 pub static BIO_LAB_URL: &str = "git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
@@ -47,7 +45,7 @@ impl Repository {
     pub fn new(repo: RepositoryPath) -> Result<Self> {
         let read_url = git::read_repo_url(&repo.path)?;
         ensure!(
-            read_url == repo.url,
+            read_url.contains(&repo.url),
             format!(
                 "path to repository reads-url {} does not math given url = {}",
                 read_url, repo.url
@@ -69,7 +67,7 @@ impl Repository {
     pub fn verify(&self) -> Result<()> {
         let read_url = git::read_repo_url(&self.path)?;
         ensure!(
-            read_url == self.url,
+            read_url.contains(&self.url),
             format!(
                 "path to repository reads-url {} does not math given url = {}",
                 read_url, self.url
@@ -100,7 +98,7 @@ impl Repository {
         if &hash != &self.hash {
             git::checkout_commit(&self.path, &hash)?;
             self.hash = hash;
-            self.verify().context("checkout failed");
+            self.verify().context("checkout failed")?;
         }
         Ok(())
     }
@@ -131,11 +129,7 @@ impl Repository {
     ) -> Result<Vec<String>> {
         self.verify()?;
         let mut commits = Vec::<String>::new();
-        for (i, c) in self
-            .commits_between(after_date, before_date)?
-            .drain(..)
-            .enumerate()
-        {
+        for c in self.commits_between(after_date, before_date)?.drain(..) {
             if let Some(previous) = commits
                 .last()
                 .map(|c| git::date_of_commit(&self.path, c))
@@ -144,51 +138,55 @@ impl Repository {
                 let date = git::date_of_commit(&self.path, &c)?;
                 trace!("comparing date {:?} to previous date {:?}", date, previous);
                 if date == previous {
-                    debug!("Skipping duplicate {:?}", c);
+                    trace!("Skipping duplicate {:?}", c);
                     continue;
                 }
             }
-            info!("Last commit of the day: {:#?}", c);
             commits.push(c);
         }
         Ok(commits)
     }
 
-    fn subfolder_name(&self) -> Result<String> {
+    // TODO this is nasty, with the external, or internal hash.
+    fn subfolder_name(&self, hash: &str) -> Result<String> {
         self.verify()?;
         Ok(format!(
             "{}-{}-{}-{}",
             self.name,
             self.branch,
-            git::date_of_commit(&self.path, &self.hash)?,
+            git::date_of_commit(&self.path, hash)?,
             self.hash,
         ))
     }
 
     // Install folder: archive/name-branch-date-hash
     pub fn install_folder(&self, archive: &Archive) -> Result<PathBuf> {
-        Ok(archive.path()?.join(self.subfolder_name()?))
+        Ok(archive.path()?.join(self.subfolder_name(&self.hash)?))
     }
 
     pub fn results_folder(&self, folder: &ResultsFolder) -> Result<PathBuf> {
-        Ok(folder.path()?.join(self.subfolder_name()?))
+        Ok(folder.path()?.join(self.subfolder_name(&self.hash)?))
     }
 
-    fn short_hash(&self) -> Result<&str> {
-        const short_hash_len: usize = 9;
-        let short = self.hash.split_at(short_hash_len).0;
-        Some(short)
-            .filter(|s| s.len() == short_hash_len)
-            .with_context(|| format!("error taking short hash of {:?}", &self))
-    }
-
-    pub fn verify_installation(&self, archive: &Archive) -> Result<bool> {
+    // TODO this is nasty, with the external: here you want to check external, before switching.
+    pub fn verify_installation(&self, archive: &Archive, hash: Option<&str>) -> Result<bool> {
+        let hash = if let Some(h) = hash { h } else { &self.hash };
         debug!(
             "Start verification of archived opensim-cmd install: {:?}",
             &self
         );
-        let opensim_cmd_path = self
-            .install_folder(archive)?
+        let failed_hash = format!("{hash}-failed");
+        let failed_folder = archive
+            .path()?
+            .join(&format!("{}-failed", self.subfolder_name(hash)?));
+        if failed_folder.exists() {
+            return Ok(true);
+        } else {
+            debug!("{:?} does not exist", failed_folder);
+        }
+        let opensim_cmd_path = archive
+            .path()?
+            .join(self.subfolder_name(hash)?)
             .join("opensim-core/bin/opensim-cmd");
 
         if !opensim_cmd_path.exists() {
@@ -208,7 +206,7 @@ impl Repository {
             );
             return Ok(false);
         };
-        if output.as_str().contains(self.short_hash()?) {
+        if output.as_str().contains(short_hash(hash)?) {
             debug!("Successfully verified opensim-cmd install {:?}", &self);
             return Ok(true);
         } else {
@@ -220,4 +218,12 @@ impl Repository {
             return Ok(false);
         }
     }
+}
+
+fn short_hash(hash: &str) -> Result<&str> {
+    const SHORT_HASH_LEN: usize = 9;
+    let short = hash.split_at(SHORT_HASH_LEN).0;
+    Some(short)
+        .filter(|s| s.len() == SHORT_HASH_LEN)
+        .with_context(|| format!("error taking short hash of {:?}", hash))
 }

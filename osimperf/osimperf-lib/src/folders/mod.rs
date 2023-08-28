@@ -66,6 +66,7 @@ pub fn erase_folder(path: &Path) -> Result<()> {
 pub trait EraseableFolder: Folder {
     fn erase_folder(&self) -> Result<()> {
         let dir = PathBuf::from(self.path()?);
+        warn!("Erasing folder {}", dir.to_str().unwrap());
         remove_dir_all(&dir).context(format!("Failed to remove directory: {:?}", dir))?;
         fs::create_dir(&dir).with_context(|| format!("Failed to create directory: {:?}", dir))?;
         unsafe { create_magic_file(self)? };

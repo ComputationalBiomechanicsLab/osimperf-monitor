@@ -1,4 +1,4 @@
-use crate::{Command, CommandTrait, PipedCommands, RepositoryPath};
+use crate::{Command, CommandTrait, PipedCommands};
 use anyhow::{anyhow, ensure, Context, Result};
 use log::{debug, trace};
 use std::path::Path;
@@ -26,10 +26,6 @@ pub fn commit_merged_to(repo: &Path, commit: &str) -> Result<String> {
 pub fn was_commit_merged_to_branch(repo: &Path, branch: &str, commit: &str) -> Result<bool> {
     let output = commit_merged_to(repo, commit)?;
     Ok(output.lines().any(|line| line.trim() == branch))
-}
-
-pub fn read_repo_name(repo: &Path) -> Result<String> {
-    Command::parse("basename `git rev-parse --show-toplevel`").run_trim()
 }
 
 pub fn read_current_commit(repo: &Path) -> Result<String> {
@@ -82,8 +78,7 @@ pub fn get_commits_since(
     before_date: Option<&str>,
 ) -> Result<Vec<String>> {
     let path: &str = repo.to_str().unwrap();
-    let mut cmd = Command::parse(&format!(
-            "git -C {path} log {branch} --pretty=format:%H"));
+    let mut cmd = Command::parse(&format!("git -C {path} log {branch} --pretty=format:%H"));
     if let Some(date) = after_date {
         cmd.add_arg(format!("--after={}", date));
     }
@@ -112,10 +107,7 @@ pub fn read_repo_url(repo: &Path) -> Result<String> {
     let mut grep = Command::new("grep");
     grep.add_arg("fetch");
 
-    let mut awk = Command::new("awk");
-    awk.add_arg("{print $2}");
-
-    PipedCommands::new(vec![git_remote_v, grep, awk]).run_trim()
+    PipedCommands::new(vec![git_remote_v, grep]).run_trim()
 }
 
 pub fn verify_repository(repo: &Path, expected_url: &str) -> Result<()> {

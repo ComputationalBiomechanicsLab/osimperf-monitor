@@ -1,5 +1,5 @@
 use anyhow::{anyhow, ensure, Context, Result};
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::OpenOptions,
@@ -9,7 +9,8 @@ use std::{
 };
 
 use crate::{
-    erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, PipedCommands, Repository,
+    erase_folder, Archive, BuildFolder, Command, CommandTrait, Folder, Home, PipedCommands,
+    Repository,
 };
 
 // Expexted to be in OSIMPERF_HOME directory.
@@ -55,22 +56,24 @@ impl ProgressStreamer {
                 cmd_sed.add_arg("s/[^0-9]//g");
 
                 let cmd = PipedCommands::new(vec![cmd_echo, cmd_grep, cmd_sed]);
-                let percentage = cmd.run_trim()?;
-                if percentage.len() > 0 {
-                    let parsed_percentage = percentage
+                if let Some(perc_str) = Some(cmd.run_trim()?).filter(|s| s.len() > 0) {
+                    let parsed_percentage = perc_str
                         .parse::<f64>()
-                        .with_context(|| format!("failed to parse percentage {percentage}"))?;
+                        .with_context(|| format!("failed to parse percentage {perc_str}"))?;
                     if self.percentage.is_some() {
                         print!("\r");
                     }
-                    let percentage = self.percentage.get_or_insert(0.);
-                    *percentage = percentage.max(parsed_percentage);
+                    self.percentage = Some(parsed_percentage);
                     print!(
-                        "{} {}: {}%",
-                        self.process_step, self.process_name, percentage
+                        "{} {}: {}% -- {}",
+                        self.process_step, self.process_name, perc_str, line
                     );
                     io::stdout().flush().context("Failed to flush stdout")?; // Flush the buffer
                 }
+                // println!(
+                //     "{} {}: {:?}% -- {}",
+                //     self.process_step, self.process_name, self.percentage, line
+                // );
             }
 
             // Keep the last incomplete line in the buffer
@@ -200,7 +203,7 @@ impl Default for OSimCoreCmakeConfig {
                 "BUILD_TESTING=ON".to_string(),
             ],
             dependencies: Vec::new(),
-            num_jobs: 1,
+            num_jobs: 4,
         }
     }
 }
@@ -213,6 +216,7 @@ pub struct CompileTimes {
 
 pub fn compile_opensim_core(
     repo: &Repository,
+    home: &Home,
     archive: &Archive,
     build: &BuildFolder,
     config: &OSimCoreCmakeConfig,
@@ -307,28 +311,36 @@ pub fn compile_opensim_core(
         .with_context(|| format!("failed to create tests log at {:?}", install))?;
     stream.set_process_name("tests source");
     let instal_prefix = format!(
-        "CMAKE_INSTALL_PREFIX={}:{}",
+        "CMAKE_INSTALL_PREFIX={}",
         install_opensim_core.to_str().unwrap(),
-        install_dependencies.to_str().unwrap()
     );
-    let duration_tests = run_cmake_cmd(
-        &CmakeDirs {
-            source: repo.path()?.to_path_buf(),
-            build: build.path()?.join("tests"),
-            install: install_tests_source,
-            dependency: None,
-        },
-        config.common.iter().chain(&[instal_prefix]),
-        config.num_jobs,
-        target,
-        &mut source_log,
-        &mut stream,
-    )
-    .context("failed to compile benchmark tests from source")?;
-    debug!(
-        "Tests from source compilation completed in {} seconds",
-        duration_tests
-    );
+    let mut duration_tests = f64::NAN;
+    if (false) {
+        duration_tests = run_cmake_cmd(
+            &CmakeDirs {
+                source: home.path()?.join("source"),
+                build: build.path()?.join("test-source"),
+                install: install_tests_source,
+                dependency: None,
+            },
+            config
+                .common
+                .iter()
+                .chain(&[instal_prefix])
+                .chain(config.common_opensim.iter()),
+            config.num_jobs,
+            target,
+            &mut source_log,
+            &mut stream,
+        )
+        .context("failed to compile benchmark tests from source")?;
+        debug!(
+            "Tests from source compilation completed in {} seconds",
+            duration_tests
+        );
+    } else {
+        warn!("Manually skipping building tests from source");
+    }
 
     Ok(CompileTimes {
         dependencies: duration_deps,
