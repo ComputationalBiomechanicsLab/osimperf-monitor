@@ -1,4 +1,5 @@
 use anyhow::Context;
+use std::fmt::Debug;
 use log::trace;
 use std::{
     fs::rename,
@@ -13,7 +14,7 @@ fn get_temp_file(path: &Path) -> PathBuf {
     path.parent().unwrap().join("temp-conf")
 }
 
-pub trait NodeFile: Serialize + DeserializeOwned {
+pub trait NodeFile: Serialize + DeserializeOwned + Debug {
     fn path_to_self(&self) -> PathBuf;
 
     fn try_write(&self) -> anyhow::Result<()> {
@@ -29,18 +30,18 @@ pub trait NodeFile: Serialize + DeserializeOwned {
 
     fn try_read(&mut self) -> anyhow::Result<()> {
         let temp = get_temp_file(&self.path_to_self());
+        trace!("read previous node from {:?}", self.path_to_self());
 
         // Move to temp.
         rename(self.path_to_self(), &temp)?;
-        trace!("move to temporary file {:?}", temp);
 
         // Read to self.
-        trace!("read from temporary");
-        *self = read_config::<Self>(&self.path_to_self())?;
+        *self = read_config::<Self>(&temp)?;
 
         // Move temp back.
-        trace!("move temp back to = {:?}", self.path_to_self());
         rename(temp, self.path_to_self())?;
+
+        trace!("read node: {:?}", &self);
         Ok(())
     }
 }
