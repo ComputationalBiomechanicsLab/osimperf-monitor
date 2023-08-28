@@ -1,16 +1,22 @@
+mod compile;
 mod file;
-mod status;
+mod focus;
 mod repo;
+mod status;
 
+pub use compile::*;
 pub use file::NodeFile;
-pub use status::State;
+pub use focus::Focus;
 pub use repo::*;
+pub use status::State;
 
-use std::time::Duration;
-use std::{io::Write, path::PathBuf};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, fs::{create_dir, rename}};
 
-use crate::{erase_folder, git, Archive, BuildFolder, Command, CommandTrait, Folder, Repository};
+use crate::{Archive, BuildFolder, Folder};
+
+use self::repo::Repository;
+use log::{debug, trace, info };
 
 ///
 ///
@@ -18,147 +24,72 @@ use crate::{erase_folder, git, Archive, BuildFolder, Command, CommandTrait, Fold
 /// archive/ID/.compilation-node.osimperf
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CompilationNode {
-    /// For nicer folder and results identifiers.
-    pub name: String,
-    /// Path to repository.
-    pub repo: PathBuf,
-    /// For checking that path is correct.
-    pub url: String,
-    /// The branch the commit should belong to.
-    pub branch: String,
-    /// The commit we are checking out.
-    pub hash: String,
-    /// The date is for ordering results.
-    pub date: String,
+    pub repo: Repository,
     /// Compilation status.
     pub state: State,
-    /// Path to this node (in the archive-subfolder).
-    pub path_to_node: PathBuf,
+    /// Path to the archive.
+    pub archive: PathBuf,
 }
 
-impl NodeFile for CompilationNode {}
-
-#[derive(Debug)]
-pub struct CompilationNodeHandle<'a> {
-    focus: CurrentlyCompiling,
-    handle: &'a mut CompilationNode,
-}
-
-impl<'a> CompilationNodeHandle<'a> {
-    pub fn set_percentage(&mut self, percentage: usize) {
-        todo!()
+impl NodeFile for CompilationNode {
+    fn path_to_self(&self) -> PathBuf {
+        self.id().path().join(".osimper-compiler.node")
     }
-
-    pub fn set_complete(self, size: usize, duration: f64) 
-    {
-        todo!()
-    }
-
-    pub fn set_failed(self)
-    {
-        todo!()
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct CMakeConfig {
-
-}
-
-impl CMakeConfig {
-    pub fn cmake_args(&self) -> &[&str] {todo!()}
-    pub fn raw_args(&self) -> &[&str] {todo!()}
 }
 
 impl CompilationNode {
-    pub fn new(
-        repo: RepositoryInput,
-        hash: impl ToString,
-        archive: &Archive,
-    ) -> anyhow::Result<Self> {
-        let hash = hash.to_string();
-        Ok(Self {
-            date: git::date_of_commit(&repo.path, &hash)?,
-            name: repo.name,
-            repo: repo.path,
-            url: repo.url,
-            branch: repo.branch,
-            hash: hash.to_string(),
-            install_folder: archive.path()?.join(format!("")),
+    pub fn new(input: Input, params: Params, archive: &Archive) -> anyhow::Result<Self> {
+        let repo = Repository::new(input, params)?;
+        let mut out = Self {
+            archive: archive.path()?.to_path_buf(),
+            repo,
             ..Default::default()
-        })
+        };
+        out.update()?;
+        Ok(out)
     }
 
-    pub fn read_update(&mut self) -> anyhow::Result<()> {
-        todo!()
-    }
+    fn update(&mut self) -> anyhow::Result<()> {
+        let dir = self.id().path();
+        if !dir.exists() {
+            let temp_dir = dir.parent().unwrap().join("temp_dir");
+            trace!("Creating temporary directory at {:?}", temp_dir);
+            create_dir(&temp_dir)?;
 
-    pub fn write_update(&mut self) -> anyhow::Result<()> {
-        todo!()
-    }
-
-    pub fn find_nodes(archive: &Archive) -> anyhow::Result<Vec<Self>> {
-        todo!()
-    }
-
-    pub fn ready_for_compilation(&self) -> anyhow::Result<bool> {
-        todo!()
-    }
-
-    pub fn start_compilation(&mut self, build: &BuildFolder, config: &CMakeConfig) -> anyhow::Result<()> {
-        if self.ready_for_compilation() {
-
+            debug!("Creating new node directory at {:?}", dir);
+            trace!("Moving temporary directory to {:?}", dir);
+            rename(&temp_dir, &dir)?;
         }
-        // Checkout commit.
-
-        // Verify checkout.
-
-        // Erase the folder contents.
-
-        // Start compiling each part.
-        self.compile_opensim_core(build, config)?;
-        todo!()
-    }
-
-    pub fn compile_opensim_core(
-        &mut self,
-        build: &BuildFolder,
-        config: &CMakeConfig,
-    ) -> anyhow::Result<()> {
-        // Try to take the lock.
-
-        CmakeRunner {
-            source: self.repo.clone(),
-            install: self.install_folder.join("opensim-core"),
-            build: build.path()?.join("opensim-core"),
-            cmake_args: config.cmake_args(),
-            raw_args: config.raw_args(),
-            target: Some("install"),
-            progress: ProgressStreamer { status: todo!() },
+        if let Ok(_) = self.try_read() {
+            info!("found previous node: {:#?}", self);
+        } else {
+            info!("create new node at {:?}", self.path_to_self());
+            self.try_write()?;
         }
-        .start_compilation()?;
-
         Ok(())
     }
 
-    pub fn update_status(&mut self) -> anyhow::Result<()> {
-        // Verifiy fields are integer.
-        // Check repo url
-        //
-
-        // Verify opensim-cmd version, if status = installed.
-
-        //
-
-        todo!()
-    }
-
-    pub fn write_to_file(&self) -> anyhow::Result<()> {
-        todo!()
+    pub fn run(&mut self, build: &BuildFolder, config: &CMakeConfig) -> anyhow::Result<()> {
+        let mut progress = ProgressStreamer::default();
+        self.state.update(run_cmake_compilation(
+            self.id(),
+            self.repo.source(),
+            build,
+            config,
+            &mut progress,
+            &self.state.get_compiler_list(),
+        )?);
+        self.try_write()?;
+        Ok(())
     }
 
     pub fn id<'a>(&'a self) -> Id<'a> {
-        todo!()
+        Id {
+            name: &self.repo.name,
+            branch: &self.repo.branch,
+            hash: &self.repo.hash,
+            date: &self.repo.date,
+            path: &self.archive,
+        }
     }
-
 }

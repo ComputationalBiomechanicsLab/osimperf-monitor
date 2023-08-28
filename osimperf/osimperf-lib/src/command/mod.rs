@@ -11,13 +11,14 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, Write},
     path::Path,
+    time::Duration,
 };
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 
 #[derive(Debug)]
 pub struct CommandOutput {
-    pub duration: f64,
+    pub duration: Duration,
     pub output: std::process::Output,
 }
 
@@ -78,7 +79,7 @@ pub trait CommandTrait {
         let start = duration_since_boot()?;
         let output = cmd.execute();
         let end = duration_since_boot()?;
-        let duration = (end - start).as_secs_f64();
+        let duration = end - start;
         Ok(CommandOutput {
             duration,
             output: output
@@ -131,40 +132,9 @@ pub trait CommandTrait {
             .context("error waiting for command output")
             .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
         let end = duration_since_boot()?;
-        let duration = (end - start).as_nanos() as f64;
+        let duration = end - start;
         Ok(CommandOutput { duration, output })
     }
-
-    // fn run_with_stream(&self, fun: impl FnMut(Option<&str>, Option<&str>)->Result<()>) -> Result<CommandOutput> {
-    //     let cmd = self.create_executor();
-    //     let start = duration_since_boot()?;
-    //     let mut child = cmd.start_execute()?;
-
-    //     let stdout = child.stdout.take().unwrap();
-    //     let stdout = child.stdout.take().unwrap();
-    //     let lines = BufReader::new(stdout).lines();
-    //     for line in lines {
-    //         let line = line?;
-    //         stream.write_all(line.as_bytes())?;
-    //         stream.write_all('\n'.to_string().as_bytes())?;
-    //         if child
-    //             .try_wait()
-    //             .with_context(|| format!("failed to execute command: {}", self.print_command()))
-    //             .context("error while waiting for child")?
-    //             .is_some()
-    //         {
-    //             break;
-    //         }
-    //     }
-
-    //     let output = child
-    //         .wait_with_output()
-    //         .context("error waiting for command output")
-    //         .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
-    //     let end = duration_since_boot()?;
-    //     let duration = (end - start).as_nanos() as f64;
-    //     Ok(CommandOutput { duration, output })
-    // }
 }
 
 pub trait CommandExecutorTrait {

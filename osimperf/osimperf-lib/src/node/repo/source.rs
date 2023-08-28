@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::{Archive, Folder};
+use anyhow::ensure;
+
+use crate::{git, node::Focus, Archive, Folder};
 
 use super::Repository;
 
@@ -16,27 +18,22 @@ pub struct Source<'a> {
     pub url: &'a str,
 }
 
-impl<'a> Id<'a> {
+impl<'a> Source<'a> {
     fn checkout(&self) -> anyhow::Result<()> {
-        // Checkout
-        git::verify_url(&self.path, &repo.url)?;
-        git::checkout(&self.path, self.branch)?;
-        todo!()
+        git::was_commit_merged_to_branch(self.repo, self.branch, self.hash)?;
+        let hash = git::read_current_commit(self.repo)?;
+        if &hash != self.hash {
+            git::checkout_commit(self.repo, self.hash)?;
+            ensure!(
+                git::read_current_commit(self.repo)? == self.hash,
+                "checkout failed"
+            );
+        }
+        Ok(())
     }
 
-    fn source(self) -> anyhow::Result<PathBuf> {
-        // Checkout.
-
-        // Eat self, and give path:
-
-        todo!()
-    }
-
-    pub fn opensim_core_source(self) -> anyhow::Result<PathBuf> {
-        todo!()
-    }
-
-    pub fn dependencies_source(self) -> anyhow::Result<PathBuf> {
-        todo!()
+    pub fn path(&self) -> anyhow::Result<&'a Path> {
+        self.checkout();
+        Ok(self.repo)
     }
 }

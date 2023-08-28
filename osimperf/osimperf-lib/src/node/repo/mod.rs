@@ -1,14 +1,17 @@
-use std::path::{PathBuf, Path};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 mod id;
 mod input;
 mod params;
 mod source;
 
-use params::Params;
-use input::Input;
-use source::Source;
+pub use id::Id;
+pub use input::Input;
+pub use params::Params;
+pub use source::Source;
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Repository {
     /// For nicer folder and results identifiers.
     pub name: String,
@@ -25,14 +28,24 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn new(
-        input: Input,
-        params: Params,
-    ) -> Self {
-        todo!()
+    pub fn new(input: Input, params: Params) -> anyhow::Result<Self> {
+        input.verify_url()?;
+        Ok(Self {
+            name: input.name,
+            path: input.repo,
+            url: input.url,
+            branch: input.branch,
+            hash: params.hash,
+            date: params.date,
+        })
     }
 
     pub fn source<'a>(&'a self) -> Source<'a> {
-        todo!()
+        Source {
+            branch: &self.branch,
+            hash: &self.hash,
+            url: &self.url,
+            repo: &self.path,
+        }
     }
 }

@@ -1,10 +1,12 @@
 use std::{
-    fs::{self, remove_dir_all, OpenOptions},
+    fs::{self, remove_dir_all, rename, OpenOptions},
     path::{Path, PathBuf},
 };
 
 use anyhow::{ensure, Context, Result};
-use log::warn;
+use log::{trace, warn};
+
+use crate::node::Focus;
 
 pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
 pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";
@@ -55,11 +57,16 @@ unsafe fn create_magic_file(folder: &impl Folder) -> Result<()> {
 }
 
 pub fn erase_folder(path: &Path) -> Result<()> {
+    let temp_dir = path.parent().unwrap().join("osimperf-temporary");
     if path.exists() {
-        warn!("removing directory {:?}", path);
-        remove_dir_all(&path).context(format!("Failed to remove {:?}", path))?;
+        rename(&path, &temp_dir).context("unable to move install dir to temporary")?;
+        warn!("removing directory {:?}", &path);
+        trace!("removing temporary {:?}", &temp_dir);
+        remove_dir_all(&temp_dir).with_context(|| format!("Failed to remove {:?}", temp_dir))?;
     }
-    fs::create_dir(&path).with_context(|| format!("Failed to create directory: {:?}", path))?;
+    fs::create_dir(&temp_dir)
+        .with_context(|| format!("Failed to create directory: {:?}", temp_dir))?;
+    rename(&temp_dir, &path).context("unable to move temporary to path")?;
     Ok(())
 }
 
@@ -96,6 +103,16 @@ impl Folder for Home {
 pub struct BuildFolder {
     path: PathBuf,
 }
+
+// impl BuildFolder {
+//     pub fn join(&self, focus: Focus) -> Result<PathBuf> {
+//         Ok(self.path()?.join(match focus {
+//             Focus::OpenCimCore => "opensim-core",
+//             Focus::Dependencies => "dependencies",
+//             Focus::TestsSource => "tests",
+//         }))
+//     }
+// }
 
 impl Folder for BuildFolder {
     const TOUCH_FILE: &'static str = ".osimperf-build";

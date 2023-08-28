@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use serde::{Serialize, Deserialize};
+use anyhow::ensure;
+use serde::{Deserialize, Serialize};
+
+use crate::git;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Input {
@@ -14,14 +17,16 @@ pub struct Input {
     pub branch: String,
 }
 
-impl Default for Input {
-    fn default() -> Self {
-        todo!()
-    }
-}
-
 impl Input {
-    pub fn new() -> Self {
-        todo!()
+    pub fn verify_url(&self) -> anyhow::Result<()> {
+        let read_url = git::read_repo_url(&self.repo)?;
+        ensure!(
+            read_url.contains(&self.url),
+            format!(
+                "path to repository reads-url {} does not math given url = {}",
+                read_url, self.url
+            )
+        );
+        Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::{Archive, Folder};
+use crate::{Archive, Folder, node::Focus};
 
 use super::Repository;
 
@@ -19,14 +19,14 @@ pub struct Id<'a> {
 }
 
 impl<'a> Id<'a> {
-    pub fn folder(&self) -> PathBuf {
+    pub fn path(&self) -> PathBuf {
         self.path.join(format!(
             "{}-{}-{}-{}",
             self.name, self.branch, self.date, self.hash,
         ))
     }
 
-    pub fn folder_string(&self) -> String {
-        String::from(self.folder().to_str().unwrap())
+    pub fn path_str(&self) -> String {
+        String::from(self.path().to_str().unwrap())
     }
 }
