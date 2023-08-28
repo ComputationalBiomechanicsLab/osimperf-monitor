@@ -33,7 +33,7 @@ pub struct CompilationNode {
 
 impl NodeFile for CompilationNode {
     fn path_to_self(&self) -> PathBuf {
-        self.id().path().join(".osimper-compiler.node")
+        self.id().path().join(".osimperf-compiler.node")
     }
 }
 
