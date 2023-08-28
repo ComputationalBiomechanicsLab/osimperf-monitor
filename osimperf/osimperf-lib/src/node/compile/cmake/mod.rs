@@ -3,7 +3,7 @@ mod configure;
 
 use std::{io::Write, path::PathBuf, time::Duration};
 
-use anyhow::{anyhow, ensure, Context };
+use anyhow::{anyhow, ensure, Context};
 pub use build::*;
 pub use configure::*;
 use log::info;
@@ -37,22 +37,31 @@ impl CMakeCmds {
 
         let source = match focus {
             Focus::OpenCimCore => source.path()?.to_owned(),
-            Focus::Dependencies=> source.path()?.join("dependencies"),
+            Focus::Dependencies => source.path()?.join("dependencies"),
             Focus::TestsSource => return Err(anyhow!("not yet tests source implemented")),
         };
 
         let target = match focus {
             Focus::OpenCimCore => Some("install"),
-            Focus::Dependencies=> None,
+            Focus::Dependencies => None,
             Focus::TestsSource => return Err(anyhow!("not yet tests source implemented")),
         };
+
+        let mut args = config.cmake_args(focus);
+        if let Focus::OpenCimCore = focus {
+            let add_arg = format!(
+                "-DOPENSIM_DEPENDENCIES_DIR={}",
+                dependency.clone().unwrap().to_str().unwrap()
+            );
+            args.push(add_arg);
+        }
 
         Ok(Self {
             configure: CMakeConfigurerer {
                 source: source,
                 build: build.path()?.join(focus_str),
                 install: id.path().join(focus_str),
-                args: config.cmake_args(focus).iter(),
+                args: args.iter(),
                 dependency,
             }
             .into_cmd(),
