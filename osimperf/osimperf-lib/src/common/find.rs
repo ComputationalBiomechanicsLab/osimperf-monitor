@@ -1,7 +1,10 @@
 use super::read_config;
-use anyhow::{ensure, Result};
-use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use anyhow::{ensure, Context, Result};
+use serde::{de::DeserializeOwned, Deserialize};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 // Search for "file_name" in directory and subdirectories.
 pub fn find_file_by_name(root_dir: &Path, file_name: &str) -> Vec<PathBuf> {

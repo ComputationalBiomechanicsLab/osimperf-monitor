@@ -1,10 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 
 use super::*;
 
 use anyhow::{anyhow, Context, Result};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Command {
     cmd: String,
     args: Vec<String>,
@@ -28,8 +29,7 @@ impl CommandExecutorTrait for CommandExecutor {
     }
 
     fn start_execute(mut self) -> Result<std::process::Child> {
-        Ok(self.get_mut().stdout(Stdio::piped()).
-            spawn()?)
+        Ok(self.get_mut().stdout(Stdio::piped()).spawn()?)
     }
 }
 
