@@ -4,6 +4,7 @@ mod focus;
 mod repo;
 mod status;
 
+use anyhow::Result;
 pub use compile::*;
 pub use file::NodeFile;
 pub use focus::Focus;
@@ -36,12 +37,16 @@ pub struct CompilationNode {
 
 impl NodeFile for CompilationNode {
     fn path_to_self(&self) -> PathBuf {
-        self.id().path().join(".osimperf-compiler.node")
+        self.id().path().join(Self::MAGIC_FILE())
     }
 }
 
 impl CompilationNode {
-    pub fn new(input: Input, params: Params, archive: &Archive) -> anyhow::Result<Self> {
+    pub const fn MAGIC_FILE() -> &str {
+        ".osimperf-compiler.node"
+    }
+
+    pub fn new(input: Input, params: Params, archive: &Archive) -> Result<Self> {
         let repo = Repository::new(input, params)?;
         let mut out = Self {
             archive: archive.path()?.to_path_buf(),
@@ -52,7 +57,7 @@ impl CompilationNode {
         Ok(out)
     }
 
-    fn update(&mut self) -> anyhow::Result<()> {
+    fn update(&mut self) -> Result<()> {
         let dir = self.id().path();
         if !dir.exists() {
             let temp_dir = dir.parent().unwrap().join("temp_dir");
@@ -72,7 +77,7 @@ impl CompilationNode {
         Ok(())
     }
 
-    pub fn run(&mut self, build: &BuildFolder, config: &CMakeConfig) -> anyhow::Result<()> {
+    pub fn run(&mut self, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
         let mut progress = ProgressStreamer::default();
         self.state = run_cmake_compilation(
             self.id(),
