@@ -29,8 +29,7 @@ impl CommandExecutorTrait for CommandExecutor {
 
     fn start_execute(mut self) -> Result<std::process::Child> {
         Ok(self.get_mut().stdout(Stdio::piped()).
-            stderr(Stdio::piped())
-            .spawn()?)
+            spawn()?)
     }
 }
 
