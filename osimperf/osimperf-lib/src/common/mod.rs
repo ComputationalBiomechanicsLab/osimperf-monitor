@@ -1,7 +1,6 @@
 mod config;
 mod find;
-mod git;
+pub mod git;
 
 pub use config::*;
 pub use find::*;
-pub use git::*;
