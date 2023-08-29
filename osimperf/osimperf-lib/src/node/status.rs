@@ -9,23 +9,31 @@ use super::Focus;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Status {
     Idle,
-    Queued,
     Compiling(Progress),
-    BuildFailed,
-    CmdError,
+    Error(String),
     Done(Complete),
 }
 
 impl Status {
-    pub fn update(&mut self, res: &anyhow::Result<Duration>) {
-        match (&self, res) {
-            (_, Ok(duration)) => {
-                *self = Status::Done(Complete {
-                    duration: *duration,
-                    size: 0,
-                })
-            }
-            _ => *self = Status::BuildFailed,
+    pub fn should_compile(&self) -> bool {
+        // TODO refine this?
+        !self.is_done()
+    }
+
+    pub fn is_done(&self) -> bool {
+        if let Self::Done(_) = self {
+            return true;
+        }
+        false
+    }
+
+    pub fn from_output(
+        // TODO refine output and status construction
+        output: anyhow::Result<Duration>,
+    ) -> Self {
+        match output {
+            Ok(duration) => Self::Done(Complete { duration, size: 0 }),
+            Err(err) => Self::Error(format!("{:?}", err)),
         }
     }
 }
@@ -45,18 +53,20 @@ pub struct State {
 }
 
 impl State {
-    pub fn update(&mut self, res: [anyhow::Result<Duration>; 3]) {
-        self.status_dependencies.update(&res[0]);
-        self.status_opensim_core.update(&res[1]);
-        self.status_tests_source.update(&res[2]);
-    }
-
-    pub fn set(&mut self, focus: &Focus, status: Status) {
+    pub fn set(&mut self, focus: Focus, status: Status) {
         match focus {
             Focus::Dependencies => self.status_dependencies = status,
             Focus::OpenCimCore => self.status_opensim_core = status,
             Focus::TestsSource => self.status_tests_source = status,
         }
+    }
+
+    pub fn get(&self) -> [&Status; 3] {
+        return [
+            &self.status_dependencies,
+            &self.status_opensim_core,
+            &self.status_tests_source,
+        ];
     }
 
     pub fn get_compiler_list(&self) -> [Option<Focus>; 3] {

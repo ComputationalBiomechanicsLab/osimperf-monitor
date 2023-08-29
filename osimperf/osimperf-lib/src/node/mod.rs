@@ -11,12 +11,15 @@ pub use repo::*;
 pub use status::State;
 
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, fs::{create_dir, rename}};
+use std::{
+    fs::{create_dir, rename},
+    path::PathBuf,
+};
 
 use crate::{Archive, BuildFolder, Folder};
 
 use self::repo::Repository;
-use log::{debug, trace, info };
+use log::{debug, info, trace};
 
 ///
 ///
@@ -71,14 +74,14 @@ impl CompilationNode {
 
     pub fn run(&mut self, build: &BuildFolder, config: &CMakeConfig) -> anyhow::Result<()> {
         let mut progress = ProgressStreamer::default();
-        self.state.update(run_cmake_compilation(
+        self.state = run_cmake_compilation(
             self.id(),
             self.repo.source(),
             build,
             config,
             &mut progress,
-            &self.state.get_compiler_list(),
-        )?);
+            &self.state,
+        )?;
         self.try_write()?;
         Ok(())
     }

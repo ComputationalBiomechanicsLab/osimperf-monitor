@@ -4,17 +4,17 @@ mod progress;
 
 use std::{fs::rename, time::Duration};
 
-use anyhow::{anyhow, Context };
+use anyhow::{anyhow, Context, Result};
 pub use cmake::*;
 pub use config::CMakeConfig;
 use log::{info, warn};
 pub use progress::ProgressStreamer;
 
-use crate::{erase_folder, BuildFolder};
+use crate::{erase_folder, BuildFolder, Folder, State};
 
 use self::cmake::CMakeCmds;
 
-use super::{Focus, Id, Source};
+use super::{status::Status, Focus, Id, Source};
 
 pub fn run_cmake_compilation<'a>(
     id: Id<'a>,
@@ -22,33 +22,30 @@ pub fn run_cmake_compilation<'a>(
     build: &BuildFolder,
     config: &CMakeConfig,
     progress: &mut ProgressStreamer,
-    focus_it: &[Option<Focus>; 3],
-) -> anyhow::Result<[anyhow::Result<Duration>; 3]> {
-    let mut res = [
-        Err(anyhow!("not started compiling")),
-        Err(anyhow!("not started compiling")),
-        Err(anyhow!("not started compiling")),
-    ];
-    for i in 0..3 {
-        if let Some(focus) = focus_it[i] {
-            let install_dir = id.path().join(focus.to_str());
-            erase_folder(&install_dir)
-                .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
+    state: &State,
+) -> anyhow::Result<State> {
+    let mut out = state.clone();
+    for (i, s) in state
+        .get()
+        .iter()
+        .enumerate()
+        .filter(|(i, s)| s.should_compile())
+    {
+        let focus = Focus::from(i);
+        let install_dir = id.path().join(focus.to_str());
+        erase_folder(&install_dir)
+            .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
 
-            let cmd = CMakeCmds::new(&id, &source, build, config, focus)?;
-            println!("RUNN {}", cmd.print_pretty());
+        if let Ok(cmd) = CMakeCmds::new(&id, &source, build, config, focus) {
+            erase_folder(&build.path()?.join(focus.to_str()))
+                .with_context(|| format!("failed to erase build dir"))?;
 
-            res[i] = cmd
+            let output = cmd
                 .run(progress)
                 .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
-            if res[i].is_err() {
-                warn!("cmake failed with errors:");
-                for r in res.iter() {
-                    warn!("{:?}", r);
-                }
-            }
+            out.set(focus, Status::from_output(output));
         }
     }
-    Ok(res)
+    Ok(out)
 }
