@@ -59,13 +59,19 @@ unsafe fn create_magic_file(folder: &impl Folder) -> Result<()> {
 pub fn erase_folder(path: &Path) -> Result<()> {
     let temp_dir = path.parent().unwrap().join("osimperf-temporary");
     if path.exists() {
+        warn!("Removing directory {:?}", &path);
         rename(&path, &temp_dir).context("unable to move install dir to temporary")?;
-        warn!("removing directory {:?}", &path);
-        trace!("removing temporary {:?}", &temp_dir);
+        trace!("erase_folder fn: moving {:?} to {:?}", &path, &temp_dir);
+        trace!("erase_folder fn: remove {:?}", &temp_dir);
         remove_dir_all(&temp_dir).with_context(|| format!("Failed to remove {:?}", temp_dir))?;
     }
+    trace!(
+        "erase_folder fn: Create new empty folder at: {:?}",
+        &temp_dir
+    );
     fs::create_dir(&temp_dir)
         .with_context(|| format!("Failed to create directory: {:?}", temp_dir))?;
+    trace!("erase_folder fn: move empty folder to {:?}", path);
     rename(&temp_dir, &path).context("unable to move temporary to path")?;
     Ok(())
 }
