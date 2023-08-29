@@ -92,6 +92,14 @@ pub struct Home {
     path: PathBuf,
 }
 
+impl Default for Home {
+    fn default() -> Self {
+        Self {
+            path: std::env::current_dir().unwrap(),
+        }
+    }
+}
+
 impl Folder for Home {
     const TOUCH_FILE: &'static str = ".osimperf-home";
 
