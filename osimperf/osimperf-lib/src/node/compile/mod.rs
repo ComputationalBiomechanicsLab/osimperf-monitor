@@ -10,7 +10,7 @@ pub use config::CMakeConfig;
 use log::{info, warn};
 pub use progress::ProgressStreamer;
 
-use crate::{erase_folder, BuildFolder, Folder, State};
+use crate::{erase_folder, BuildFolder, Folder, Home, State};
 
 use self::cmake::CMakeCmds;
 

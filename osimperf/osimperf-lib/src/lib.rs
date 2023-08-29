@@ -7,11 +7,11 @@ mod command;
 mod common;
 mod folders;
 mod node;
-
-pub mod git;
+pub mod bench_tests;
 
 pub use command::*;
 pub use common::*;
 pub use folders::*;
 pub use node::*;
 
+pub use common::git;

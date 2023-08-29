@@ -16,7 +16,7 @@ pub struct CMakeConfig {
 impl CMakeConfig {
     pub fn cmake_args(&self, focus: Focus) -> Vec<String> {
         match focus {
-            Focus::OpenCimCore => self
+            Focus::OpenSimCore => self
                 .common
                 .iter()
                 .chain(self.opensim_and_dependencies.iter())
