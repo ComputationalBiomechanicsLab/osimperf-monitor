@@ -4,14 +4,14 @@ pub static OPENSIM_CORE_URL: &str = "https://github.com/opensim-org/opensim-core
 pub static BIO_LAB_URL: &str = "git@github.com:ComputationalBiomechanicsLab/osimperf-monitor.git";
 
 mod command;
-mod config;
+mod common;
 mod folders;
 mod node;
 
 pub mod git;
 
 pub use command::*;
-pub use config::*;
+pub use common::*;
 pub use folders::*;
 pub use node::*;
 
