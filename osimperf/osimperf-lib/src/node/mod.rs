@@ -17,10 +17,26 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{Archive, BuildFolder, Folder};
+use crate::{collect_configs, find_file_by_name, Archive, BuildFolder, Folder, Home};
 
 use self::repo::Repository;
 use log::{debug, info, trace};
+
+pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
+    id.path().join(focus.to_str())
+}
+
+pub fn path_to_source(focus: Focus, home: &Home, source: &Source) -> Result<PathBuf> {
+    Ok(match focus {
+        Focus::OpenSimCore => source.path()?.to_owned(),
+        Focus::Dependencies => source.path()?.join("dependencies"),
+        Focus::TestsSource => home.path()?.join("source"),
+    })
+}
+
+pub fn path_to_build(focus: Focus, build: &BuildFolder) -> Result<PathBuf> {
+    Ok(build.path()?.join(focus.to_str()))
+}
 
 ///
 ///
