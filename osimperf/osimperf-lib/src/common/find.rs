@@ -15,8 +15,8 @@ pub fn find_file_by_name(root_dir: &Path, file_name: &str) -> Vec<PathBuf> {
             let entry_path = entry.path();
 
             if entry_path.is_dir() {
-                result.extend(find_perf_test_setup_files(&entry_path));
-            } else if entry_path.file_name() == Some(TEST_SETUP_FILE_NAME.as_ref()) {
+                result.extend(find_file_by_name(&entry_path, file_name));
+            } else if entry_path.file_name().and_then(|f| f.to_str()) == Some(file_name) {
                 result.push(entry_path);
             }
         }
@@ -25,11 +25,13 @@ pub fn find_file_by_name(root_dir: &Path, file_name: &str) -> Vec<PathBuf> {
 }
 
 // Search for "file_name" in directory and subdirectories and read config.
-pub fn collect_configs<C: Deserialize>(root_dir: &Path, file_name: &str) -> Result<Vec<C>> {
-    Ok(
-        Some(find_file_by_name(root_dir, file_name).map(|p| read_config::<C>(p)))
-            .filter(|vec| vec.iter().all(|x| x.is_ok()))
-            .context("failed to parse all config files")?
-            .map(|x| x.unwrap()),
-    )
+pub fn collect_configs<C: DeserializeOwned>(root_dir: &Path, file_name: &str) -> Result<Vec<C>> {
+    let mut out = Vec::new();
+    for config in find_file_by_name(root_dir, file_name)
+        .drain(..)
+        .map(|p| read_config::<C>(&p))
+    {
+        out.push(config?);
+    }
+    Ok(out)
 }
