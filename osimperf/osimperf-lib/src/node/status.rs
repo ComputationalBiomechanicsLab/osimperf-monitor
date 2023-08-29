@@ -1,4 +1,3 @@
-use log::warn;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -56,7 +55,7 @@ impl State {
     pub fn set(&mut self, focus: Focus, status: Status) {
         match focus {
             Focus::Dependencies => self.status_dependencies = status,
-            Focus::OpenCimCore => self.status_opensim_core = status,
+            Focus::OpenSimCore => self.status_opensim_core = status,
             Focus::TestsSource => self.status_tests_source = status,
         }
     }
@@ -72,7 +71,7 @@ impl State {
     pub fn get_compiler_list(&self) -> [Option<Focus>; 3] {
         [
             Some(Focus::Dependencies),
-            Some(Focus::OpenCimCore),
+            Some(Focus::OpenSimCore),
             Some(Focus::TestsSource),
         ]
         .map(|f| f.filter(|x| self.get_compiler_job(x)))
@@ -84,7 +83,7 @@ impl State {
                 Status::Done(_) => return false,
                 _ => return true,
             },
-            Focus::OpenCimCore => match self.status_opensim_core {
+            Focus::OpenSimCore => match self.status_opensim_core {
                 Status::Done(_) => return false,
                 _ => return true,
             },

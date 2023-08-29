@@ -19,7 +19,7 @@ pub struct Source<'a> {
 }
 
 impl<'a> Source<'a> {
-    fn checkout(&self) -> anyhow::Result<()> {
+    pub fn checkout(&self) -> anyhow::Result<()> {
         git::was_commit_merged_to_branch(self.repo, self.branch, self.hash)?;
         let hash = git::read_current_commit(self.repo)?;
         if &hash != self.hash {
@@ -33,7 +33,6 @@ impl<'a> Source<'a> {
     }
 
     pub fn path(&self) -> anyhow::Result<&'a Path> {
-        self.checkout();
         Ok(self.repo)
     }
 }

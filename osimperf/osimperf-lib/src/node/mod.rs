@@ -52,14 +52,20 @@ pub struct CompilationNode {
 }
 
 impl NodeFile for CompilationNode {
+    const SUBFOLDER_LEVEL: usize = 1;
+
     fn path_to_self(&self) -> PathBuf {
         self.id().path().join(Self::MAGIC_FILE())
     }
 }
 
 impl CompilationNode {
-    pub const fn MAGIC_FILE() -> &str {
+    pub const fn MAGIC_FILE() -> &'static str {
         ".osimperf-compiler.node"
+    }
+
+    pub fn collect_archived(archive: &Archive) -> Result<Vec<Self>> {
+        collect_configs::<Self>(archive.path()?, Self::MAGIC_FILE())
     }
 
     pub fn new(input: Input, params: Params, archive: &Archive) -> Result<Self> {
@@ -69,7 +75,7 @@ impl CompilationNode {
             repo,
             ..Default::default()
         };
-        out.update()?;
+        out.read_or_write_new()?;
         Ok(out)
     }
 
@@ -93,12 +99,16 @@ impl CompilationNode {
         Ok(())
     }
 
-    pub fn run(&mut self, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
+    pub fn run(&mut self,
+        home: &Home,
+        build: &BuildFolder,
+        config: &CMakeConfig) -> Result<()> {
         let mut progress = ProgressStreamer::default();
         self.state = run_cmake_compilation(
             self.id(),
             self.repo.source(),
             build,
+            home,
             config,
             &mut progress,
             &self.state,

@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use crate::{Archive, Folder, node::Focus};
+use crate::{
+    node::{focus, Focus},
+    Archive, Folder,
+};
 
 use super::Repository;
 
@@ -19,11 +22,12 @@ pub struct Id<'a> {
 }
 
 impl<'a> Id<'a> {
+    pub fn subfolder_name(&self) -> String {
+        format!("{}-{}-{}-{}", self.name, self.branch, self.date, self.hash,)
+    }
+
     pub fn path(&self) -> PathBuf {
-        self.path.join(format!(
-            "{}-{}-{}-{}",
-            self.name, self.branch, self.date, self.hash,
-        ))
+        self.path.join(self.subfolder_name())
     }
 
     pub fn path_str(&self) -> String {
