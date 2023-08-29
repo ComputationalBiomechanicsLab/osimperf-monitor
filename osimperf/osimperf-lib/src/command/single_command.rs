@@ -80,6 +80,9 @@ impl CommandTrait for Command {
     fn create_executor(&self) -> CommandExecutor {
         let mut cmd = std::process::Command::new(substitute_all(&self.cmd, &self.envs));
         cmd.args(self.args.iter().map(|arg| substitute_all(arg, &self.envs)));
+        for (key, value) in self.envs.iter() {
+            cmd.env(key, value);
+        }
         CommandExecutor { cmd }
     }
 
