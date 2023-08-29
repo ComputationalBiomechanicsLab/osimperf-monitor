@@ -58,6 +58,10 @@ impl Command {
         self.envs.push((key, value));
     }
 
+    pub fn add_env_path(&mut self, key: impl ToString, value: &Path) {
+        self.add_env(key, value.to_str().unwrap());
+    }
+
     pub fn parse(string: &str) -> Self {
         let mut split = string.split(' ');
         let mut cmd = Self::new(split.next().unwrap());
