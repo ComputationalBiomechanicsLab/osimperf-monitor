@@ -1,3 +1,6 @@
 [submodule "opensim-core"]
 	path = software/opensim-core
 	url = https://github.com/opensim-org/opensim-core.git
+[submodule "software/PlotProbe"]
+	path = software/PlotProbe
+	url = git@github.com:pepbos/PlotProbe.git

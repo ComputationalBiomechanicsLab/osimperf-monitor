@@ -36,11 +36,7 @@ pub fn print_results(
     for c in compiler_nodes.iter() {
         buffer.write_all(b"\n| ")?;
         let name = format!("{}-{}", c.repo.name, c.repo.date);
-        let status = if c.is_done() {
-            String::from("Ok")
-        } else {
-            String::from("Failed")
-        };
+        let status = c.state.get()[1].print_table_entry();
         for b in [name.as_bytes(), status.as_bytes()].iter() {
             buffer.write_all(b" ")?;
             buffer.write_all(b)?;
