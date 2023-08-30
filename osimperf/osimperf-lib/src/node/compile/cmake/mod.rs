@@ -83,9 +83,6 @@ impl CMakeCmds {
 
         let build_output = self.build.run_and_stream(log)?;
         build_output.write_logs(log)?;
-        if !build_output.success() {
-            panic!();
-        }
         ensure!(build_output.success(), "build step failed");
         // if !config_output.success() {
         //     Err(anyhow!("configuration step failed"))
