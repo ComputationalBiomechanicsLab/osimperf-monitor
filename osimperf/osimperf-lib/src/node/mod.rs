@@ -112,10 +112,7 @@ impl CompilationNode {
         Ok(())
     }
 
-    pub fn run(&mut self,
-        home: &Home,
-        build: &BuildFolder,
-        config: &CMakeConfig) -> Result<()> {
+    pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
         let mut progress = ProgressStreamer::default();
         self.state = run_cmake_compilation(
             self.id(),
