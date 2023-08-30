@@ -8,7 +8,7 @@ pub use time::duration_since_boot;
 
 use std::{
     fmt::Debug,
-    fs::File,
+    fs::{File, OpenOptions},
     io::{BufRead, BufReader, Write},
     path::Path,
     time::Duration,
