@@ -94,27 +94,6 @@ impl CompilationNode {
         Ok(out)
     }
 
-    // fn update(&mut self) -> Result<()> {
-    //     let dir = self.id().path();
-    //     trace!("Update CompilationNode at {:?}", dir);
-    //     if !dir.exists() {
-    //         let temp_dir = dir.parent().unwrap().join("temp_dir");
-    //         trace!("Creating temporary directory at {:?}", temp_dir);
-    //         create_dir(&temp_dir)?;
-
-    //         debug!("Creating new node directory at {:?}", dir);
-    //         trace!("Moving temporary directory to {:?}", dir);
-    //         rename(&temp_dir, &dir)?;
-    //     }
-    //     if let Ok(_) = self.try_read() {
-    //         info!("found previous node: {:#?}", self);
-    //     } else {
-    //         info!("create new node at {:?}", self.path_to_self());
-    //         self.try_write()?;
-    //     }
-    //     Ok(())
-    // }
-
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
         let mut progress = ProgressStreamer::default();
 
