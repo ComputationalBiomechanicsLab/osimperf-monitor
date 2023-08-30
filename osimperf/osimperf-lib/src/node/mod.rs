@@ -11,6 +11,8 @@ pub use focus::Focus;
 pub use repo::*;
 pub use status::State;
 
+use chrono::NaiveDate;
+
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir, rename},
@@ -65,7 +67,14 @@ impl CompilationNode {
     }
 
     pub fn collect_archived(archive: &Archive) -> Result<Vec<Self>> {
-        collect_configs::<Self>(archive.path()?, Self::MAGIC_FILE())
+        let mut vec = collect_configs::<Self>(archive.path()?, Self::MAGIC_FILE())?;
+        // vec.sort_by_key(|x| NaiveDate::parse_from_str(&x.repo.date, "%Y_%m_%d").unwrap());
+        vec.sort_by(|a, b| {
+            NaiveDate::parse_from_str(&b.repo.date, "%Y_%m_%d")
+                .unwrap()
+                .cmp(&NaiveDate::parse_from_str(&a.repo.date, "%Y_%m_%d").unwrap())
+        });
+        Ok(vec)
     }
 
     pub fn new(input: Input, params: Params, archive: &Archive) -> Result<Self> {
