@@ -66,6 +66,10 @@ impl CompilationNode {
         ".osimperf-compiler.node"
     }
 
+    pub fn is_done(&self) -> bool {
+        self.state.get().iter().all(|s| s.is_done())
+    }
+
     pub fn collect_archived(archive: &Archive) -> Result<Vec<Self>> {
         let mut vec = collect_configs::<Self>(archive.path()?, Self::MAGIC_FILE())?;
         // vec.sort_by_key(|x| NaiveDate::parse_from_str(&x.repo.date, "%Y_%m_%d").unwrap());
