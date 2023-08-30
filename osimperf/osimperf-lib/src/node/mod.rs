@@ -4,7 +4,7 @@ mod focus;
 mod repo;
 mod status;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 pub use compile::*;
 pub use file::NodeFile;
 pub use focus::Focus;
@@ -19,9 +19,11 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{collect_configs, find_file_by_name, Archive, BuildFolder, Folder, Home};
+use crate::{
+    collect_configs, erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home,
+};
 
-use self::repo::Repository;
+use self::{repo::Repository, status::Progress};
 use log::{debug, info, trace};
 
 pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
@@ -92,38 +94,79 @@ impl CompilationNode {
         Ok(out)
     }
 
-    fn update(&mut self) -> Result<()> {
-        let dir = self.id().path();
-        if !dir.exists() {
-            let temp_dir = dir.parent().unwrap().join("temp_dir");
-            trace!("Creating temporary directory at {:?}", temp_dir);
-            create_dir(&temp_dir)?;
+    // fn update(&mut self) -> Result<()> {
+    //     let dir = self.id().path();
+    //     trace!("Update CompilationNode at {:?}", dir);
+    //     if !dir.exists() {
+    //         let temp_dir = dir.parent().unwrap().join("temp_dir");
+    //         trace!("Creating temporary directory at {:?}", temp_dir);
+    //         create_dir(&temp_dir)?;
 
-            debug!("Creating new node directory at {:?}", dir);
-            trace!("Moving temporary directory to {:?}", dir);
-            rename(&temp_dir, &dir)?;
-        }
-        if let Ok(_) = self.try_read() {
-            info!("found previous node: {:#?}", self);
-        } else {
-            info!("create new node at {:?}", self.path_to_self());
-            self.try_write()?;
-        }
-        Ok(())
-    }
+    //         debug!("Creating new node directory at {:?}", dir);
+    //         trace!("Moving temporary directory to {:?}", dir);
+    //         rename(&temp_dir, &dir)?;
+    //     }
+    //     if let Ok(_) = self.try_read() {
+    //         info!("found previous node: {:#?}", self);
+    //     } else {
+    //         info!("create new node at {:?}", self.path_to_self());
+    //         self.try_write()?;
+    //     }
+    //     Ok(())
+    // }
 
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
         let mut progress = ProgressStreamer::default();
-        self.state = run_cmake_compilation(
-            self.id(),
-            self.repo.source(),
-            build,
-            home,
-            config,
-            &mut progress,
-            &self.state,
-        )?;
-        self.try_write()?;
+
+        // Go over compile targets: [dependencies, opensim-core, tests].
+        for i in 0..3 {
+            if self.state.get()[i].should_compile()
+                || i == 2 { // TODO this will always recompile tests from source...
+
+                // Start compiling project.
+                let focus = Focus::from(i);
+
+                // First update the status.
+                self.state.set(
+                    focus,
+                    Status::Compiling(Progress {
+                        percentage: 0.,
+                        process: "start compiling".to_string(),
+                    }),
+                );
+                self.try_write()?;
+
+                // Setup cmake commands.
+                let cmd =
+                    CMakeCmds::new(&self.id(), &self.repo.source(), home, build, config, focus)?;
+                debug!("CMAKE COMMAND:\n{}", cmd.print_pretty());
+
+                // Switch to correct commit (only switches if not there already).
+                self.repo.source().checkout()?;
+
+                // Erase the install dir.
+                let install_dir = self.id().path().join(focus.to_str());
+                erase_folder(&install_dir)
+                    .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
+
+                // Erase the build dir.
+                erase_folder(&build.path()?.join(focus.to_str()))
+                    .with_context(|| format!("failed to erase build dir"))?;
+
+                // Start compilation.
+                let output = cmd
+                    .run(&mut progress)
+                    .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
+
+                // Update the status.
+                self.state.set(focus, Status::from_output(output));
+                self.try_write()?;
+            }
+
+            if !self.state.get()[i].is_done() {
+                break;
+            }
+        }
         Ok(())
     }
 
