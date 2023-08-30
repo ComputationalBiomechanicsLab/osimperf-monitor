@@ -9,7 +9,7 @@ use anyhow::{anyhow, Context, Result};
 pub struct Command {
     cmd: String,
     args: Vec<String>,
-    envs: Vec<(String, String)>,
+    envs: Option<Vec<(String, String)>>,
 }
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl Command {
         Self {
             cmd: cmd.to_string(),
             args: Vec::new(),
-            envs: Vec::new(),
+            envs: None,
         }
     }
 
@@ -55,7 +55,7 @@ impl Command {
     pub fn add_env(&mut self, key: impl ToString, value: impl ToString) {
         let key = key.to_string();
         let value = value.to_string();
-        self.envs.push((key, value));
+        self.envs.get_or_insert(Vec::new()).push((key, value));
     }
 
     pub fn add_env_path(&mut self, key: impl ToString, value: &Path) {
@@ -78,20 +78,37 @@ impl CommandTrait for Command {
     type Executor = CommandExecutor;
 
     fn create_executor(&self) -> CommandExecutor {
-        let mut cmd = std::process::Command::new(substitute_all(&self.cmd, &self.envs));
-        cmd.args(self.args.iter().map(|arg| substitute_all(arg, &self.envs)));
-        for (key, value) in self.envs.iter() {
-            cmd.env(key, value);
+        let mut cmd = std::process::Command::new(then_substitute_all(&self.cmd, &self.envs));
+        cmd.args(
+            self.args
+                .iter()
+                .map(|arg| then_substitute_all(arg, &self.envs)),
+        );
+        if let Some(envs) = self.envs.as_ref() {
+            for (key, value) in envs.iter() {
+                cmd.env(key, value);
+            }
         }
         CommandExecutor { cmd }
     }
 
     fn print_command_with_delim(&self, arg_delim: &str) -> String {
-        let mut msg = substitute_all(&self.cmd, &self.envs);
-        for arg in self.args.iter().map(|arg| substitute_all(arg, &self.envs)) {
+        let mut msg = then_substitute_all(&self.cmd, &self.envs);
+        for arg in self
+            .args
+            .iter()
+            .map(|arg| then_substitute_all(arg, &self.envs))
+        {
             msg.push_str(arg_delim);
             msg.push_str(&arg);
         }
         msg
     }
+}
+
+pub fn then_substitute_all(string: &str, key_value: &Option<Vec<(String, String)>>) -> String {
+    if let Some(env) = key_value {
+        return substitute_all(string, env);
+    }
+    String::from(string)
 }
