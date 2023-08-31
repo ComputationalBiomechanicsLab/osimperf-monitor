@@ -29,6 +29,31 @@ impl Params {
         )
     }
 
+    pub fn collect_monthly_commits(
+        input: &Input,
+        after_date: Option<&str>,
+        before_date: Option<&str>,
+    ) -> anyhow::Result<Vec<Params>> {
+        let mut commits = Vec::<Self>::new();
+        for (i, c) in Self::commits_between(&input, after_date, before_date)?
+            .drain(..)
+            .enumerate()
+        {
+            if let Some(last) = commits.last() {
+                let d0 = c.date.as_str().split_at(7).0;
+                let d1 = last.date.as_str().split_at(7).0;
+                trace!("comparing {:?} to {:?}, same = {}", d0, d1, d0 == d1);
+                if d0 == d1 {
+                    debug!("Skipping duplicate {:?}", c);
+                    continue;
+                }
+            }
+            info!("Last commit of the month: {:#?}", c);
+            commits.push(c);
+        }
+        Ok(commits)
+    }
+
     pub fn collect_daily_commits(
         input: &Input,
         after_date: Option<&str>,
