@@ -83,11 +83,11 @@ impl CMakeCmds {
         let build_output = self.build.run_and_stream(log)?;
         build_output.write_logs(log)?;
         ensure!(build_output.success(), "build step failed");
-        // if !config_output.success() {
-        //     Err(anyhow!("configuration step failed"))
-        //         .with_context(|| format!("output = {:?}", config_output.stdout_str_clone()))
-        //         .with_context(|| format!("stderr = {:?}", config_output.stderr_str_clone()))?
-        // }
+        if !build_output.success() {
+            Err(anyhow!("build step failed"))
+                .with_context(|| format!("output = {:?}", build_output.stdout_str_clone()))
+                .with_context(|| format!("stderr = {:?}", build_output.stderr_str_clone()))?
+        }
         Ok(config_output.duration + build_output.duration)
     }
 
