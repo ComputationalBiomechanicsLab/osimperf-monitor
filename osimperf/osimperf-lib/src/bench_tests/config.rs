@@ -4,6 +4,7 @@ use crate::Command;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::hash::Hash;
 
 // Go over subfolders of tests/ to find "osimperf-test.conf"
 static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
@@ -14,7 +15,7 @@ pub struct ReadBenchTestSetup {
     pub cmd: Vec<Command>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct BenchTestSetup {
     pub name: String,
     pub cmd: Vec<Command>,

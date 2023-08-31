@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use std::hash::{Hash, Hasher};
 
 use super::Focus;
 
 // TODO status improvements
 // size of install
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum Status {
     Idle,
     Compiling(Progress),
@@ -28,10 +29,10 @@ impl Status {
 
     pub fn from_output(
         // TODO refine output and status construction
-        output: anyhow::Result<Duration>,
+        output: anyhow::Result<Complete>,
     ) -> Self {
         match output {
-            Ok(duration) => Self::Done(Complete { duration, size: 0 }),
+            Ok(done) => Self::Done(done),
             Err(err) => Self::Error(format!("{:?}", err)),
         }
     }
@@ -53,7 +54,7 @@ impl Default for Status {
 }
 
 /// The three compilation targets:
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct State {
     pub status_dependencies: Status,
     pub status_opensim_core: Status,
@@ -110,8 +111,18 @@ pub struct Progress {
     pub process: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Complete {
     pub duration: Duration,
-    pub size: u64,
+    pub size: usize,
+}
+
+impl Hash for Progress {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Convert the f64 value to its raw representation as a u64
+        let bits = self.percentage.to_bits();
+        bits.hash(state);
+
+        self.process.hash(state);
+    }
 }

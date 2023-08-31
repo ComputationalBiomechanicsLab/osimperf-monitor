@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -29,6 +29,7 @@ impl BenchTestResult {
     fn new_helper<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Result<Self> {
         let path_to_root = results.path()?.join(id.subfolder_name()).join(name);
         Ok(Self {
+            hash: None,
             duration: None,
             iteration: 0,
             failed_count: 0,
@@ -48,7 +49,23 @@ impl BenchTestResult {
         Ok(Some(out).filter(|_| success))
     }
 
-    pub(crate) fn process(&mut self, cmd_output: CommandOutput) -> Result<()> {
+    fn reset(&mut self) {
+        *self = Self {
+            hash: None,
+            duration: None,
+            iteration: 0,
+            failed_count: 0,
+            path_to_node: self.path_to_node.clone(),
+        };
+    }
+
+    pub(crate) fn process(&mut self, cmd_output: CommandOutput, hash: u64) -> Result<()> {
+        // Check hash for config changes.
+        if self.hash != Some(hash) {
+            warn!("Changed config detected! Reset test result");
+            self.reset();
+        }
+        self.hash = Some(hash);
         if !cmd_output.success() {
             self.failed_count += 1;
             self.duration = None;

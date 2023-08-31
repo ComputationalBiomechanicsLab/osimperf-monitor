@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::hash::Hash;
 
 mod id;
 mod input;
@@ -11,7 +12,7 @@ pub use input::Input;
 pub use params::Params;
 pub use source::Source;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct Repository {
     /// For nicer folder and results identifiers.
     pub name: String,

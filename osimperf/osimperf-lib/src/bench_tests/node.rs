@@ -1,13 +1,12 @@
-use crate::{
-    erase_folder, CompilationNode, ResultsFolder,
-};
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
-
 use super::{
     run_cmds::{run_test_cmds, FileEnvVars},
     BenchTestResult, BenchTestSetup,
 };
+use crate::{erase_folder, CompilationNode, Folder, Home, ResultsFolder};
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TestNode {
@@ -53,9 +52,29 @@ impl TestNode {
         out.write_stdout(&env_vars.output.join("stdout.log"))?;
         out.write_stderr(&env_vars.output.join("stderr.log"))?;
 
+        // Add the hash of the current bench config.
+        let hash = compute_test_config_hash(&self.test, &self.compiler);
+
         // Write output.
-        self.result.process(out)?;
+        self.result.process(out, hash)?;
 
         Ok(&self.result)
     }
+}
+
+fn compute_test_config_hash(test: &BenchTestSetup, compiler: &CompilationNode) -> u64 {
+    combine_hashes(compute_hash(test), compute_hash(compiler))
+}
+
+fn compute_hash(x: &impl Hash) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    x.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn combine_hashes(hash1: u64, hash2: u64) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    hash1.hash(&mut hasher);
+    hash2.hash(&mut hasher);
+    hasher.finish()
 }

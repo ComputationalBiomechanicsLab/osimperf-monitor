@@ -15,8 +15,10 @@ use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::hash::Hash;
 
 use crate::common::collect_configs;
+use crate::node::status::Complete;
 use crate::{erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home};
 
 use self::status::Progress;
@@ -42,7 +44,7 @@ pub fn path_to_build(focus: Focus, build: &BuildFolder) -> Result<PathBuf> {
 ///
 /// Stored at:
 /// archive/ID/.compilation-node.osimperf
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct CompilationNode {
     pub repo: Repository,
     /// Compilation status.
@@ -95,11 +97,11 @@ impl CompilationNode {
 
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
-            if self.state.get()[i].should_compile()
-                || i == 2 { // TODO this will always recompile tests from source...
+            // Start compiling project.
+            let focus = Focus::from(i);
 
-                // Start compiling project.
-                let focus = Focus::from(i);
+            if self.state.get()[i].should_compile() {
+                // || i == 2 { // TODO this will always recompile tests from source...
 
                 // First update the status.
                 self.state.set(

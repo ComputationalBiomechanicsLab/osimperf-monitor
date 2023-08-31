@@ -1,13 +1,15 @@
 use super::{substitute_all, CommandExecutorTrait, CommandTrait};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 use std::{path::Path, process::Stdio};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct Command {
     cmd: String,
     args: Vec<String>,
     envs: Option<Vec<(String, String)>>,
+    root: Option<String>,
 }
 
 #[derive(Debug)]
