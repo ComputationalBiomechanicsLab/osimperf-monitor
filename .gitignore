@@ -32,9 +32,10 @@
 *.app
 
 # Aritfacts.
-throwaway/**
 archive/**
 results/**
+build/**
+bin/**
 
 !archive/.osimperf-archive
 !throwaway/.osimperf-throwaway
@@ -43,6 +44,4 @@ results/**
 # Rubbish
 *.log
 **/compile_commands.json
-
-# Executable
-bin/**
+*.data
