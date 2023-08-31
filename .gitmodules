@@ -4,3 +4,6 @@
 [submodule "software/PlotProbe"]
 	path = software/PlotProbe
 	url = git@github.com:pepbos/PlotProbe.git
+[submodule "tests/opensim-models"]
+	path = tests/opensim-models
+	url = https://github.com/opensim-org/opensim-models.git
