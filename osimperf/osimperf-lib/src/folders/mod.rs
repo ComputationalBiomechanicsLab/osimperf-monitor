@@ -21,6 +21,10 @@ pub trait Folder: Sized {
         Ok(unsafe { self.path_unchecked() })
     }
 
+    fn path_str(&self) -> Result<&str> {
+        Ok(self.path()?.to_str().unwrap())
+    }
+
     fn new(path: &str) -> Result<Self> {
         let out = unsafe { Self::new_unchecked(PathBuf::from(path)) };
         out.verify()?;
@@ -90,11 +94,27 @@ pub struct Home {
     path: PathBuf,
 }
 
-impl Default for Home {
-    fn default() -> Self {
-        Self {
-            path: std::env::current_dir().unwrap(),
+impl Home {
+    /// Construct from path if Some, or use current directory if None.
+    pub fn new_or_current(path: Option<&str>) -> Result<Self> {
+        if let Some(p) = path {
+            Self::new(p)
+        } else {
+            let p = std::env::current_dir()?;
+            Self::new(p.to_str().unwrap())
         }
+    }
+
+    pub fn default_build(&self) -> Result<BuildFolder> {
+        BuildFolder::new(self.path.join("build").to_str().unwrap())
+    }
+
+    pub fn default_archive(&self) -> Result<Archive> {
+        Archive::new(self.path.join("archive").to_str().unwrap())
+    }
+
+    pub fn default_results(&self) -> Result<ResultsFolder> {
+        ResultsFolder::new(self.path.join("results").to_str().unwrap())
     }
 }
 
@@ -115,16 +135,6 @@ impl Folder for Home {
 pub struct BuildFolder {
     path: PathBuf,
 }
-
-// impl BuildFolder {
-//     pub fn join(&self, focus: Focus) -> Result<PathBuf> {
-//         Ok(self.path()?.join(match focus {
-//             Focus::OpenCimCore => "opensim-core",
-//             Focus::Dependencies => "dependencies",
-//             Focus::TestsSource => "tests",
-//         }))
-//     }
-// }
 
 impl Folder for BuildFolder {
     const TOUCH_FILE: &'static str = ".osimperf-build";
@@ -163,6 +173,12 @@ impl EraseableFolder for Archive {}
 #[derive(Clone, Debug)]
 pub struct ResultsFolder {
     path: PathBuf,
+}
+
+impl ResultsFolder {
+    pub fn test_context_dir(&self) -> Result<PathBuf> {
+        Ok(self.path()?.join("scratch"))
+    }
 }
 
 impl Folder for ResultsFolder {

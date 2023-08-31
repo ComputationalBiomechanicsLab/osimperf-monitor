@@ -39,6 +39,7 @@ impl Command {
             cmd: cmd.to_string(),
             args: Vec::new(),
             envs: None,
+            root: None,
         }
     }
 
@@ -72,13 +73,30 @@ impl Command {
         }
         cmd
     }
+
+    pub fn set_run_root(&mut self, root: &Path) {
+        self.root = Some(String::from(root.to_str().unwrap()));
+    }
 }
 
 impl CommandTrait for Command {
     type Executor = CommandExecutor;
 
     fn create_executor(&self) -> CommandExecutor {
-        let mut cmd = std::process::Command::new(then_substitute_all(&self.cmd, &self.envs));
+        let cmd_str = then_substitute_all(&self.cmd, &self.envs);
+        let root_str = self
+            .root
+            .as_ref()
+            .map(|path| then_substitute_all(path, &self.envs));
+        let mut cmd = if let Some(root) = root_str {
+            let mut cmd = std::process::Command::new("env");
+            cmd.arg("-C");
+            cmd.arg(root);
+            cmd.arg(cmd_str);
+            cmd
+        } else {
+            std::process::Command::new(cmd_str)
+        };
         cmd.args(
             self.args
                 .iter()

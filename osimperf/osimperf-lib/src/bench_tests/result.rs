@@ -7,17 +7,18 @@ use crate::{CommandOutput, Folder, Id, NodeFile, ResultsFolder};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct BenchTestResult {
+    pub hash: Option<u64>,
     pub duration: Option<f64>,
     pub iteration: usize,
     pub failed_count: usize,
-    pub path_to_root: PathBuf,
+    pub path_to_node: PathBuf,
 }
 
 impl NodeFile for BenchTestResult {
     const SUBFOLDER_LEVEL: usize = 2;
 
     fn path_to_self(&self) -> PathBuf {
-        self.path_to_root.join(Self::MAGIC_FILE())
+        self.path_to_node.join(Self::MAGIC_FILE())
     }
 }
 
@@ -33,7 +34,7 @@ impl BenchTestResult {
             duration: None,
             iteration: 0,
             failed_count: 0,
-            path_to_root,
+            path_to_node: path_to_root,
         })
     }
 

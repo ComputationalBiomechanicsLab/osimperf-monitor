@@ -1,8 +1,11 @@
 mod cmake;
 mod file;
 mod focus;
+mod installed_size;
 mod repo;
 mod status;
+
+use installed_size::get_installed_size_mbytes;
 
 use anyhow::{Context, Result};
 pub use cmake::*;
@@ -134,6 +137,11 @@ impl CompilationNode {
                 let output = cmd
                     .run(&mut progress)
                     .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
+
+                let size = get_installed_size_mbytes(focus, &self.id())
+                    .context("failed to get size of install")?;
+
+                let output = output.map(|duration| Complete { duration, size });
 
                 // Update the status.
                 self.state.set(focus, Status::from_output(output));

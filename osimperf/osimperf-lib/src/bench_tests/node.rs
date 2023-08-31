@@ -8,45 +8,53 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TestNode {
+#[derive(Clone, Debug)]
+pub struct TestNode<'a, 'b> {
     test: BenchTestSetup,
     compiler: CompilationNode,
     result: BenchTestResult,
+    home: &'a Home,
+    results: &'b ResultsFolder,
 }
 
-impl TestNode {
+impl<'a, 'b> TestNode<'a, 'b> {
     pub fn new(
         test: BenchTestSetup,
         compiler: CompilationNode,
-        results: &ResultsFolder,
+        home: &'a Home,
+        results: &'b ResultsFolder,
     ) -> Result<Option<Self>> {
         if compiler.is_done() {
             Ok(Some(Self {
                 result: BenchTestResult::new(results, &compiler.id(), &test.name)?,
                 test,
                 compiler,
+                home,
+                results,
             }))
         } else {
             Ok(None)
         }
     }
 
-    pub fn env_vars(&self) -> FileEnvVars {
-        FileEnvVars {
+    pub fn env_vars(&self) -> Result<FileEnvVars> {
+        Ok(FileEnvVars {
             install: self.compiler.id().path(),
-            output: self.result.path_to_root.join("output"),
-            root: self.result.path_to_root.clone(),
-        }
+            output: self.result.path_to_node.join("output"),
+            // root: self.results.test_context_dir()?,
+            root: self.result.path_to_node.join("context"),
+            home: self.home.path()?.to_path_buf(),
+        })
     }
 
     pub fn run(&mut self) -> Result<&BenchTestResult> {
-        let env_vars = self.env_vars();
+        let env_vars = self.env_vars()?;
 
         erase_folder(&env_vars.root)?;
         erase_folder(&env_vars.output)?;
 
-        let out = run_test_cmds(&self.test.cmd, &env_vars)?;
+        let setup_dir = self.test.test_setup_file.parent().unwrap();
+        let out = run_test_cmds(&self.test.cmd, &env_vars, &setup_dir)?;
 
         // Write logs.
         out.write_stdout(&env_vars.output.join("stdout.log"))?;

@@ -1,10 +1,8 @@
 use super::read_config;
 use anyhow::Result;
 use serde::de::DeserializeOwned;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+use std::fs::{self, DirEntry};
 
 // Search for "file_name" in directory and subdirectories.
 pub fn find_file_by_name(root_dir: &Path, file_name: &str) -> Vec<PathBuf> {
@@ -34,4 +32,20 @@ pub fn collect_configs<C: DeserializeOwned>(root_dir: &Path, file_name: &str) ->
         out.push(config?);
     }
     Ok(out)
+}
+
+// one possible implementation of walking a directory only visiting files
+pub fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, cb)?;
+            } else {
+                cb(&entry);
+            }
+        }
+    }
+    Ok(())
 }
