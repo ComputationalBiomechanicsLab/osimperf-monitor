@@ -1,6 +1,6 @@
 use crate::{Command, CommandOutput, CommandTrait, ResultsFolder, Folder};
 use anyhow::{anyhow, Context, Result};
-use log::info;
+use log::{trace, info };
 use std::{path::{Path, PathBuf}, fs::DirEntry};
 
 use super::setup_context;
@@ -55,20 +55,23 @@ impl FileEnvVars {
 
 pub fn run_test_cmds(cmds: &[Command], env: &FileEnvVars, setup_dir: &Path) -> Result<CommandOutput> {
     info!("Setting up context at {:?}", env.root);
+
+    // Copy all files to context dir.
+    setup_context(setup_dir, &env.root)?;
+
     for i in 0..cmds.len() {
         // Add environmental variables:
         let mut cmd = cmds[i].clone();
         env.add_env(&mut cmd);
 
-        // Copy all files to context dir.
-        setup_context(setup_dir, &env.root)?;
+        trace!("running test command: {}", cmd.print_command());
 
         let is_last = i + 1 == cmds.len();
         if is_last {
             return cmd.run_and_time();
         }
 
-        cmd.run_and_time()
+        cmd.run()
             .with_context(|| format!("Failed at {i}-th command"))?;
     }
     Err(anyhow!("Not possible to end up here!"))
