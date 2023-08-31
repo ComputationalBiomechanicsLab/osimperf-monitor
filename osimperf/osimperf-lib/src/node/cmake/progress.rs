@@ -6,14 +6,14 @@ use std::str;
 use crate::{Command, PipedCommands, CommandTrait};
 
 #[derive(Clone, Debug, Default)]
-pub struct ProgressStreamer {
+pub struct CMakeProgressStreamer {
     process_name: String,
     process_step: String,
     buffer: String,
     percentage: Option<f64>,
 }
 
-impl ProgressStreamer {
+impl CMakeProgressStreamer {
     pub fn set_process_name(&mut self, name: &str) {
         self.percentage = None;
         self.process_name = name.to_string();
@@ -72,7 +72,7 @@ impl ProgressStreamer {
     }
 }
 
-impl Write for ProgressStreamer {
+impl Write for CMakeProgressStreamer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if buf.len() > 0 {
             self.buffer.push_str(str::from_utf8(buf).unwrap());

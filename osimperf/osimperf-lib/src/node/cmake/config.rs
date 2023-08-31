@@ -57,7 +57,7 @@ impl Default for CMakeConfig {
                 "-DOPENSIM_WITH_CASADI=OFF".to_string(),
                 "-DOPENSIM_WITH_TROPTER=OFF".to_string(),
             ],
-            num_jobs: 2,
+            num_jobs: 3,
             dependencies: vec![],
             tests: vec![],
         }

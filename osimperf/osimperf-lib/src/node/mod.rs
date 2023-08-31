@@ -1,11 +1,11 @@
-mod compile;
+mod cmake;
 mod file;
 mod focus;
 mod repo;
 mod status;
 
 use anyhow::{Context, Result};
-pub use compile::*;
+pub use cmake::*;
 pub use file::NodeFile;
 pub use focus::Focus;
 pub use repo::*;
@@ -92,7 +92,7 @@ impl CompilationNode {
     }
 
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
-        let mut progress = ProgressStreamer::default();
+        let mut progress = CMakeProgressStreamer::default();
 
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
