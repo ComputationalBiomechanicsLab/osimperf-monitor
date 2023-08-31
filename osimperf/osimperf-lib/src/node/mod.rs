@@ -14,17 +14,14 @@ pub use status::State;
 use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{create_dir, rename},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 use crate::{
     collect_configs, erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home,
 };
 
-use self::{repo::Repository, status::Progress};
-use log::{debug, info, trace};
+use self::status::Progress;
+use log::debug;
 
 pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
     id.path().join(focus.to_str())
@@ -94,7 +91,7 @@ impl CompilationNode {
         Ok(out)
     }
 
-    pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<()> {
+    pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
         let mut progress = ProgressStreamer::default();
 
         // Go over compile targets: [dependencies, opensim-core, tests].
@@ -146,7 +143,7 @@ impl CompilationNode {
                 break;
             }
         }
-        Ok(())
+        Ok(self.state.get().iter().all(|x| x.is_done()))
     }
 
     pub fn id<'a>(&'a self) -> Id<'a> {

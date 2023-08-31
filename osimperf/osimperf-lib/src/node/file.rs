@@ -1,18 +1,14 @@
-use anyhow::Context;
 use log::{info, trace};
 use std::{fmt::Debug, fs::create_dir};
-use std::{
-    fs::rename,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{read_config, write_config};
 
-fn get_temp_file(path: &Path) -> PathBuf {
-    path.parent().unwrap().join("temp-conf")
-}
+// fn get_temp_file(path: &Path) -> PathBuf {
+//     path.parent().unwrap().join("temp-conf")
+// }
 
 pub trait NodeFile: Serialize + DeserializeOwned + Debug {
     const SUBFOLDER_LEVEL: usize;

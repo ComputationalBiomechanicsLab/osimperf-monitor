@@ -1,18 +1,17 @@
 mod build;
 mod configure;
 
-use std::{io::Write, path::PathBuf, time::Duration};
+pub use build::CMakeBuilder;
+pub use configure::CMakeConfigurerer;
 
 use anyhow::{anyhow, ensure, Context};
-pub use build::*;
-pub use configure::*;
 use log::info;
+use std::{io::Write, time::Duration};
 
 use super::CMakeConfig;
+use crate::node::{Focus, Id, Source};
 use crate::{
-    node::{Focus, Id, Source},
-    path_to_build, path_to_install, path_to_source, BuildFolder, Command, CommandTrait, Folder,
-    Home,
+    path_to_build, path_to_install, path_to_source, BuildFolder, Command, CommandTrait, Home,
 };
 
 pub struct CMakeCmds {

@@ -26,7 +26,7 @@ impl ProgressStreamer {
 
     fn pop_line(&mut self) -> anyhow::Result<()> {
         // Check if a complete line is present in the buffer
-        println!("line = {:?}", self.buffer);
+        // println!("line = {:?}", self.buffer);
         if self.buffer.contains('\n') {
             // Split the buffer into lines and process each complete line
             let lines: Vec<&str> = self.buffer.split('\n').collect();
