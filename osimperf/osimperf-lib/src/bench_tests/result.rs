@@ -1,7 +1,7 @@
 use anyhow::Result;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use crate::{CommandOutput, Folder, Id, NodeFile, ResultsFolder};
 

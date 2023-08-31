@@ -39,12 +39,9 @@ impl Status {
     pub fn print_table_entry(&self) -> String {
         return match self {
             Status::Idle => "idle".to_string(),
-            Status::Compiling(Progress {
-                percentage,
-                process,
-            }) => format!("{:.2}%", percentage),
+            Status::Compiling(Progress { percentage, .. }) => format!("{:.2}%", percentage),
             Status::Error(_) => "error".to_string(),
-            Status::Done(Complete { duration, size }) => format!("{}", duration.as_secs() / 60),
+            Status::Done(Complete { duration, .. }) => format!("{}", duration.as_secs() / 60),
         };
     }
 }

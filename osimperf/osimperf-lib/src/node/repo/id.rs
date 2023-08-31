@@ -1,12 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use crate::{
-    node::{focus, Focus},
-    Archive, Folder,
-};
-
-use super::Repository;
-
 /// For folder and file name generation.
 pub struct Id<'a> {
     /// For nicer folder and results identifiers.

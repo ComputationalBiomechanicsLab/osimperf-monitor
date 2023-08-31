@@ -8,7 +8,7 @@ pub use time::duration_since_boot;
 
 use std::{
     fmt::Debug,
-    fs::{File, OpenOptions},
+    fs::{OpenOptions},
     io::{BufRead, BufReader, Write},
     path::Path,
     time::Duration,
@@ -36,22 +36,30 @@ impl CommandOutput {
     }
 
     pub fn write_stdout(&self, path: &Path) -> Result<()> {
-        File::open(path)
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)
             .context(format!(
                 "failed to open file for writing stdout logs at path = {:?}",
                 path
-            ))?
-            .write_all(&self.output.stdout)?;
+            ))?;
+        file.write_all(&self.output.stdout)?;
         Ok(())
     }
 
     pub fn write_stderr(&self, path: &Path) -> Result<()> {
-        File::open(path)
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)
             .context(format!(
                 "failed to open file for writing stderr logs at path = {:?}",
                 path
-            ))?
-            .write_all(&self.output.stderr)?;
+            ))?;
+        file.write_all(&self.output.stderr)?;
         Ok(())
     }
 

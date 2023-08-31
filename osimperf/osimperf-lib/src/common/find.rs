@@ -1,6 +1,6 @@
 use super::read_config;
-use anyhow::{ensure, Context, Result};
-use serde::{de::DeserializeOwned, Deserialize};
+use anyhow::Result;
+use serde::de::DeserializeOwned;
 use std::{
     fs,
     path::{Path, PathBuf},

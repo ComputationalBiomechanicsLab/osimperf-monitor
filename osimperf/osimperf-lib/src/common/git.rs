@@ -1,6 +1,5 @@
 use crate::{Command, CommandTrait, PipedCommands};
-use anyhow::{anyhow, ensure, Context, Result};
-use log::{debug, trace};
+use anyhow::{ensure, Context, Result};
 use std::path::Path;
 
 pub fn read_current_branch(repo: &Path) -> Result<String> {
@@ -65,7 +64,7 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
     cmd.add_arg("-C");
     cmd.add_arg(repo.to_str().unwrap());
     cmd.add_arg("switch");
-    cmd.add_arg("main");
+    cmd.add_arg(branch);
     let _res = cmd.run()?;
     Ok(())
 }

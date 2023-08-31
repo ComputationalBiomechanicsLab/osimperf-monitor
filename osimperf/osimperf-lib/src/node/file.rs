@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::{read_config, write_config};
+use crate::common::{read_config, write_config};
 
 // fn get_temp_file(path: &Path) -> PathBuf {
 //     path.parent().unwrap().join("temp-conf")

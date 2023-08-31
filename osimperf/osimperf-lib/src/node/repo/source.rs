@@ -1,10 +1,6 @@
-use std::path::{Path, PathBuf};
-
+use std::path::Path;
 use anyhow::ensure;
-
-use crate::{git, node::Focus, Archive, Folder};
-
-use super::Repository;
+use crate::common::git;
 
 /// For folder and file name generation.
 pub struct Source<'a> {

@@ -1,9 +1,7 @@
+use super::{substitute_all, CommandExecutorTrait, CommandTrait};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::process::Stdio;
-
-use super::*;
-
-use anyhow::{anyhow, Context, Result};
+use std::{path::Path, process::Stdio};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Command {

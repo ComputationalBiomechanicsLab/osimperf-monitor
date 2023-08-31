@@ -16,9 +16,8 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use crate::{
-    collect_configs, erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home,
-};
+use crate::common::collect_configs;
+use crate::{erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home};
 
 use self::status::Progress;
 use log::debug;

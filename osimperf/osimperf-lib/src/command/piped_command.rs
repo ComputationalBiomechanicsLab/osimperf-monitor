@@ -82,7 +82,7 @@ impl PipedCommands {
 
     pub fn parse(string: &str) -> Self {
         let mut pipe = Self { cmds: Vec::new() };
-        let mut split = string.split('|');
+        let split = string.split('|');
         for s in split {
             if !s.is_empty() {
                 pipe.cmds.push(Command::parse(s));

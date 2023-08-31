@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::ensure;
 use serde::{Deserialize, Serialize};
 
-use crate::git;
+use crate::common::git;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Input {

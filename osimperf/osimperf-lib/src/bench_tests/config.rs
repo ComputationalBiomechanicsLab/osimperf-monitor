@@ -1,14 +1,9 @@
-use crate::{
-    collect_configs, erase_folder, find_file_by_name, read_config, write_config, BuildFolder,
-    Command, CompilationNode, Id, ResultsFolder,
-};
-use anyhow::{anyhow, Context, Result};
-use log::{debug, info};
+use crate::common::{find_file_by_name, read_config};
+use crate::Command;
+
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{self, create_dir, File},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 // Go over subfolders of tests/ to find "osimperf-test.conf"
 static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
@@ -41,12 +36,8 @@ impl BenchTestSetup {
     pub fn find_all(path: &Path) -> Result<Vec<BenchTestSetup>> {
         let mut tests = Vec::new();
         for p in find_file_by_name(path, TEST_SETUP_FILE_NAME) {
-            let read_test = read_config::<ReadBenchTestSetup>(&p)?;
-            tests.push(BenchTestSetup {
-                name: read_test.name,
-                cmd: read_test.cmd,
-                test_setup_file: p,
-            });
+            let c = read_config::<ReadBenchTestSetup>(&p)?;
+            tests.push(BenchTestSetup::new(c, p));
         }
         Ok(tests)
     }

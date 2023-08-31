@@ -3,10 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use log::{trace, warn};
-
-use crate::node::Focus;
 
 pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
 pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";

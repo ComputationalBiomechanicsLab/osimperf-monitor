@@ -1,4 +1,4 @@
-use crate::git;
+use crate::common::git;
 
 use super::Input;
 use log::{debug, info, trace};
@@ -35,10 +35,7 @@ impl Params {
         before_date: Option<&str>,
     ) -> anyhow::Result<Vec<Params>> {
         let mut commits = Vec::<Self>::new();
-        for (i, c) in Self::commits_between(&input, after_date, before_date)?
-            .drain(..)
-            .enumerate()
-        {
+        for c in Self::commits_between(&input, after_date, before_date)?.drain(..) {
             if let Some(last) = commits.last() {
                 let d0 = c.date.as_str().split_at(7).0;
                 let d1 = last.date.as_str().split_at(7).0;
@@ -60,10 +57,7 @@ impl Params {
         before_date: Option<&str>,
     ) -> anyhow::Result<Vec<Params>> {
         let mut commits = Vec::<Self>::new();
-        for (i, c) in Self::commits_between(&input, after_date, before_date)?
-            .drain(..)
-            .enumerate()
-        {
+        for c in Self::commits_between(&input, after_date, before_date)?.drain(..) {
             if let Some(last) = commits.last() {
                 trace!("comparing {:?} to {:?}", c.date, last.date,);
                 if c.date == last.date {
