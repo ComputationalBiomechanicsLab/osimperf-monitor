@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 use super::setup_context;
 
 // Environmental variables to be used when defining the tests.
-static ENV_VAR_TEST_INSTALL: &str = "$OSIMPERF_INSTALL";
-static ENV_VAR_TEST_OUTPUT: &str = "$OSIMPERF_OUTPUT";
+static ENV_VAR_TEST_INSTALL: &str = "OSIMPERF_INSTALL";
+static ENV_VAR_TEST_OUTPUT: &str = "OSIMPERF_OUTPUT";
 /// The root of the results folder:
 /// results/scratch
-static ENV_VAR_TEST_ROOT: &str = "$OSIMPERF_ROOT";
+static ENV_VAR_TEST_ROOT: &str = "OSIMPERF_ROOT";
 /// Home directory of osimperf repo. Can be used to locate setup files.
-static ENV_VAR_TEST_HOME: &str = "$OSIMPERF_HOME";
+static ENV_VAR_TEST_HOME: &str = "OSIMPERF_HOME";
 
 pub struct FileEnvVars {
     /// Contains opensim-core, simbody, and test binary installs.

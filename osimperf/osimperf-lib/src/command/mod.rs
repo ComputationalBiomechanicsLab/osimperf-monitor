@@ -162,7 +162,8 @@ pub(crate) fn substitute_if_present(string: &mut String, key: &str, value: &str)
 pub(crate) fn substitute_all(string: &str, key_value: &[(String, String)]) -> String {
     let mut out = String::from(string);
     for (key, value) in key_value.iter() {
-        _ = substitute_if_present(&mut out, key, value);
+        let dollar_key = format!("${}", key);
+        _ = substitute_if_present(&mut out, &dollar_key, value);
     }
     out
 }
