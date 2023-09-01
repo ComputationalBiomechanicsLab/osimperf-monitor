@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::hash::{Hash, Hasher};
+use std::time::Duration;
 
 use super::Focus;
 
@@ -39,10 +39,14 @@ impl Status {
 
     pub fn print_table_entry(&self) -> String {
         return match self {
-            Status::Idle => "idle".to_string(),
+            Status::Idle => "Queued".to_string(),
             Status::Compiling(Progress { percentage, .. }) => format!("{:.2}%", percentage),
-            Status::Error(_) => "error".to_string(),
-            Status::Done(Complete { duration, .. }) => format!("{}", duration.as_secs() / 60),
+            Status::Error(_) => "Error".to_string(),
+            Status::Done(Complete { duration, size }) => format!(
+                "{} [min], {} [Gb]",
+                duration.as_secs() / 60,
+                *size as f64 / 1000.
+            ),
         };
     }
 }
