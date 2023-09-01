@@ -60,6 +60,7 @@ impl<'a, 'b> TestNode<'a, 'b> {
         out.write_stdout(&env_vars.output.join("stdout.log"))?;
         out.write_stderr(&env_vars.output.join("stderr.log"))?;
 
+
         // Add the hash of the current bench config.
         let hash = compute_test_config_hash(&self.test, &self.compiler);
 
