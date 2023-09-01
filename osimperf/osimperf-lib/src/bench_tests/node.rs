@@ -9,20 +9,19 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug)]
-pub struct TestNode<'a, 'b> {
+pub struct TestNode<'a> {
     test: BenchTestSetup,
     compiler: CompilationNode,
     result: BenchTestResult,
     home: &'a Home,
-    results: &'b ResultsFolder,
 }
 
-impl<'a, 'b> TestNode<'a, 'b> {
+impl<'a> TestNode<'a> {
     pub fn new(
         test: BenchTestSetup,
         compiler: CompilationNode,
         home: &'a Home,
-        results: &'b ResultsFolder,
+        results: &ResultsFolder,
     ) -> Result<Option<Self>> {
         if compiler.is_done() {
             Ok(Some(Self {
@@ -30,7 +29,6 @@ impl<'a, 'b> TestNode<'a, 'b> {
                 test,
                 compiler,
                 home,
-                results,
             }))
         } else {
             Ok(None)
@@ -41,7 +39,6 @@ impl<'a, 'b> TestNode<'a, 'b> {
         Ok(FileEnvVars {
             install: self.compiler.id().path(),
             output: self.result.path_to_node.join("output"),
-            // root: self.results.test_context_dir()?,
             root: self.result.path_to_node.join("context"),
             home: self.home.path()?.to_path_buf(),
         })
@@ -59,7 +56,6 @@ impl<'a, 'b> TestNode<'a, 'b> {
         // Write logs.
         out.write_stdout(&env_vars.output.join("stdout.log"))?;
         out.write_stderr(&env_vars.output.join("stderr.log"))?;
-
 
         // Add the hash of the current bench config.
         let hash = compute_test_config_hash(&self.test, &self.compiler);
