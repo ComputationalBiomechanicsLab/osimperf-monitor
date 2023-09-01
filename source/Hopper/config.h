@@ -71,7 +71,8 @@ namespace Hopper
                 {1., 0.75},
             };
 
-            double fiberDamping = NAN;
+            double fiberDamping   = NAN;
+            double maxContraction = NAN;
         } model;
 
         double accuracy         = NAN;
