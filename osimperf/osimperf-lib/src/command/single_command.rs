@@ -3,6 +3,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::{path::Path, process::Stdio};
+use log::trace;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct Command {

@@ -8,19 +8,20 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug)]
-pub struct TestNode<'a> {
+pub struct TestNode<'a, 'b> {
     test: BenchTestSetup,
     compiler: CompilationNode,
     result: BenchTestResult,
     home: &'a Home,
+    results: &'b ResultsFolder,
 }
 
-impl<'a> TestNode<'a> {
+impl<'a, 'b> TestNode<'a, 'b> {
     pub fn new(
         test: BenchTestSetup,
         compiler: CompilationNode,
         home: &'a Home,
-        results: &ResultsFolder,
+        results: &'b ResultsFolder,
     ) -> Result<Option<Self>> {
         if compiler.is_done() {
             Ok(Some(Self {
@@ -28,6 +29,7 @@ impl<'a> TestNode<'a> {
                 test,
                 compiler,
                 home,
+                results,
             }))
         } else {
             Ok(None)
@@ -38,7 +40,7 @@ impl<'a> TestNode<'a> {
         Ok(FileEnvVars {
             install: self.compiler.id().path(),
             output: self.result.path_to_node.join("output"),
-            root: self.result.path_to_node.join("context"),
+            root: self.results.path()?.join("context"),
             home: self.home.path()?.to_path_buf(),
         })
     }
@@ -50,7 +52,12 @@ impl<'a> TestNode<'a> {
         erase_folder(&env_vars.output)?;
 
         let setup_dir = self.test.test_setup_file.parent().unwrap();
-        let out = run_test_cmds(&self.test.cmd, &env_vars, &setup_dir)?;
+        let out = run_test_cmds(
+            &self.test.cmd,
+            &env_vars,
+            &setup_dir,
+            &self.test.model_files,
+        )?;
 
         // Write logs.
         out.write_stdout(&env_vars.output.join("stdout.log"))?;

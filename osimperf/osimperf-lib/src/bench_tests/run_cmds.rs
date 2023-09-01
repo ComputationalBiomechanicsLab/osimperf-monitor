@@ -1,7 +1,7 @@
-use crate::{Command, CommandOutput, CommandTrait, ResultsFolder, Folder};
+use crate::{Command, CommandOutput, CommandTrait};
 use anyhow::{anyhow, Context, Result};
 use log::{trace, info };
-use std::{path::{Path, PathBuf}, fs::DirEntry};
+use std::path::{Path, PathBuf};
 
 use super::setup_context;
 
@@ -53,11 +53,13 @@ impl FileEnvVars {
     }
 }
 
-pub fn run_test_cmds(cmds: &[Command], env: &FileEnvVars, setup_dir: &Path) -> Result<CommandOutput> {
+pub fn run_test_cmds(cmds: &[Command], env: &FileEnvVars, setup_dir: &Path,
+    required_files: &[String]) -> Result<CommandOutput> {
     info!("Setting up context at {:?}", env.root);
 
     // Copy all files to context dir.
-    setup_context(setup_dir, &env.root)?;
+    let models_dir = env.home.join("tests").join("opensim-models");
+    setup_context(setup_dir, &env.root, required_files, &models_dir)?;
 
     for i in 0..cmds.len() {
         // Add environmental variables:
