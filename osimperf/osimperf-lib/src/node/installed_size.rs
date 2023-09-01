@@ -1,11 +1,10 @@
-use super::Focus;
-use crate::{path_to_install, Command, CommandTrait, Id};
 use anyhow::{Context, Result};
+use crate::{Command, CommandTrait};
 use log::info;
+use std::path::Path;
 
-pub fn get_installed_size_mbytes<'a>(focus: Focus, id: &Id<'a>) -> Result<usize> {
-    let dir = path_to_install(focus, id).to_str().unwrap().to_string();
-    let cmd = Command::parse(&format!("du -sm {dir}"));
+pub fn folder_size(dir: &Path) -> Result<usize> {
+    let cmd = Command::parse(&format!("du -sm {}", dir.to_str().unwrap()));
     let output = cmd.run_trim()?;
     let word = output
         .split('\t')

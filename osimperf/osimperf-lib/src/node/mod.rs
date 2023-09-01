@@ -5,8 +5,6 @@ mod installed_size;
 mod repo;
 mod status;
 
-use installed_size::get_installed_size_mbytes;
-
 use anyhow::{Context, Result};
 pub use cmake::*;
 pub use file::NodeFile;
@@ -17,13 +15,14 @@ pub use status::State;
 use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::hash::Hash;
+use std::path::PathBuf;
 
 use crate::common::collect_configs;
 use crate::node::status::Complete;
 use crate::{erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home};
 
+use self::installed_size::folder_size;
 use self::status::Progress;
 use log::debug;
 
@@ -102,6 +101,7 @@ impl CompilationNode {
         for i in 0..3 {
             // Start compiling project.
             let focus = Focus::from(i);
+            let install_dir = self.id().path().join(focus.to_str());
 
             if self.state.get()[i].should_compile() {
                 // || i == 2 { // TODO this will always recompile tests from source...
@@ -125,7 +125,6 @@ impl CompilationNode {
                 self.repo.source().checkout()?;
 
                 // Erase the install dir.
-                let install_dir = self.id().path().join(focus.to_str());
                 erase_folder(&install_dir)
                     .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
 
@@ -138,13 +137,25 @@ impl CompilationNode {
                     .run(&mut progress)
                     .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
-                let size = get_installed_size_mbytes(focus, &self.id())
-                    .context("failed to get size of install")?;
-
-                let output = output.map(|duration| Complete { duration, size });
+                // Strange crashes happen if we evaluate the size here...
+                let output = output.map(|duration| Complete { duration, size: 0 });
 
                 // Update the status.
                 self.state.set(focus, Status::from_output(output));
+                self.try_write()?;
+            }
+
+            // Update install size... this was causing bugs if done right after install.... weird.
+            if let Status::Done(Complete { duration, size: 0 }) = self.state.get()[i] {
+                let size = folder_size(&install_dir).context("failed to get size of install")?;
+
+                let updated = Ok(Complete {
+                    duration: *duration,
+                    size,
+                });
+
+                // Update the status.
+                self.state.set(focus, Status::from_output(updated));
                 self.try_write()?;
             }
 
