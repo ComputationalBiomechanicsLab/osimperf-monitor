@@ -6,15 +6,17 @@ pub use piped_command::{PipedCommands, PipedCommandsExecutor};
 pub use single_command::{Command, CommandExecutor};
 pub use time::duration_since_boot;
 
+use anyhow::{Context, Result};
+use std::io::BufReader;
+use std::process::Stdio;
+use std::thread;
 use std::{
     fmt::Debug,
-    fs::{OpenOptions},
-    io::{BufRead, BufReader, Write},
+    fs::OpenOptions,
+    io::{BufRead, Write},
     path::Path,
     time::Duration,
 };
-
-use anyhow::{Context, Result};
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -115,30 +117,62 @@ pub trait CommandTrait {
     }
 
     fn run_and_stream(&self, stream: &mut impl Write) -> Result<CommandOutput> {
+        // Construct command.
         let cmd = self.create_executor();
+
+        // Exectute command and start timer.
         let start = duration_since_boot()?;
         let mut child = cmd.start_execute()?;
 
-        let stdout = child.stdout.take().unwrap();
-        let lines = BufReader::new(stdout).lines();
-        for line in lines {
-            let line = line?;
-            stream.write_all(line.as_bytes())?;
-            stream.write_all('\n'.to_string().as_bytes())?;
-            if child
-                .try_wait()
-                .with_context(|| format!("failed to execute command: {}", self.print_command()))
-                .context("error while waiting for child")?
-                .is_some()
-            {
+        // Access the stdout and stderr of the child process.
+        let stderr = child.stderr.take().expect("Failed to capture stderr");
+        let stdout = child.stdout.take().expect("Failed to capture stdout");
+
+        // Create buffers to read the std-output.
+        let mut stderr_buffer = Vec::<u8>::new();
+        let mut stdout_buffer = Vec::<u8>::new();
+
+        // Handle stderr in thread.
+        let stderr_handle = thread::spawn(move || -> Result<Vec<u8>> {
+            let mut reader = BufReader::new(stderr);
+            let mut line = String::new();
+            loop {
+                let bytes_read = reader.read_line(&mut line)?;
+                if bytes_read == 0 {
+                    break;
+                }
+                stderr_buffer.extend(line.as_bytes());
+                line.clear();
+            }
+            Ok(stderr_buffer)
+        });
+
+        // Read stdout to the given argument, and store in buffer.
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        loop {
+            let bytes_read = reader.read_line(&mut line)?;
+            if bytes_read == 0 {
                 break;
             }
+            stream.write_all(line.as_bytes())?;
+            stdout_buffer.extend(line.as_bytes());
+            line.clear();
         }
 
-        let output = child
+        // Wait for thread to finish and handle any errors.
+        let mut stderr_result = stderr_handle
+            .join()
+            .expect("Failed to join stderr thread")?;
+
+        let mut output = child
             .wait_with_output()
             .context("error waiting for command output")
             .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
+
+        output.stdout.extend(stdout_buffer.drain(..));
+        output.stderr.extend(stderr_result.drain(..));
+
         let end = duration_since_boot()?;
         let duration = end - start;
         Ok(CommandOutput { duration, output })

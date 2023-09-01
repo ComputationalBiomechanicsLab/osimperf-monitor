@@ -45,6 +45,7 @@ impl CommandExecutorTrait for PipedCommandsExecutor {
                 .get_mut(i)
                 .stdin(std::process::Stdio::from(last_child))
                 .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
                 .spawn()
                 .context(format!(
                     "Failed to start parent process: cmd = {:?}",
