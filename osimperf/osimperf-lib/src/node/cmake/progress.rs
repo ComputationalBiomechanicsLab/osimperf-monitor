@@ -1,27 +1,32 @@
+use regex::Regex;
 use std::io::{self, Write};
 
 use anyhow::Context;
 use std::str;
 
-use crate::{Command, PipedCommands, CommandTrait};
+use crate::{
+    node::status::{Progress, Status},
+    Command, CommandTrait, CompilationNode, Focus, NodeFile, PipedCommands,
+};
 
-#[derive(Clone, Debug, Default)]
-pub struct CMakeProgressStreamer {
-    process_name: String,
-    process_step: String,
+#[derive(Debug)]
+pub struct CMakeProgressStreamer<'a> {
+    focus: Focus,
     buffer: String,
     percentage: Option<f64>,
+    parent: &'a mut CompilationNode,
+    re: Regex,
 }
 
-impl CMakeProgressStreamer {
-    pub fn set_process_name(&mut self, name: &str) {
-        self.percentage = None;
-        self.process_name = name.to_string();
-    }
-
-    pub fn set_process_step(&mut self, name: &str) {
-        self.percentage = None;
-        self.process_step = name.to_string();
+impl<'a> CMakeProgressStreamer<'a> {
+    pub fn new(parent: &'a mut CompilationNode, focus: Focus) -> Self {
+        Self {
+            focus,
+            buffer: String::new(),
+            percentage: None,
+            parent,
+            re: Regex::new(r"\[\s*(\d+)%\]").unwrap(),
+        }
     }
 
     fn pop_line(&mut self) -> anyhow::Result<()> {
@@ -34,35 +39,23 @@ impl CMakeProgressStreamer {
 
             // Print and remove all complete lines except the last one (if it's incomplete)
             for line in lines.iter().take(num_lines - 1) {
-                let mut cmd_echo = Command::parse("echo");
-                cmd_echo.add_arg(format!(r#""{}""#, line));
+                if let Some(captures) = self.re.captures(line) {
+                    if let Some(percentage_str) = captures.get(1) {
+                        self.percentage =
+                            Some(percentage_str.as_str().parse::<f64>().with_context(|| {
+                                format!("failed to parse percentage {}", percentage_str.as_str())
+                            })?);
 
-                let mut cmd_grep = Command::new("grep");
-                cmd_grep.add_arg("-o");
-                cmd_grep.add_arg("\\[ [0-9]*%");
-
-                let mut cmd_sed = Command::new("sed");
-                cmd_sed.add_arg("s/[^0-9]//g");
-
-                let cmd = PipedCommands::new(vec![cmd_echo, cmd_grep, cmd_sed]);
-                if let Some(perc_str) = Some(cmd.run_trim()?).filter(|s| s.len() > 0) {
-                    let parsed_percentage = perc_str
-                        .parse::<f64>()
-                        .with_context(|| format!("failed to parse percentage {perc_str}"))?;
-                    if self.percentage.is_some() {
-                        print!("\r");
+                        self.parent.state.set(
+                            self.focus,
+                            Status::Compiling(Progress {
+                                percentage: self.percentage.unwrap_or(0.),
+                            }),
+                        );
+                        self.parent.try_write()?;
                     }
-                    self.percentage = Some(parsed_percentage);
-                    print!(
-                        "{} {}: {}% -- {}",
-                        self.process_step, self.process_name, perc_str, line
-                    );
-                    io::stdout().flush().context("Failed to flush stdout")?; // Flush the buffer
                 }
-                // println!(
-                //     "{} {}: {:?}% -- {}",
-                //     self.process_step, self.process_name, self.percentage, line
-                // );
+                println!("{line}");
             }
 
             // Keep the last incomplete line in the buffer
@@ -72,7 +65,7 @@ impl CMakeProgressStreamer {
     }
 }
 
-impl Write for CMakeProgressStreamer {
+impl<'a> Write for CMakeProgressStreamer<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if buf.len() > 0 {
             self.buffer.push_str(str::from_utf8(buf).unwrap());

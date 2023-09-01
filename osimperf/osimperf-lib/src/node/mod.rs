@@ -95,8 +95,6 @@ impl CompilationNode {
     }
 
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
-        let mut progress = CMakeProgressStreamer::default();
-
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
             // Start compiling project.
@@ -107,13 +105,8 @@ impl CompilationNode {
                 // || i == 2 { // TODO this will always recompile tests from source...
 
                 // First update the status.
-                self.state.set(
-                    focus,
-                    Status::Compiling(Progress {
-                        percentage: 0.,
-                        process: "start compiling".to_string(),
-                    }),
-                );
+                self.state
+                    .set(focus, Status::Compiling(Progress { percentage: 0. }));
                 self.try_write()?;
 
                 // Setup cmake commands.
@@ -131,6 +124,8 @@ impl CompilationNode {
                 // Erase the build dir.
                 erase_folder(&build.path()?.join(focus.to_str()))
                     .with_context(|| format!("failed to erase build dir"))?;
+
+                let mut progress = CMakeProgressStreamer::new(self, focus);
 
                 // Start compilation.
                 let output = cmd

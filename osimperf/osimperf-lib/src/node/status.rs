@@ -112,7 +112,6 @@ impl State {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Progress {
     pub percentage: f64,
-    pub process: String,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Hash)]
@@ -126,7 +125,5 @@ impl Hash for Progress {
         // Convert the f64 value to its raw representation as a u64
         let bits = self.percentage.to_bits();
         bits.hash(state);
-
-        self.process.hash(state);
     }
 }
