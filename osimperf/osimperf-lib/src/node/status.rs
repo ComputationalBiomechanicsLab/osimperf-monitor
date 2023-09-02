@@ -16,8 +16,11 @@ pub enum Status {
 
 impl Status {
     pub fn should_compile(&self) -> bool {
-        // TODO refine this?
-        !self.is_done()
+        match self {
+            // Do not recompile if already previously succeeded or failed.
+            Status::Done(_) | Status::Error(_) => false,
+            _ => true,
+        }
     }
 
     pub fn is_done(&self) -> bool {
