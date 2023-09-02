@@ -74,6 +74,12 @@ impl State {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.status_dependencies = Status::Idle;
+        self.status_opensim_core = Status::Idle;
+        self.status_tests_source = Status::Idle;
+    }
+
     pub fn get(&self) -> [&Status; 3] {
         return [
             &self.status_dependencies,

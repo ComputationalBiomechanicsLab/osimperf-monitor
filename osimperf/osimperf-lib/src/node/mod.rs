@@ -15,7 +15,8 @@ pub use status::State;
 use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::path::PathBuf;
 
 use crate::common::collect_configs;
@@ -53,6 +54,8 @@ pub struct CompilationNode {
     pub state: State,
     /// Path to the archive.
     pub archive: PathBuf,
+    /// Used to detect changes in cmake config.
+    pub config_hash: Option<u64>,
 }
 
 impl NodeFile for CompilationNode {
@@ -95,6 +98,17 @@ impl CompilationNode {
     }
 
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
+        // Check if the config changed since last time we compiled.
+        let mut hasher = DefaultHasher::new();
+        config.hash(&mut hasher);
+        let hash = hasher.finish();
+        let changed = hash != *self.config_hash.replace(hash).get_or_insert(hash);
+
+        // If config changed, we need to recompile.
+        if changed {
+            self.state.reset();
+        }
+
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
             // Start compiling project.
