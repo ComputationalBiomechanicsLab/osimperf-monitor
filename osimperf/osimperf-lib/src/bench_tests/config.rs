@@ -13,16 +13,16 @@ static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
 struct ReadBenchTestSetup {
     name: String,
     /// Will be run before executing the benchmark.
-    pre_benchmark_cmds: Option<Vec<Command>>,
+    pre_benchmark_cmds: Option<Vec<String>>,
     /// The benchmark test command.
-    benchmark_cmd: Command,
+    benchmark_cmd: String,
     /// Will be run after executing the benchmark.
-    post_benchmark_cmds: Option<Vec<Command>>,
+    post_benchmark_cmds: Option<Vec<String>>,
     /// Will search in OSIMPERF_HOME/tests/opensim-models/* for files with the same name.
     files: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct BenchTestSetup {
     pub name: String,
     pub benchmark_cmd: Command,
@@ -35,14 +35,22 @@ pub struct BenchTestSetup {
     pub model_files: Vec<String>,
 }
 
+fn parse_commands(cmds: &Option<Vec<String>>) -> Vec<Command> {
+    if let Some(c) = cmds {
+        c.iter().map(|cmd| Command::parse(cmd)).collect()
+    } else {
+        Vec::new()
+    }
+}
+
 impl BenchTestSetup {
     fn new(config: ReadBenchTestSetup, path: PathBuf) -> Self {
         Self {
             test_setup_file: path,
             name: config.name,
-            benchmark_cmd: config.benchmark_cmd,
-            pre_benchmark_cmds: config.pre_benchmark_cmds.unwrap_or_default(),
-            post_benchmark_cmds: config.post_benchmark_cmds.unwrap_or_default(),
+            benchmark_cmd: Command::parse(&config.benchmark_cmd),
+            pre_benchmark_cmds: parse_commands(&config.pre_benchmark_cmds),
+            post_benchmark_cmds: parse_commands(&config.post_benchmark_cmds),
             model_files: config.files.unwrap_or_default(),
         }
     }

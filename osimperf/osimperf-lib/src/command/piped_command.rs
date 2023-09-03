@@ -1,7 +1,9 @@
 use super::*;
 
 use anyhow::{anyhow, Context, Result};
+use std::hash::Hash;
 
+#[derive(Debug, Clone, Hash)]
 pub struct PipedCommands {
     cmds: Vec<Command>,
 }
