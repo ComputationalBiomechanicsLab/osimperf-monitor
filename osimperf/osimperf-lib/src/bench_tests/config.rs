@@ -12,15 +12,22 @@ static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct ReadBenchTestSetup {
     name: String,
-    cmd: Vec<Command>,
+    /// Will be run before executing the benchmark.
+    pre_benchmark_cmds: Option<Vec<Command>>,
+    /// The benchmark test command.
+    benchmark_cmd: Command,
+    /// Will be run after executing the benchmark.
+    post_benchmark_cmds: Option<Vec<Command>>,
     /// Will search in OSIMPERF_HOME/tests/opensim-models/* for files with the same name.
     files: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct BenchTestSetup {
     pub name: String,
-    pub cmd: Vec<Command>,
+    pub benchmark_cmd: Command,
+    pub pre_benchmark_cmds: Vec<Command>,
+    pub post_benchmark_cmds: Vec<Command>,
     /// Path to the test config file.
     ///
     /// Used to subsitutute [ENV_VAR_TEST_SETUP].
@@ -33,7 +40,9 @@ impl BenchTestSetup {
         Self {
             test_setup_file: path,
             name: config.name,
-            cmd: config.cmd,
+            benchmark_cmd: config.benchmark_cmd,
+            pre_benchmark_cmds: config.pre_benchmark_cmds.unwrap_or_default(),
+            post_benchmark_cmds: config.post_benchmark_cmds.unwrap_or_default(),
             model_files: config.files.unwrap_or_default(),
         }
     }

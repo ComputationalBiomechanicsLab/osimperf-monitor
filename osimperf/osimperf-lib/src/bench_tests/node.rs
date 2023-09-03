@@ -4,8 +4,8 @@ use super::{
 };
 use crate::{erase_folder, CompilationNode, Folder, Home, ResultsFolder};
 use anyhow::Result;
-use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::{collections::hash_map::DefaultHasher, fs::rename};
 
 #[derive(Clone, Debug)]
 pub struct TestNode<'a, 'b> {
@@ -39,7 +39,7 @@ impl<'a, 'b> TestNode<'a, 'b> {
     pub fn env_vars(&self) -> Result<FileEnvVars> {
         Ok(FileEnvVars {
             install: self.compiler.id().path(),
-            output: self.result.path_to_node.join("output"),
+            output: self.result.path_to_node.clone(),
             root: self.results.path()?.join("context"),
             home: self.home.path()?.to_path_buf(),
         })
@@ -48,20 +48,15 @@ impl<'a, 'b> TestNode<'a, 'b> {
     pub fn run(&mut self) -> Result<&BenchTestResult> {
         let env_vars = self.env_vars()?;
 
-        erase_folder(&env_vars.root)?;
-        erase_folder(&env_vars.output)?;
-
         let setup_dir = self.test.test_setup_file.parent().unwrap();
         let out = run_test_cmds(
-            &self.test.cmd,
+            &self.test.pre_benchmark_cmds,
+            &self.test.benchmark_cmd,
+            &self.test.post_benchmark_cmds,
             &env_vars,
-            &setup_dir,
+            setup_dir,
             &self.test.model_files,
         )?;
-
-        // Write logs.
-        out.write_stdout(&env_vars.output.join("stdout.log"))?;
-        out.write_stderr(&env_vars.output.join("stderr.log"))?;
 
         // Add the hash of the current bench config.
         let hash = compute_test_config_hash(&self.test, &self.compiler);
