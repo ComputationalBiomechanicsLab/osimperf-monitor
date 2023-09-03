@@ -42,17 +42,23 @@ pub fn print_results(
             buffer.write_all(b)?;
             buffer.write_all(b" |")?;
         }
-        // Print a column for each test.
-        for t in tests.iter() {
-            buffer.write_all(b" ")?;
-            if let Some(dt) =
-                BenchTestResult::read(results, &c.id(), &t.name)?.and_then(|x| x.duration)
-            {
-                buffer.write_all(format!("{:.2}", dt).as_bytes())?;
-            } else {
-                buffer.write_all(b"Failed")?;
+        if c.is_done() {
+            // Print a column for each test.
+            for t in tests.iter() {
+                buffer.write_all(b" ")?;
+                if let Some(dt) =
+                    BenchTestResult::read(results, &c.id(), &t.name)?.and_then(|x| x.duration)
+                {
+                    buffer.write_all(format!("{:.2}", dt).as_bytes())?;
+                } else {
+                    buffer.write_all(b"Failed")?;
+                }
+                buffer.write_all(b" |")?;
             }
-            buffer.write_all(b" |")?;
+        } else {
+            for _ in 0..tests.len() {
+                buffer.write_all(b" |")?;
+            }
         }
     }
     buffer.flush()?;
