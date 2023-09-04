@@ -14,9 +14,6 @@ pub struct Args {
     #[arg(long)]
     pub home: Option<String>,
 
-    #[arg(long, default_value = "2019-01-01")]
-    pub start_date: String,
-
     /// Sleep time between loops in seconds.
     #[arg(long, default_value_t = 1)]
     pub sleep: u64,
