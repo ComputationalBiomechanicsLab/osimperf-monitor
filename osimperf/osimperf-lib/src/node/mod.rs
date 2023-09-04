@@ -62,12 +62,12 @@ impl NodeFile for CompilationNode {
     const SUBFOLDER_LEVEL: usize = 1;
 
     fn path_to_self(&self) -> PathBuf {
-        self.id().path().join(Self::MAGIC_FILE())
+        self.id().path().join(Self::magic_file())
     }
 }
 
 impl CompilationNode {
-    pub const fn MAGIC_FILE() -> &'static str {
+    pub const fn magic_file() -> &'static str {
         ".osimperf-compiler.node"
     }
 
@@ -76,7 +76,7 @@ impl CompilationNode {
     }
 
     pub fn collect_archived(archive: &Archive) -> Result<Vec<Self>> {
-        let mut vec = collect_configs::<Self>(archive.path()?, Self::MAGIC_FILE())?;
+        let mut vec = collect_configs::<Self>(archive.path()?, Self::magic_file())?;
         // vec.sort_by_key(|x| NaiveDate::parse_from_str(&x.repo.date, "%Y_%m_%d").unwrap());
         vec.sort_by(|a, b| {
             NaiveDate::parse_from_str(&b.repo.date, "%Y_%m_%d")

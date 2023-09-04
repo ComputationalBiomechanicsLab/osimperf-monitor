@@ -1,6 +1,6 @@
 use crate::{erase_folder, Command, CommandOutput, CommandTrait};
-use anyhow::{anyhow, Context, Result};
-use log::{info, trace};
+use anyhow::{Context, Result};
+use log::trace;
 use std::path::{Path, PathBuf};
 
 use super::setup_context;

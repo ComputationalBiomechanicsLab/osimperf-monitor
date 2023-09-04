@@ -2,10 +2,10 @@ use super::{
     run_cmds::{run_test_cmds, FileEnvVars},
     BenchTestResult, BenchTestSetup,
 };
-use crate::{erase_folder, CompilationNode, Folder, Home, ResultsFolder};
+use crate::{CompilationNode, Folder, Home, ResultsFolder};
 use anyhow::Result;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::{collections::hash_map::DefaultHasher, fs::rename};
 
 #[derive(Clone, Debug)]
 pub struct TestNode<'a, 'b> {

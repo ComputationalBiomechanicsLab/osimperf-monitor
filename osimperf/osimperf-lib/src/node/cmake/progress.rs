@@ -1,12 +1,12 @@
 use regex::Regex;
-use std::io::{self, Write};
+use std::io::Write;
 
 use anyhow::Context;
 use std::str;
 
 use crate::{
     node::status::{Progress, Status},
-    Command, CommandTrait, CompilationNode, Focus, NodeFile, PipedCommands,
+    CompilationNode, Focus, NodeFile,
 };
 
 #[derive(Debug)]

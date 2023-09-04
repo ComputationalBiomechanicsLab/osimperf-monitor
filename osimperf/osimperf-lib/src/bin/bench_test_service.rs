@@ -39,7 +39,6 @@ fn do_main(args: Args) -> Result<()> {
         }
         sleep(Duration::from_secs(args.sleep));
     }
-    Ok(())
 }
 
 fn do_main_loop(args: &Args) -> Result<()> {

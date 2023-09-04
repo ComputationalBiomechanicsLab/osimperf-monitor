@@ -3,7 +3,7 @@ use clap::Parser;
 use env_logger::Env;
 use log::{info, warn};
 use osimperf_lib::*;
-use std::{thread::sleep, time::Duration, fs::remove_dir_all};
+use std::{thread::sleep, time::Duration};
 
 #[derive(Parser, Debug)]
 pub struct Args {

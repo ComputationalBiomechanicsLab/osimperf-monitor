@@ -2,8 +2,6 @@ use super::super::Focus;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
-pub static CMAKE_CONFIG_FILE: &str = ".osimperf-cmake.conf";
-
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct CMakeConfig {
     common: Vec<String>,

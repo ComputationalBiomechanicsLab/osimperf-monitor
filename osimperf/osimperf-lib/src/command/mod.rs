@@ -8,7 +8,6 @@ pub use time::duration_since_boot;
 
 use anyhow::{Context, Result};
 use std::io::BufReader;
-use std::process::Stdio;
 use std::thread;
 use std::{
     fmt::Debug,

@@ -19,12 +19,12 @@ impl NodeFile for BenchTestResult {
     const SUBFOLDER_LEVEL: usize = 2;
 
     fn path_to_self(&self) -> PathBuf {
-        self.path_to_node.join(Self::MAGIC_FILE())
+        self.path_to_node.join(Self::magic_file())
     }
 }
 
 impl BenchTestResult {
-    pub(crate) const fn MAGIC_FILE() -> &'static str {
+    pub(crate) const fn magic_file() -> &'static str {
         ".osimperf-result.node"
     }
 
