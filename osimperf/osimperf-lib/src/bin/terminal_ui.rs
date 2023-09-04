@@ -151,23 +151,27 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         } else {
             for t in tests.iter() {
                 let result = BenchTestResult::read(&app.results_dir, &node.id(), &t.name)?;
-                if let (Some(dt), stddev, Some(iter)) = (
-                    result.as_ref().and_then(|x| x.duration),
-                    result
-                        .as_ref()
-                        .and_then(|x| x.duration_stddev)
-                        .unwrap_or(f64::NAN),
-                    result.as_ref().map(|x| x.iteration),
-                ) {
-                    cells.push(if stddev < 1e-2 {
-                        Cell::from(format!("{:.2}", dt))
-                    } else {
-                        Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
-                            .style(Style::default().fg(Color::Red))
-                    });
-                } else {
-                    cells.push(Cell::from("X"));
-                }
+                cells.push(
+                    match (
+                        result.as_ref().and_then(|x| x.duration),
+                        result
+                            .as_ref()
+                            .and_then(|x| x.duration_stddev)
+                            .unwrap_or(f64::NAN),
+                        result.as_ref().map(|x| x.iteration),
+                        result.as_ref().map(|x| x.failed_count),
+                    ) {
+                        (_, _, _, Some(i)) if i > 0 => Cell::from("Failed"),
+                        (Some(dt), stddev, Some(_), _) if stddev < 1e-2 => {
+                            Cell::from(format!("{:.2}", dt))
+                        }
+                        (Some(dt), stddev, Some(iter), _) => {
+                            Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
+                                .style(Style::default().fg(Color::Red))
+                        }
+                        _ => Cell::from("Queued"),
+                    },
+                );
             }
         }
         rows.push(Row::new(cells));
