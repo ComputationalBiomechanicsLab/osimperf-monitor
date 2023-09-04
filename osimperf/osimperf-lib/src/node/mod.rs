@@ -10,21 +10,19 @@ pub use cmake::*;
 pub use file::NodeFile;
 pub use focus::Focus;
 pub use repo::*;
-pub use status::State;
+pub use status::{State, Status, Progress, Complete};
 
 use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use crate::common::collect_configs;
-use crate::node::status::Complete;
-use crate::{erase_folder, node::status::Status, Archive, BuildFolder, Folder, Home};
+use crate::{erase_folder, Archive, BuildFolder, Folder, Home};
 
 use self::installed_size::folder_size;
-use self::status::Progress;
 use log::debug;
 
 pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
