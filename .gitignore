@@ -38,7 +38,7 @@ build/**
 bin/**
 
 !archive/.osimperf-archive
-!throwaway/.osimperf-throwaway
+!build/.osimperf-build
 !results/.osimperf-results
 
 # Rubbish
