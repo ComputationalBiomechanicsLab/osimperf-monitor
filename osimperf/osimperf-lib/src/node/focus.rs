@@ -15,6 +15,14 @@ impl Focus {
         }
     }
 
+    pub fn short_desc(&self) -> &str {
+        match self {
+            Self::OpenSimCore => "osim",
+            Self::Dependencies => "deps",
+            Self::TestsSource => "src",
+        }
+    }
+
     pub fn from(other: usize) -> Self {
         match other {
             0 => Self::Dependencies,

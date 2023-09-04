@@ -6,7 +6,7 @@ use crossterm::{
 };
 use osimperf_lib::{
     bench_tests::{BenchTestResult, BenchTestSetup},
-    Archive, CompilationNode, Complete, Folder, Home, Progress, ResultsFolder, Status,
+    Archive, CompilationNode, Complete, Focus, Folder, Home, Progress, ResultsFolder, Status,
 };
 use ratatui::{prelude::*, widgets::*};
 use std::{
@@ -105,19 +105,38 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         let mut cells: Vec<Cell> = Vec::new();
 
         cells.push(Cell::from(format!("{}-{}", node.repo.name, node.repo.date)));
-        cells.push(match node.state.get()[1] {
-            Status::Idle => Cell::from("Queued"),
-            Status::Compiling(Progress { percentage }) => {
-                Cell::from(format!("{}%", percentage)).set_style(Style::default().bg(Color::Blue))
-            }
-            Status::Error(_) => Cell::from("Failed").set_style(Style::default().bg(Color::Red)),
-            Status::Done(Complete { duration, size }) => Cell::from(format!(
-                "Done ({} min, {} Mb)",
-                duration.as_secs() / 60,
-                size
-            ))
-            .set_style(Style::default().bg(Color::Green)),
-        });
+        for (i, state) in node
+            .state
+            .get()
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| !s.is_done())
+        {
+            let focus = Focus::from(i);
+            cells.push(match state {
+                Status::Idle => Cell::from(format!("Queued {}", focus.short_desc())),
+                Status::Compiling(Progress { percentage }) => {
+                    Cell::from(format!("{}: {}%", focus.short_desc(), percentage))
+                        .set_style(Style::default().bg(Color::Blue))
+                }
+                Status::Error(_) => Cell::from(format!("{}: Failed", focus.short_desc()))
+                    .set_style(Style::default().bg(Color::Red)),
+                _ => panic!(),
+            });
+            break;
+        }
+        if node.state.get().iter().all(|s| s.is_done()) {
+            cells.push(match node.state.get()[1] {
+                Status::Done(Complete { duration, size }) => Cell::from(format!(
+                    "Done ({} min, {} Mb)",
+                    duration.as_secs() / 60,
+                    size
+                ))
+                .set_style(Style::default().bg(Color::Green)),
+                _ => panic!(),
+            });
+        }
+
         // cells.push(Cell::from(node.state.get()[1].print_table_entry()));
 
         // Print a column for each test.
