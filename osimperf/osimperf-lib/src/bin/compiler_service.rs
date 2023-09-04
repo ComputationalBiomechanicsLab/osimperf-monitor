@@ -52,7 +52,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
     let build = home.default_build()?;
     let archive = home.default_archive()?;
 
-    let cmake_config = CMakeConfig::default();
+    let cmake_config = read_config(home.join("compile-flags").join("osimperf-cmake.conf"));
     info!("compile flags = {:#?}", cmake_config);
 
     let input = Input {
