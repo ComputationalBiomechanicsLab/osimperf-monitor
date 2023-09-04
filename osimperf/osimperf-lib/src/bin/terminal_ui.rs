@@ -96,9 +96,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         .height(1)
         .bottom_margin(1);
 
-    let ncols = app.node_col_headers.len() + tests.len();
+    let node_cols = app.node_col_headers.len();
+    let bench_cols = tests.len();
 
-    let widths: Vec<Constraint> = (0..ncols).map(|_| Constraint::Length(20)).collect();
+    let widths: Vec<Constraint> = (0..node_cols)
+        .map(|_| Constraint::Length(25))
+        .chain((0..bench_cols).map(|_| Constraint::Length(20)))
+        .collect();
 
     let mut rows: Vec<Row> = Vec::new();
     for node in nodes.iter() {
