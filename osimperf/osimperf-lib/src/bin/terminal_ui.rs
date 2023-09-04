@@ -161,13 +161,14 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                         result.as_ref().map(|x| x.iteration),
                         result.as_ref().map(|x| x.failed_count),
                     ) {
-                        (_, _, _, Some(i)) if i > 0 => Cell::from("Failed"),
+                        (_, _, _, Some(i)) if i > 0 => Cell::from("Failed")
+                                .style(Style::default().fg(Color::Red)),
                         (Some(dt), stddev, Some(_), _) if stddev < 1e-2 => {
                             Cell::from(format!("{:.2}", dt))
                         }
                         (Some(dt), stddev, Some(iter), _) => {
                             Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
-                                .style(Style::default().fg(Color::Red))
+                                .style(Style::default().fg(Color::Blue))
                         }
                         _ => Cell::from("Queued"),
                     },
