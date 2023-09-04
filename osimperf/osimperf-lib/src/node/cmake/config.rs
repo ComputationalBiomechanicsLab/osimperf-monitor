@@ -50,7 +50,8 @@ impl Default for CMakeConfig {
                 "-DBUILD_API_EXAMPLES=OFF".to_string(),
                 "-DBUILD_JAVA_WRAPPING=OFF".to_string(),
                 "-DBUILD_PYTHON_WRAPPING=OFF".to_string(),
-                "-DBUILD_TESTING=ON".to_string(),
+                "-DBUILD_TESTING=OFF".to_string(),
+                "-DOPENSIM_DOXYGEN_USE_MATHJAX=OFF".to_string(),
             ],
             opensim_and_dependencies: vec![
                 "-DOPENSIM_WITH_CASADI=OFF".to_string(),
