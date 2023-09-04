@@ -5,11 +5,11 @@ set -e
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
 
-target="compiler_service"
+targets="compiler_service terminal_ui bench_test_service"
 
-cargo install \
-	--bin $target\
-	--path "osimperf/osimperf-lib" \
-	--root "."
-
-./bin/$target $@
+for target in $targets; do
+	cargo install \
+		--bin $target\
+		--path "osimperf/osimperf-lib" \
+		--root "."
+done
