@@ -32,14 +32,14 @@ fn main() -> Result<()> {
 }
 
 fn do_main(args: Args) -> Result<()> {
-    // loop {
+    loop {
         info!("Enter test loop");
         if let Err(err) = do_main_loop(&args) {
             warn!("Loop exited with error: {:#}", err);
         }
         sleep(Duration::from_secs(args.sleep));
-    // }
-        Ok(())
+    }
+    Ok(())
 }
 
 fn do_main_loop(args: &Args) -> Result<()> {
