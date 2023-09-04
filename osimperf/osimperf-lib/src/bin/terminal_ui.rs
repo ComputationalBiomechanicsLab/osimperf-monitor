@@ -89,7 +89,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
             tests
                 .iter()
                 .map(|t| &t.name)
-                .map(|h| Cell::from(h.as_str()).style(Style::default().bg(Color::Gray))),
+                .map(|h| Cell::from(h.as_str()).style(Style::default().bg(Color::DarkGray))),
         );
     let header = Row::new(header_cells)
         .style(normal_style)
