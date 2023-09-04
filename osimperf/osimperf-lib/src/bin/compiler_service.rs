@@ -2,14 +2,25 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger::Env;
 use log::{info, warn};
-use osimperf_lib::*;
-use std::{thread::sleep, time::Duration};
+use osimperf_lib::{
+    common::{read_config, write_default_config},
+    *,
+};
+use std::{path::PathBuf, thread::sleep, time::Duration};
 
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Specify path to osimperf home dir. If not, current directory will be used as home.
     #[arg(long)]
     pub home: Option<String>,
+
+    /// Specify path to cmake config. Defaults to compiler-flags/osimperf-cmake.conf
+    #[arg(long)]
+    pub cmake: Option<PathBuf>,
+
+    /// Write a default cmake config file to a specified path.
+    #[arg(long)]
+    pub write_default_cmake_config: Option<PathBuf>,
 
     #[arg(long, default_value = "2019-01-01")]
     pub start_date: String,
@@ -38,6 +49,11 @@ fn main() -> Result<()> {
 }
 
 fn do_main(args: Args) -> Result<()> {
+    if let Some(path) = args.write_default_cmake_config.as_ref() {
+        write_default_config::<CMakeConfig>(path)?;
+        return Ok(());
+    }
+
     loop {
         info!("Start monitor loop");
         if let Err(err) = do_main_loop(&args) {
@@ -52,7 +68,13 @@ fn do_main_loop(args: &Args) -> Result<()> {
     let build = home.default_build()?;
     let archive = home.default_archive()?;
 
-    let cmake_config = read_config(home.join("compile-flags").join("osimperf-cmake.conf"));
+    let cmake_config_path = args.cmake.clone().unwrap_or(
+        home.path()?
+            .join("compile-flags")
+            .join("osimperf-cmake.conf"),
+    );
+    let cmake_config = read_config(&cmake_config_path)?;
+
     info!("compile flags = {:#?}", cmake_config);
 
     let input = Input {
