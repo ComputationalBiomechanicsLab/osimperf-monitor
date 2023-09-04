@@ -9,6 +9,7 @@ use crate::{CommandOutput, Folder, Id, NodeFile, ResultsFolder};
 pub struct BenchTestResult {
     pub hash: Option<u64>,
     pub duration: Option<f64>,
+    pub duration_stddev: Option<f64>,
     pub iteration: usize,
     pub failed_count: usize,
     pub path_to_node: PathBuf,
@@ -32,6 +33,7 @@ impl BenchTestResult {
         Ok(Self {
             hash: None,
             duration: None,
+            duration_stddev: None,
             iteration: 0,
             failed_count: 0,
             path_to_node: path_to_root,
@@ -54,6 +56,7 @@ impl BenchTestResult {
         *self = Self {
             hash: None,
             duration: None,
+            duration_stddev: None,
             iteration: 0,
             failed_count: 0,
             path_to_node: self.path_to_node.clone(),
@@ -72,9 +75,22 @@ impl BenchTestResult {
             self.duration = None;
             self.iteration = 0;
         } else {
-            let dt = self.duration.get_or_insert(0.);
             let count = self.iteration.min(99) as f64;
-            *dt = (*dt * count + cmd_output.duration.as_secs_f64()) / (count + 1.);
+            let measured_dt = cmd_output.duration.as_secs_f64();
+            let dt = self.duration.get_or_insert(measured_dt);
+            // Update stddev estimate duration.
+            if self.iteration == 1 {
+                self.duration_stddev =  Some((*dt - measured_dt).abs());
+            }
+            if self.iteration > 1 {
+                let stddev = self.duration_stddev.get_or_insert(f64::NAN);
+                let measured_var = (measured_dt - *dt).powi(2);
+                let filtered_var = stddev.powi(2);
+                let var = (filtered_var * count + measured_var) / (count + 1.);
+                *stddev = var.sqrt();
+            }
+            // Update mean estimate duration.
+            *dt = (*dt * count + measured_dt) / (count + 1.);
             self.iteration += 1;
         }
         info!("Updating result: {:#?}", &self);

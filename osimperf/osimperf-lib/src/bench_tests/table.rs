@@ -46,10 +46,20 @@ pub fn print_results(
             // Print a column for each test.
             for t in tests.iter() {
                 buffer.write_all(b" ")?;
-                if let Some(dt) =
-                    BenchTestResult::read(results, &c.id(), &t.name)?.and_then(|x| x.duration)
-                {
-                    buffer.write_all(format!("{:.2}", dt).as_bytes())?;
+                let result = BenchTestResult::read(results, &c.id(), &t.name)?;
+                if let (Some(dt), stddev, Some(iter)) = (
+                    result.as_ref().and_then(|x| x.duration),
+                    result
+                        .as_ref()
+                        .and_then(|x| x.duration_stddev)
+                        .unwrap_or(f64::NAN),
+                    result.as_ref().map(|x| x.iteration),
+                ) {
+                    if stddev < 1e-2 {
+                        buffer.write_all(format!("{:.2}", dt).as_bytes())?;
+                    } else {
+                        buffer.write_all(format!("{:.2} ({:.3}, {iter}X)", dt, stddev).as_bytes())?;
+                    }
                 } else {
                     buffer.write_all(b"Failed")?;
                 }

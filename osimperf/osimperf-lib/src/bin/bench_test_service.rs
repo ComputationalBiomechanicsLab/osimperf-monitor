@@ -3,10 +3,10 @@ use clap::Parser;
 use env_logger::Env;
 use log::{info, warn};
 use osimperf_lib::{
-    bench_tests::{BenchTestSetup, TestNode},
+    bench_tests::{table::print_results, BenchTestSetup, TestNode},
     *,
 };
-use std::{thread::sleep, time::Duration};
+use std::{fs::File, thread::sleep, time::Duration};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -65,7 +65,21 @@ fn do_main_loop(args: &Args) -> Result<()> {
                 info!("-->Skipping test");
             }
         }
+        update_results_table(&home, &archive, &results_dir)?;
     }
+
+    Ok(())
+}
+
+fn update_results_table(home: &Home, archive: &Archive, results_dir: &ResultsFolder) -> Result<()> {
+    let tests_dir = home.path()?.join("tests");
+
+    let nodes = CompilationNode::collect_archived(&archive)?;
+    let tests = BenchTestSetup::find_all(&tests_dir)?;
+
+    let mut file = File::create(home.path()?.join("results_table.data"))?;
+
+    print_results(&nodes, &tests, &results_dir, &mut file)?;
 
     Ok(())
 }
