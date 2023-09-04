@@ -112,7 +112,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
             }
             Status::Error(_) => Cell::from("Failed").set_style(Style::default().bg(Color::Red)),
             Status::Done(Complete { duration, size }) => Cell::from(format!(
-                "Done ({} min, {} Gb)",
+                "Done ({} min, {} Mb)",
                 duration.as_secs() / 60,
                 size
             ))
