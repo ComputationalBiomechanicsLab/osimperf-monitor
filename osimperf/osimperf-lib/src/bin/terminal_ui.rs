@@ -165,6 +165,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                         Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
                             .style(Style::default().fg(Color::Red))
                     });
+                } else {
+                    cells.push(Cell::from("X"));
                 }
             }
         }
