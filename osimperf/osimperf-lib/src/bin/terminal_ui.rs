@@ -11,7 +11,9 @@ use osimperf_lib::{
 use ratatui::{prelude::*, widgets::*};
 use std::{
     error::Error,
-    io::{self, Stdout}, path::PathBuf,
+    io::{self, Stdout},
+    path::PathBuf,
+    time::Duration,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -50,11 +52,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> Result<()> {
         terminal.draw(|f| wrap_ui(f, &mut app, &mut output))?;
         output?;
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    _ => {}
+        if event::poll(Duration::from_millis(250))? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Char('q') => return Ok(()),
+                        _ => {}
+                    }
                 }
             }
         }
