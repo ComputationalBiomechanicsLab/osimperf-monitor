@@ -93,16 +93,21 @@ fn do_main_loop(args: &Args) -> Result<()> {
     debug!("OpenSim repo = {:#?}", input);
 
     // Check if there are any other repositories to follow.
-    let biolab: Vec<Input> = read_config::<ReadInputs>(
+    let biolab: Vec<Input> = if let Ok(x) = read_config::<ReadInputs>(
         &home
             .path()?
             .join("compile-flags")
             .join("osimperf-biolab-targets.conf"),
-    )?
-    .repositories
-    .drain(..)
-    .map(|c| Input::from(c, &home))
-    .collect();
+    )
+    .as_mut()
+    {
+        x.repositories
+            .drain(..)
+            .map(|c| Input::from(c, &home))
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     // Loop:
     // 1. Warm start.
