@@ -1,167 +1,214 @@
-pub mod bench_tests;
-mod cmake;
-mod cmd;
-mod commit;
-mod config;
-mod folders;
-mod git;
-pub mod time;
-
-pub use cmake::{compile_opensim_core, run_cmake_cmd, OSimCoreCmakeConfig};
-pub use cmd::Command;
-pub use commit::{collect_last_daily_commit, Commit};
-pub use config::*;
-pub use folders::Folders;
-
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger::Env;
 use log::{debug, info, trace, warn};
-use std::io;
+use osimperf_lib::{
+    bench_tests::{BenchTestSetup, TestNode},
+    common::{duration_since_boot, read_config, write_default_config},
+    *,
+};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 pub struct Args {
+    /// Specify path to osimperf home dir. If not, current directory will be used as home.
     #[arg(long)]
     pub home: Option<String>,
 
-    #[arg(long, default_value = ".osimperf.conf")]
-    pub config: String,
+    /// Specify path to cmake config. Defaults to compiler-flags/osimperf-cmake.conf
+    #[arg(long)]
+    pub cmake: Option<PathBuf>,
 
-    #[arg(long, default_value = "software/opensim-core")]
-    pub opensim_core: String,
+    /// Write a default cmake config file to a specified path.
+    #[arg(long)]
+    pub write_default_cmake_config: Option<PathBuf>,
 
-    #[arg(long, default_value = "throwaway")]
-    pub throwaway: String,
-
-    #[arg(long, default_value = "source")]
-    pub source: String,
-
-    #[arg(long, default_value = "scripts")]
-    pub scripts: String,
-
-    #[arg(long, default_value = "archive")]
-    pub archive: String,
-
-    #[arg(long, default_value = "tests")]
-    pub tests: String,
-
-    #[arg(long, default_value = "results")]
-    pub results: String,
-
-    #[arg(long, default_value = "2023/07/18")]
+    #[arg(long, default_value = "2019-01-01")]
     pub start_date: String,
 
     #[arg(long)]
-    pub write_default_config: bool,
+    pub daily: bool,
 
-    #[arg(long)]
-    pub force_remove_archive: bool,
+    /// Period in minutes between polling the repository for latest commits.
+    #[arg(long, default_value_t = 60)]
+    pub pull_period: u64,
+
+    /// Max consecutive compilation failures.
+    #[arg(long, default_value_t = 4)]
+    pub max_fail: usize,
+
+    /// Number of times to repeat the benchmark tests before starting a new compilation.
+    #[arg(long, default_value_t = 10)]
+    pub test_repeats: usize,
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"));
-
-    do_main().context("main exited with error")
-}
-
-fn do_main() -> Result<()> {
-    info!("Starting OSimPerf-Monitor.");
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    info!("Starting OSimPerf-Monitor");
 
     let args = Args::parse();
-    debug!("Command line arguments:\n{:#?}", args);
 
-    let folders = Folders::new(&args)?;
-    debug!("Folder layout:\n{:#?}", folders);
+    do_main(args).context("main exited with error")?;
 
-    let compile_flags_path = folders.home.join(cmake::CMAKE_CONFIG_FILE);
-    if args.write_default_config {
-        write_default_config::<OSimCoreCmakeConfig>(&compile_flags_path)?; // TODO change all strings to Paths, and PathBuf to Path
-        info!(
-            "Default compilation flags written to: {:?}",
-            compile_flags_path
-        );
+    Ok(())
+}
+
+fn do_main(args: Args) -> Result<()> {
+    if let Some(path) = args.write_default_cmake_config.as_ref() {
+        write_default_config::<CMakeConfig>(path)?;
         return Ok(());
     }
 
-    debug!("Reading compilation flags from = {:#?}", compile_flags_path);
-    let compile_flags = read_config(&compile_flags_path)?;
-    trace!("Compilation flags: {:#?}", compile_flags);
-
-    let tests = bench_tests::read_perf_test_setup(&folders)?;
-    info!("Found {} benchmark tests: ", tests.len());
-    for t in tests.iter() {
-        info!("    {:#?}", t.name);
+    loop {
+        info!("Start monitor loop");
+        do_main_loop(&args)?;
     }
+}
 
-    // Switch to main branch on opensim-core repo, and pull.
-    info!("Switching {:?} to main branch.", folders.opensim_core);
-    git::switch_opensim_core_to_main(&folders)
-        .context("Failed to switch opensim-core to main branch.")?;
+fn do_main_loop(args: &Args) -> Result<()> {
+    // Setup folders, read configs etc.
+    let home = Home::new_or_current(args.home.as_ref().map(|p| p.as_str()))?;
+    let build = home.default_build()?;
+    let archive = home.default_archive()?;
+    let results_dir = home.default_results()?;
+    let tests_dir = home.path()?.join("tests");
 
-    debug!("Start collecting opensim-core versions (commits) for compiling");
-    let commits: Vec<Commit> = collect_last_daily_commit(&folders, &args.start_date)?;
-    info!("Start compiling {} versions of opensim", commits.len());
-    for c in commits.iter() {
-        debug!("    {:#?}", c.date);
-    }
+    let cmake_config_path = args.cmake.clone().unwrap_or(
+        home.path()?
+            .join("compile-flags")
+            .join("osimperf-cmake.conf"),
+    );
+    let cmake_config = read_config(&cmake_config_path)?;
+    debug!("compile flags = {:#?}", cmake_config);
 
-    if args.force_remove_archive {
-        warn!("Removing archive.");
-        for c in commits.iter() {
-            debug!("Removing: {:?}", c.get_archive_folder(&folders));
-            c.remove_archive_dir(&folders)?;
-            c.create_archive_dir(&folders)?;
+    let input = Input {
+        repo: home.path()?.join("software/opensim-core"),
+        url: OPENSIM_CORE_URL.to_string(),
+        branch: "main".to_string(),
+        name: "opensim-core".to_string(),
+    };
+    debug!("OpenSim repo = {:#?}", input);
+
+    // Loop:
+    // 1. Warm start.
+    // 2. Do X benchmark tests.
+    // 3. Do one compilation.
+    // 4. Goto step 1.
+    let mut last_pull = None;
+    loop {
+        // Run the benchmark tests.
+        let mut tests = Vec::new();
+        for node in CompilationNode::collect_archived(&archive)?.drain(..) {
+            for setup in BenchTestSetup::find_all(&tests_dir)?.drain(..) {
+                trace!("Queueing test at {:#?} at {:#?}", setup, node);
+                if let Some(test) = TestNode::new(setup, node.clone(), &home, &results_dir)? {
+                    tests.push(test);
+                }
+            }
         }
-    }
 
-    for c in commits.iter() {
-        println!("Start installing opensim-core {:?}", c);
+        // Warm start the processor.
+        dbg!("warmup!");
+        let warmstart_output = warm_up();
+        dbg!("warmup done!");
 
-        if c.verify_compiled_version(&folders)? {
-            println!("    Found previous installation.\n");
+        for _ in 0..args.test_repeats {
+            for test in tests.iter_mut() {
+                debug!("Start bench test: {:#?}", test);
+                let res = test.run()?;
+                if res.failed_count > 0 {
+                    debug!("Failed bench test: {:#?}", test);
+                }
+            }
+        }
+
+        info!("warmstart_output = {}", warmstart_output);
+
+        // Pull latest changes to opensim.
+        let dt = duration_since_boot().context("Failed to read system clock")?;
+        let prev_dt = last_pull.get_or_insert(dt);
+        if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
+            *prev_dt = dt;
+            warn!("Need to implement pulling latest commits");
+            // git::pull(input.repo, input.branch)?;
+        }
+
+        // Do one compilation.
+
+        // Keep going back in time until failing to compile for a number of consecutive times.
+        let mut failed_count = 0;
+        // Take larger monthly versions, and record the date from which we can still compile.
+        let mut ok_start_date = None;
+        // Continue from the top after compiling a single node.
+        let mut compiled_a_node = false;
+        for param in Params::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
+            let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
+
+            debug!("Start compiling monthly {:#?}", node);
+            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+
+            // Stop compiling if we failed X times in a row.
+            if !node.state.get().iter().all(|s| s.is_done()) {
+                failed_count += 1;
+            } else {
+                // Reset counter.
+                failed_count = 0;
+                ok_start_date = Some(param.date.clone());
+            }
+            if failed_count > args.max_fail {
+                debug!("Failed {failed_count} times in a row, stopping");
+                break;
+            }
+
+            // Stop after having compiled a node.
+            if compiled_a_node {
+                break;
+            }
+        }
+
+        if !args.daily || compiled_a_node {
             continue;
         }
 
-        println!("Start compilation of {:?}", c);
+        let fine_start_date = if let Some(date) = ok_start_date {
+            date
+        } else {
+            warn!("Not one compilation succeeded. Skipping daily compilation.");
+            continue;
+        };
 
-        // Switch opensim-core repo to correct commit.
-        git::checkout_commit(&folders.opensim_core, c)?;
+        // Now do another finer Daily commits compilation.
+        for param in Params::collect_daily_commits(&input, Some(&fine_start_date), None)?.iter() {
+            let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
-        println!("Preparing fresh build directory.");
-        c.remove_archive_dir(&folders)?;
-        c.create_archive_dir(&folders)?;
-
-        match compile_opensim_core(&folders, c, &compile_flags) {
-            Err(err) => println!(
-                "Error:\n{:?}\nFailed to compile opensim core ( {:?} )",
-                err, c
-            ),
-            Ok(compile_times) => {
-                ensure!(c.verify_compiled_version(&folders)?,
-                    format!("Post install check failed: Failed to verify version of installed opensim-cmd for {:?}", c));
-                println!("Succesfully compiled opensim core ( {:?} )", c);
+            debug!("Start compiling daily {:#?}", node);
+            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+            if compiled_a_node {
+                break;
             }
         }
     }
+}
 
-    for c in commits.iter() {
-        // Update all results --> should be swapped out instead.
-        c.remove_results_dir(&folders)?;
-        c.create_results_dir(&folders)?;
-
-        for _ in 0..2 {
-            for t in tests.iter() {
-                let test_result = bench_tests::run_test(&folders, t, c)
-                    .context("Failed to run test")?;
-                bench_tests::update_test_result(&folders, t, c, test_result)
-                    .context("failed to update test result")?;
-                return Ok(());
-            }
-        }
+fn warm_up() -> usize {
+    let mut data = vec![0; 1000]; // Initialize a vector with zeros
+    for i in 1..data.len() {
+        data[i] = i;
     }
 
-    let mut stdout = io::stdout().lock();
-    bench_tests::table::print_results(&folders, &commits, &tests, &mut stdout)?;
-
-    return Ok(());
+    // Perform some trivial operations in a loop
+    for _ in 0..1000 {
+        for i in 1..data.len() {
+            let mut hasher = DefaultHasher::new();
+            data[i - 1].hash(&mut hasher);
+            data[i] = hasher.finish() as usize;
+        }
+    }
+    let mut sum: usize = 0;
+    for d in data.iter() {
+        sum = sum.overflowing_add(*d).0;
+    }
+    sum
 }
