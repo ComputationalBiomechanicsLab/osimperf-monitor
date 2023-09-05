@@ -5,7 +5,6 @@ pub use build::CMakeBuilder;
 pub use configure::CMakeConfigurerer;
 
 use anyhow::{anyhow, ensure, Context};
-use log::info;
 use std::{io::Write, time::Duration};
 
 use super::CMakeConfig;
@@ -70,8 +69,6 @@ impl CMakeCmds {
     }
 
     pub fn run(&self, log: &mut impl Write) -> anyhow::Result<Duration> {
-        info!("start compilation!");
-        println!("commands = {:#}", self.print_pretty());
         let config_output = self.configure.run_and_stream(log)?;
         config_output.write_logs(log)?;
         if !config_output.success() {

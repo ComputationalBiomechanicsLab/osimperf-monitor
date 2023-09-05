@@ -23,7 +23,7 @@ use crate::common::collect_configs;
 use crate::{erase_folder, Archive, BuildFolder, Folder, Home};
 
 use self::installed_size::folder_size;
-use log::debug;
+use log::trace;
 
 pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
     id.path().join(focus.to_str())
@@ -133,7 +133,7 @@ impl CompilationNode {
                 // Setup cmake commands.
                 let cmd =
                     CMakeCmds::new(&self.id(), &self.repo.source(), home, build, config, focus)?;
-                debug!("CMAKE COMMAND:\n{}", cmd.print_pretty());
+                trace!("CMAKE COMMAND:\n{}", cmd.print_pretty());
 
                 // Switch to correct commit (only switches if not there already).
                 self.repo.source().checkout()?;

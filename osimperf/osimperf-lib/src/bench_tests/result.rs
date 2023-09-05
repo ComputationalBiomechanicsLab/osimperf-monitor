@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::{info, warn};
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -66,7 +66,7 @@ impl BenchTestResult {
     pub(crate) fn process(&mut self, cmd_output: CommandOutput, hash: u64) -> Result<()> {
         // Check hash for config changes.
         if self.hash != Some(hash) {
-            warn!("Changed config detected! Reset test result");
+            debug!("Changed config detected! Reset test result");
             self.reset();
         }
         self.hash = Some(hash);
@@ -80,7 +80,7 @@ impl BenchTestResult {
             let dt = self.duration.get_or_insert(measured_dt);
             // Update stddev estimate duration.
             if self.iteration == 1 {
-                self.duration_stddev =  Some((*dt - measured_dt).abs());
+                self.duration_stddev = Some((*dt - measured_dt).abs());
             }
             if self.iteration > 1 {
                 let stddev = self.duration_stddev.get_or_insert(f64::NAN);
@@ -93,7 +93,7 @@ impl BenchTestResult {
             *dt = (*dt * count + measured_dt) / (count + 1.);
             self.iteration += 1;
         }
-        info!("Updating result: {:#?}", &self);
+        trace!("Updating result: {:#?}", &self);
         self.try_write()?;
         Ok(())
     }

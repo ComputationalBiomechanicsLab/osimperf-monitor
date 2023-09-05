@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use log::{trace, warn};
+use log::trace;
 
 pub static ARCHIVE_TOUCH_FILE: &str = ".osimperf-archive";
 pub static RESULTS_TOUCH_FILE: &str = ".osimperf-results";
@@ -61,7 +61,6 @@ unsafe fn create_magic_file(folder: &impl Folder) -> Result<()> {
 pub fn erase_folder(path: &Path) -> Result<()> {
     let temp_dir = path.parent().unwrap().join("osimperf-temporary");
     if path.exists() {
-        warn!("Removing directory {:?}", &path);
         rename(&path, &temp_dir).context("unable to move install dir to temporary")?;
         trace!("erase_folder fn: moving {:?} to {:?}", &path, &temp_dir);
         trace!("erase_folder fn: remove {:?}", &temp_dir);
@@ -81,7 +80,6 @@ pub fn erase_folder(path: &Path) -> Result<()> {
 pub trait EraseableFolder: Folder {
     fn erase_folder(&self) -> Result<()> {
         let dir = PathBuf::from(self.path()?);
-        warn!("Erasing folder {}", dir.to_str().unwrap());
         remove_dir_all(&dir).context(format!("Failed to remove directory: {:?}", dir))?;
         fs::create_dir(&dir).with_context(|| format!("Failed to create directory: {:?}", dir))?;
         unsafe { create_magic_file(self)? };

@@ -1,4 +1,4 @@
-use log::{info, trace};
+use log::trace;
 use std::{fmt::Debug, fs::create_dir};
 use std::path::PathBuf;
 
@@ -56,15 +56,15 @@ pub trait NodeFile: Serialize + DeserializeOwned + Debug {
             if parent.exists() {
                 continue;
             }
-            info!("Creating directory at parent {:?}", parent);
+            trace!("Creating directory at parent {:?}", parent);
             create_dir(&parent)?;
         }
 
         if let Ok(_) = self.try_read() {
             // overwrites self.
-            info!("found previous node: {:#?}", self);
+            trace!("found previous node: {:#?}", self);
         } else {
-            info!("create new node at {:?}", self.path_to_self());
+            trace!("create new node at {:?}", self.path_to_self());
             self.try_write()?;
         }
 

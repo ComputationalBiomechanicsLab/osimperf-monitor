@@ -119,15 +119,13 @@ fn do_main_loop(args: &Args) -> Result<()> {
 
         for _ in 0..args.test_repeats {
             for test in tests.iter_mut() {
-                debug!("Start bench test: {:#?}", test);
+                trace!("Start bench test: {:#?}", test);
                 let res = test.run()?;
                 if res.failed_count > 0 {
-                    debug!("Failed bench test: {:#?}", test);
+                    trace!("Failed bench test: {:#?}", test);
                 }
             }
         }
-
-        info!("warmstart_output = {}", warmstart_output);
 
         // Pull latest changes to opensim.
         let dt = duration_since_boot().context("Failed to read system clock")?;
