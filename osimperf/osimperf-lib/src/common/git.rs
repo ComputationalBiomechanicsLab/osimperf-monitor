@@ -57,6 +57,25 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
 }
 
 /// returns Vec<(hash, date)>
+pub fn get_last_commit(repo: &Path, branch: &str) -> Result<(String, String)> {
+    let path: &str = repo.to_str().unwrap();
+    let cmd = Command::parse(&format!(
+        "git -C {path} log {branch} --pretty=format:%H,%cs"
+    ));
+    let output = cmd.run()?;
+
+    let mut split = output.lines().next().unwrap().split(',');
+    let hash = String::from(split.next().context("failed to read hash")?);
+    let date = String::from(
+        split
+            .next()
+            .context("failed to read date")?
+            .replace('-', "_"),
+    );
+    Ok((hash, date))
+}
+
+/// returns Vec<(hash, date)>
 pub fn get_commits_since(
     repo: &Path,
     branch: &str,
