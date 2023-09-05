@@ -7,3 +7,6 @@
 [submodule "tests/opensim-models"]
 	path = tests/opensim-models
 	url = https://github.com/opensim-org/opensim-models.git
+[submodule "software/computational-biomechanics-lab"]
+	path = software/computational-biomechanics-lab
+	url = git@github.com:ComputationalBiomechanicsLab/opensim-core.git
