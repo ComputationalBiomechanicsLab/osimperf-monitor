@@ -36,19 +36,6 @@ pub fn read_current_commit(repo: &Path) -> Result<String> {
     Ok(cmd.run_trim()?)
 }
 
-fn date_of_commit_unformatted(repo: &Path, hash: &str) -> Result<String> {
-    let path: &str = repo.to_str().unwrap();
-    Command::parse(&format!("git -C {} show -s --format=%cs {}", path, hash)).run_trim()
-}
-
-fn fmt_date(unformatted_date: &str) -> Result<String> {
-    Command::parse(&format!("date -d {} +%Y_%m_%d", unformatted_date)).run_trim()
-}
-
-pub fn date_of_commit(repo: &Path, hash: &str) -> Result<String> {
-    date_of_commit_unformatted(repo, hash).and_then(|date| fmt_date(&date))
-}
-
 pub fn checkout_commit(repo: &Path, commit: &str) -> Result<()> {
     let mut cmd = Command::new("git");
     cmd.add_arg("-C");
@@ -69,15 +56,17 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
-/// returns Vec<commit-hash>
+/// returns Vec<(hash, date)>
 pub fn get_commits_since(
     repo: &Path,
     branch: &str,
     after_date: Option<&str>,
     before_date: Option<&str>,
-) -> Result<Vec<String>> {
+) -> Result<Vec<(String, String)>> {
     let path: &str = repo.to_str().unwrap();
-    let mut cmd = Command::parse(&format!("git -C {path} log {branch} --pretty=format:%H"));
+    let mut cmd = Command::parse(&format!(
+        "git -C {path} log {branch} --pretty=format:%H,%cs"
+    ));
     if let Some(date) = after_date {
         cmd.add_arg(format!("--after={}", date));
     }
@@ -88,7 +77,15 @@ pub fn get_commits_since(
 
     let mut commits = Vec::new();
     for line in output.lines() {
-        commits.push(String::from(line));
+        let mut split = line.split(',');
+        let hash = String::from(split.next().context("failed to read hash")?);
+        let date = String::from(
+            split
+                .next()
+                .context("failed to read date")?
+                .replace('-', "_"),
+        );
+        commits.push((hash, date));
     }
 
     Ok(commits)

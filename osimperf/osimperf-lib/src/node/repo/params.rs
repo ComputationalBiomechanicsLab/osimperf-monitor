@@ -21,9 +21,9 @@ impl Params {
         Ok(
             git::get_commits_since(&input.repo, &input.branch, after_date, before_date)?
                 .drain(..)
-                .map(|hash| Self {
-                    date: git::date_of_commit(&input.repo, &hash).unwrap(),
-                    hash,
+                .map(|c| Self {
+                    hash: c.0,
+                    date: c.1,
                 })
                 .collect::<Vec<Self>>(),
         )
