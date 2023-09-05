@@ -1,10 +1,8 @@
 mod piped_command;
 mod single_command;
-mod time;
 
 pub use piped_command::{PipedCommands, PipedCommandsExecutor};
 pub use single_command::{Command, CommandExecutor};
-pub use time::duration_since_boot;
 
 use anyhow::{Context, Result};
 use std::io::BufReader;
@@ -16,6 +14,7 @@ use std::{
     path::Path,
     time::Duration,
 };
+use crate::common::duration_since_boot;
 
 #[derive(Debug)]
 pub struct CommandOutput {
