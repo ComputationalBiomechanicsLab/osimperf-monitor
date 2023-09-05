@@ -10,7 +10,7 @@ pub use cmake::*;
 pub use file::NodeFile;
 pub use focus::Focus;
 pub use repo::*;
-pub use status::{State, Status, Progress, Complete};
+pub use status::{Complete, Progress, State, Status};
 
 use chrono::NaiveDate;
 
@@ -95,7 +95,12 @@ impl CompilationNode {
         Ok(out)
     }
 
-    pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
+    pub fn run(
+        &mut self,
+        home: &Home,
+        build: &BuildFolder,
+        config: &CMakeConfig,
+    ) -> Result<bool> {
         // Check if the config changed since last time we compiled.
         let mut hasher = DefaultHasher::new();
         config.hash(&mut hasher);
@@ -107,6 +112,9 @@ impl CompilationNode {
             self.state.reset();
         }
 
+        // Returns true if there was any compilation being done.
+        let mut ret = false;
+
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
             // Start compiling project.
@@ -114,6 +122,7 @@ impl CompilationNode {
             let install_dir = self.id().path().join(focus.to_str());
 
             if self.state.get()[i].should_compile() {
+                ret = true;
                 // || i == 2 { // TODO this will always recompile tests from source...
 
                 // First update the status.
@@ -170,7 +179,7 @@ impl CompilationNode {
                 break;
             }
         }
-        Ok(self.state.get().iter().all(|x| x.is_done()))
+        Ok(ret)
     }
 
     pub fn id<'a>(&'a self) -> Id<'a> {
