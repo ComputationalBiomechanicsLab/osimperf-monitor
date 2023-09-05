@@ -8,7 +8,7 @@ mkdir -p "$package/usr/bin"
 
 cargo install \
 	--bin $package\
-	--path "$OSIMPERF_HOME/osimperf/osimperf-monitor" \
+	--path "$OSIMPERF_HOME/osimperf/$package" \
 	--root "$package/usr"
 
 mkdir -p "$package/etc"
