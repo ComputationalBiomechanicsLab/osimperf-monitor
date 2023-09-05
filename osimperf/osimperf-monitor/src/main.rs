@@ -112,11 +112,6 @@ fn do_main_loop(args: &Args) -> Result<()> {
         }
         tests.shuffle(&mut rng);
 
-        // Warm start the processor.
-        dbg!("warmup!");
-        let warmstart_output = warm_up();
-        dbg!("warmup done!");
-
         for _ in 0..args.test_repeats {
             for test in tests.iter_mut() {
                 trace!("Start bench test: {:#?}", test);
