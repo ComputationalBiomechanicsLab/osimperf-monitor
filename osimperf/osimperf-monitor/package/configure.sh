@@ -3,14 +3,17 @@
 
 package="osimperf-monitor"
 
+if [ -d "$package/usr" ]; then rm -rf "$package/usr"; fi
 mkdir -p "$package/usr"
 mkdir -p "$package/usr/bin"
 
 cargo install \
 	--bin $package\
 	--path "$OSIMPERF_HOME/osimperf/$package" \
-	--root "$package/usr"
+	--root "$package/usr" \
+	--no-track
 
+if [ -d "$package/etc" ]; then rm -rf "$package/etc"; fi
 mkdir -p "$package/etc"
 mkdir -p "$package/etc/systemd"
 mkdir -p "$package/etc/systemd/system"
