@@ -45,3 +45,6 @@ bin/**
 *.log
 **/compile_commands.json
 *.data
+.crates.toml
+.crates2.json
+**/.cache
