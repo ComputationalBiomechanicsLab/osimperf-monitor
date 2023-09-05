@@ -17,7 +17,7 @@ pub trait Folder: Sized {
     unsafe fn new_unchecked(path: PathBuf) -> Self;
 
     fn path(&self) -> Result<&Path> {
-        self.verify()?;
+        // TODO this always returns OK...
         Ok(unsafe { self.path_unchecked() })
     }
 
