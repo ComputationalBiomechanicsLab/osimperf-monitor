@@ -4,6 +4,20 @@ use anyhow::ensure;
 use serde::{Deserialize, Serialize};
 
 use crate::common::git;
+use crate::{Folder, Home, BIO_LAB_URL};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReadInputs {
+    pub repositories: Vec<ReadInput>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReadInput {
+    pub name: String,
+    pub branch: String,
+    /// Path to repository: defaults to biolab submodule.
+    pub path: Option<PathBuf>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Input {
@@ -28,5 +42,16 @@ impl Input {
             )
         );
         Ok(())
+    }
+
+    pub fn from(read_input: ReadInput, home: &Home) -> Self {
+        Self {
+            name: read_input.name,
+            repo: read_input
+                .path
+                .unwrap_or(home.path().unwrap().join("software").join("computational-biomechanics-lab")),
+            url: BIO_LAB_URL.to_string(),
+            branch: read_input.branch,
+        }
     }
 }

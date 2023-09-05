@@ -13,6 +13,13 @@ pub struct Params {
 }
 
 impl Params {
+    pub fn last_commit(input: &Input) -> anyhow::Result<Self> {
+        git::get_last_commit(&input.repo, &input.branch).map(|c| Self {
+            hash: c.0,
+            date: c.1,
+        })
+    }
+
     fn commits_between(
         input: &Input,
         after_date: Option<&str>,

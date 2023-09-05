@@ -8,7 +8,7 @@ mod params;
 mod source;
 
 pub use id::Id;
-pub use input::Input;
+pub use input::{ReadInput, Input, ReadInputs};
 pub use params::Params;
 pub use source::Source;
 

@@ -4,8 +4,8 @@ use env_logger::Env;
 use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
-    common::{duration_since_boot, read_config, write_default_config},
-    *,
+    common::{collect_configs, duration_since_boot, read_config, write_default_config},
+    CMakeConfig, CompilationNode, Folder, Home, Input, Params, ReadInputs, OPENSIM_CORE_URL,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -92,6 +92,18 @@ fn do_main_loop(args: &Args) -> Result<()> {
     };
     debug!("OpenSim repo = {:#?}", input);
 
+    // Check if there are any other repositories to follow.
+    let biolab: Vec<Input> = read_config::<ReadInputs>(
+        &home
+            .path()?
+            .join("compile-flags")
+            .join("osimperf-biolab-targets.conf"),
+    )?
+    .repositories
+    .drain(..)
+    .map(|c| Input::from(c, &home))
+    .collect();
+
     // Loop:
     // 1. Warm start.
     // 2. Do X benchmark tests.
@@ -135,12 +147,29 @@ fn do_main_loop(args: &Args) -> Result<()> {
 
         // Do one compilation.
 
+        // Continue from the top after compiling a single node.
+        let mut compiled_a_node = false;
+
+        // Start compiling the external biolab repo.
+        for i in 0..biolab.len() {
+            let param = Params::last_commit(&biolab[i])?;
+            let mut node = CompilationNode::new(biolab[i].clone(), param, &archive)?;
+
+            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+            if compiled_a_node {
+                break;
+            }
+        }
+
+        if compiled_a_node {
+            continue;
+        }
+
         // Keep going back in time until failing to compile for a number of consecutive times.
         let mut failed_count = 0;
         // Take larger monthly versions, and record the date from which we can still compile.
         let mut ok_start_date = None;
-        // Continue from the top after compiling a single node.
-        let mut compiled_a_node = false;
+
         for param in Params::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
             let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
