@@ -1,0 +1,3 @@
+osimperf-monitor/etc/*
+osimperf-monitor/usr/*
+*.deb

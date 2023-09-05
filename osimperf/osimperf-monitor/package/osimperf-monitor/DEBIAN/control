@@ -1,0 +1,6 @@
+Package: osimperf-monitor
+Version: 1.0
+Architecture: all
+Maintainer: Your Name <pepijnvandenbos@gmail.com>
+Description: OpenSim Performance Monitor Service
+Depends: systemd
