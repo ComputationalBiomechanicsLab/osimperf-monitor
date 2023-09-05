@@ -16,7 +16,7 @@ pub struct Id<'a> {
 
 impl<'a> Id<'a> {
     pub fn subfolder_name(&self) -> String {
-        format!("{}-{}-{}-{}", self.name, self.branch, self.date, self.hash,)
+        format!("{}-{}-{}", self.name, self.date, self.hash,)
     }
 
     pub fn path(&self) -> PathBuf {
