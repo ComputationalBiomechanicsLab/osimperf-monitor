@@ -25,7 +25,7 @@ StartLimitBurst=5
 User=$USER
 Environment="PATH=$PATH"
 Type=simple
-ExecStart=/usr/bin/$target --home $OSIMPERF_HOME
+ExecStart=/usr/bin/$package --home $OSIMPERF_HOME
 Restart=on-failure
 RestartSec=10s
 Nice=-10
