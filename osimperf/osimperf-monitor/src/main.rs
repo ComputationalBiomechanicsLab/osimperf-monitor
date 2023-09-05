@@ -7,6 +7,7 @@ use osimperf_lib::{
     common::{duration_since_boot, read_config, write_default_config},
     *,
 };
+use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -97,6 +98,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
     // 3. Do one compilation.
     // 4. Goto step 1.
     let mut last_pull = None;
+    let mut rng = rand::thread_rng();
     loop {
         // Run the benchmark tests.
         let mut tests = Vec::new();
@@ -108,6 +110,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
                 }
             }
         }
+        tests.shuffle(&mut rng);
 
         // Warm start the processor.
         dbg!("warmup!");
