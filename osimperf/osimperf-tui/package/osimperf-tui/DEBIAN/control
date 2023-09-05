@@ -1,0 +1,5 @@
+Package: osimperf-tui
+Version: 1.0
+Architecture: all
+Maintainer: Your Name <pepijnvandenbos@gmail.com>
+Description: OpenSim Performance Monitor Terminal UI

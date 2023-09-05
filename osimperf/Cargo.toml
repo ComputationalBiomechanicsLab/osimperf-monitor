@@ -1,8 +1,9 @@
 [workspace]
 
 members = [
-	"osimperf-monitor",
 	"osimperf-lib",
+	"osimperf-monitor",
+	"osimperf-tui",
 ]
 
 [profile.dev]
