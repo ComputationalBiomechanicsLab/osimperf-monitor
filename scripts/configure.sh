@@ -6,10 +6,16 @@ set -e
 set -o pipefail
 
 targets="osimperf-monitor osimperf-tui"
+perf_home=$PWD
 
 for target in $targets; do
 	cargo install \
 		--bin $target\
 		--path "osimperf/$target" \
 		--root "."
+
+	cd "osimperf/$target/package"
+	OSIMPERF_HOME=$perf_home ./configure.sh
+	cd -
+
 done
