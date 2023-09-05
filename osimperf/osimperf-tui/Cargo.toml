@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow       = "1.0.71"
+clap         = {version = "4.0.23", features = ["derive"]}
 crossterm    = "0.27.0"
 env_logger   = "0.10.0"
 log          = { version = "0.4" }
@@ -13,7 +14,3 @@ osimperf-lib = {path = "../osimperf-lib"}
 ratatui      = { version = "0.23.0", features = ["all-widgets"] }
 serde        = {version = "1.0.152", features = ["derive"]}
 serde_json   = "1.0.91"
-
-[dependencies.clap]
-clap     = "4.0.23"
-features = ["derive"]

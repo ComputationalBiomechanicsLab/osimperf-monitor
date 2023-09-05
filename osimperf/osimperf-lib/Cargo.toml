@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow     = "1.0.71"
 chrono     = "0.4.27"
+clap       = {version = "4.0.23", features = ["derive"]}
 crossterm  = "0.27.0"
 env_logger = "0.10.0"
 log        = { version = "0.4" }
@@ -14,7 +15,3 @@ ratatui    = { version = "0.23.0", features = ["all-widgets"] }
 regex      = "1.9.4"
 serde      = {version = "1.0.152", features = ["derive"]}
 serde_json = "1.0.91"
-
-[dependencies.clap]
-clap     = "4.0.23"
-features = ["derive"]
