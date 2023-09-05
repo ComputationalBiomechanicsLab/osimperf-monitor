@@ -123,12 +123,14 @@ fn do_main_loop(args: &Args) -> Result<()> {
         }
 
         // Pull latest changes to opensim.
-        let dt = duration_since_boot().context("Failed to read system clock")?;
-        let prev_dt = last_pull.get_or_insert(dt);
-        if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
-            *prev_dt = dt;
-            warn!("Need to implement pulling latest commits");
-            // git::pull(input.repo, input.branch)?;
+        if false {
+            let dt = duration_since_boot().context("Failed to read system clock")?;
+            let prev_dt = last_pull.get_or_insert(dt);
+            if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
+                *prev_dt = dt;
+                // TODO Need to implement pulling latest commits
+                // git::pull(input.repo, input.branch)?;
+            }
         }
 
         // Do one compilation.
