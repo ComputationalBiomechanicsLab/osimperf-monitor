@@ -45,7 +45,7 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     info!("Starting OSimPerf-Monitor");
 
     let args = Args::parse();
