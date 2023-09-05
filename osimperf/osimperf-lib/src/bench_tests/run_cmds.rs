@@ -1,9 +1,14 @@
+use crate::common::duration_since_boot;
 use crate::{erase_folder, Command, CommandOutput, CommandTrait};
 use anyhow::{Context, Result};
-use log::trace;
+use log::{trace, info};
 use std::path::{Path, PathBuf};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::hint::black_box;
 
 use super::setup_context;
+use rand::prelude::*;
 
 // Environmental variables to be used when defining the tests.
 static ENV_VAR_TEST_INSTALL: &str = "OSIMPERF_INSTALL";
@@ -82,6 +87,7 @@ pub fn run_test_cmds(
         "Running benchmark command: {}",
         benchmark_cmd.print_command()
     );
+    let _ = black_box(warm_up(black_box(warm_up_input())));
     let output = benchmark_cmd
         .run_and_time()
         .context("failed to run benchmark command")?;
@@ -97,4 +103,27 @@ pub fn run_test_cmds(
     }
 
     Ok(output)
+}
+
+fn warm_up_input() -> Vec<usize> {
+    let mut data: Vec<usize> = vec![0; 1000]; // Initialize a vector with zeros
+    let mut rng = rand::thread_rng();
+    for i in 1..data.len() {
+        data[i] = rng.gen();
+    }
+    data
+}
+
+fn warm_up(mut data: Vec<usize>) -> Vec<usize> {
+    // Perform some trivial operations in a loop
+    for _ in 0..100 {
+        for _ in 0..1000 {
+            for i in 1..data.len() {
+                let mut hasher = DefaultHasher::new();
+                data[i - 1].hash(&mut hasher);
+                data[i] = hasher.finish() as usize;
+            }
+        }
+    }
+    data
 }
