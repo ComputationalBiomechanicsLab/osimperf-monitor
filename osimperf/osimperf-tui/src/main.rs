@@ -183,8 +183,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         Cell::from("Version"),
         Cell::from("Date"),
         Cell::from(format!(
-            "Status\n{}Mb {}min",
-            compiled_size, compiled_duration
+            "Status\n{}Gb {}min",
+            compiled_size / 1000, compiled_duration
         )),
     ];
 
