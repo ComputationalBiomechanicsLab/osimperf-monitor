@@ -87,38 +87,29 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
 
-    let normal_style = Style::default().bg(Color::Blue);
-
-    // Header:
-    // Err(anyhow!(format!("node is done found = {:?}", header_cells)))?;
-    let header_cells = app
-        .node_col_headers
-        .iter()
-        .map(|h| Cell::from(h.as_str()))
-        .chain(
-            tests
-                .iter()
-                .map(|t| &t.name)
-                .map(|h| Cell::from(h.as_str()).style(Style::default().bg(Color::DarkGray))),
-        );
-    let header = Row::new(header_cells)
-        .style(normal_style)
-        .height(1)
-        .bottom_margin(1);
-
-    let node_cols = app.node_col_headers.len();
+    const node_cols: usize = 3;
     let bench_cols = tests.len();
 
-    let widths: Vec<Constraint> = (0..node_cols)
-        .map(|_| Constraint::Length(25))
-        .chain((0..bench_cols).map(|_| Constraint::Length(20)))
-        .collect();
+    let normal_style = Style::default().bg(Color::Blue);
+
+    let mut widths: Vec<Constraint> = vec![
+        Constraint::Length(15),
+        Constraint::Length(10),
+        Constraint::Length(15),
+    ];
+    widths.extend((0..bench_cols).map(|_| Constraint::Length(20)));
+
+    let mut compiled_size = 0;
+    let mut compiled_duration = 0;
+
+    let mut tests_duration = vec![0; bench_cols];
 
     let mut rows: Vec<Row> = Vec::new();
     for node in nodes.iter() {
         let mut cells: Vec<Cell> = Vec::new();
 
-        cells.push(Cell::from(format!("{}-{}", node.repo.name, node.repo.date)));
+        cells.push(Cell::from(node.repo.name.as_str()));
+        cells.push(Cell::from(node.repo.date.as_str()));
         for (i, state) in node
             .state
             .get()
@@ -141,12 +132,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         }
         if node.state.get().iter().all(|s| s.is_done()) {
             cells.push(match node.state.get()[1] {
-                Status::Done(Complete { duration, size }) => Cell::from(format!(
-                    "Done ({} min, {} Mb)",
-                    duration.as_secs() / 60,
-                    size
-                ))
-                .set_style(Style::default().bg(Color::Green)),
+                Status::Done(Complete { duration, size }) => {
+                    compiled_size += size;
+                    compiled_duration += duration.as_secs() / 60;
+                    Cell::from("Done").set_style(Style::default().bg(Color::Green))
+                }
                 _ => panic!(),
             });
         }
@@ -159,7 +149,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                 cells.push(Cell::from(" "));
             }
         } else {
-            for t in tests.iter() {
+            for (i, t) in tests.iter().enumerate() {
                 let result = BenchTestResult::read(&app.results_dir, &node.id(), &t.name)?;
                 cells.push(
                     match (
@@ -171,14 +161,15 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                         result.as_ref().map(|x| x.iteration),
                         result.as_ref().map(|x| x.failed_count),
                     ) {
-                        (_, _, _, Some(i)) if i > 0 => Cell::from("Failed")
-                                .style(Style::default().fg(Color::Red)),
+                        (_, _, _, Some(i)) if i > 0 => {
+                            Cell::from("Failed").style(Style::default().fg(Color::Red))
+                        }
                         (Some(dt), stddev, Some(_), _) if stddev < 1e-2 => {
                             Cell::from(format!("{:.2}", dt))
                         }
                         (Some(dt), stddev, Some(iter), _) => {
                             Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
-                                .style(Style::default().fg(Color::Blue))
+                                .style(Style::default().fg(Color::DarkGray))
                         }
                         _ => Cell::from("Queued"),
                     },
@@ -187,6 +178,27 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         }
         rows.push(Row::new(cells));
     }
+
+    let mut header_cells = vec![
+        Cell::from("Version"),
+        Cell::from("Date"),
+        Cell::from(format!(
+            "Status\n{}Mb {}min",
+            compiled_size, compiled_duration
+        )),
+    ];
+
+    // Header:
+    header_cells.extend(
+        tests
+            .iter()
+            .map(|t| &t.name)
+            .map(|h| Cell::from(h.as_str()).style(Style::default().bg(Color::DarkGray))),
+    );
+    let header = Row::new(header_cells)
+        .style(normal_style)
+        .height(1)
+        .bottom_margin(1);
 
     // Start building the table.
     let t = Table::new(rows)
@@ -214,7 +226,6 @@ struct App {
     archive: Archive,
     results_dir: ResultsFolder,
     tests_dir: PathBuf,
-    node_col_headers: [String; 2],
 }
 
 impl App {
@@ -224,7 +235,6 @@ impl App {
             archive: home.default_archive()?,
             results_dir: home.default_results()?,
             tests_dir: home.path()?.join("tests"),
-            node_col_headers: ["Version".to_string(), "Status".to_string()],
         })
     }
 }
