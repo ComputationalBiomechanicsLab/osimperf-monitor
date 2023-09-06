@@ -77,15 +77,17 @@ impl BenchTestResult {
         } else {
             let count = self.iteration.min(99) as f64;
             let measured_dt = cmd_output.duration.as_secs_f64();
-            let dt = self.duration.get_or_insert(measured_dt);
-            *dt = (*dt * count + measured_dt) / (count + 1.);
+
+            // Update mean estimate duration.
+            let mean = self.duration.get_or_insert(measured_dt);
+            *mean = (*mean * count + measured_dt) / (count + 1.);
+
             // Update stddev estimate duration.
-            let stddev = self.duration_stddev.get_or_insert(f64::NAN);
-            let measured_var = (measured_dt - *dt).powi(2);
+            let measured_var = (measured_dt - *mean).powi(2);
+            let stddev = self.duration_stddev.get_or_insert(measured_var.sqrt());
             let filtered_var = stddev.powi(2);
             let var = (filtered_var * count + measured_var) / (count + 1.);
             *stddev = var.sqrt();
-            // Update mean estimate duration.
             self.iteration += 1;
         }
         trace!("Updating result: {:#?}", &self);
