@@ -1,4 +1,5 @@
 use anyhow::Result;
+use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
@@ -16,11 +17,20 @@ use std::{
     time::Duration,
 };
 
+#[derive(Parser, Debug)]
+pub struct Args {
+    /// Specify path to osimperf home dir. If not, current directory will be used as home.
+    #[arg(long)]
+    pub home: Option<String>,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let args = Args::parse();
+
     let mut terminal = setup_terminal()?;
 
     // create app and run it
-    let app = App::new()?;
+    let app = App::new(&args)?;
     let res = run_app(&mut terminal, app);
 
     // Shutting down program.
@@ -208,8 +218,8 @@ struct App {
 }
 
 impl App {
-    fn new() -> Result<App> {
-        let home = Home::new_or_current(None)?;
+    fn new(args: &Args) -> Result<App> {
+        let home = Home::new_or_current(args.home.as_ref().map(|p| p.as_str()))?;
         Ok(App {
             archive: home.default_archive()?,
             results_dir: home.default_results()?,
