@@ -1,8 +1,8 @@
+use super::setup_context;
 use crate::{erase_folder, Command, CommandOutput, CommandTrait};
 use anyhow::{Context, Result};
 use log::trace;
 use std::path::{Path, PathBuf};
-use super::setup_context;
 
 // Environmental variables to be used when defining the tests.
 static ENV_VAR_TEST_INSTALL: &str = "OSIMPERF_INSTALL";
@@ -52,14 +52,12 @@ impl FileEnvVars {
     }
 }
 
-pub fn run_test_cmds(
-    pre_cmds: &[Command],
-    cmd: &Command,
-    post_cmds: &[Command],
+pub fn run_pre_test_cmds(
+    cmds: &[Command],
     env: &FileEnvVars,
     setup_dir: &Path,
     required_files: &[String],
-) -> Result<CommandOutput> {
+) -> Result<()> {
     // Erase contents in output directories.
     erase_folder(&env.output)?;
 
@@ -69,12 +67,38 @@ pub fn run_test_cmds(
     setup_context(setup_dir, &env.root, required_files, &models_dir)?;
 
     // Run all pre-benchmark commands.
-    for c in pre_cmds.iter().map(|c| env.with_env(c.clone())) {
+    for c in cmds.iter().map(|c| env.with_env(c.clone())) {
         // Add environmental variables:
         trace!("Running pre-benchmark command: {}", c.print_command());
         let _ = c.run()?;
     }
+    Ok(())
+}
 
+pub fn run_post_test_cmds(
+    cmds: &[Command],
+    env: &FileEnvVars,
+    output: &Option<CommandOutput>,
+) -> Result<()> {
+    // Write logs.
+    if let Some(out) = output.as_ref() {
+        out.write_stdout(&env.output.join("stdout.log"))?;
+        out.write_stderr(&env.output.join("stderr.log"))?;
+    }
+
+    // Run all post-benchmark commands.
+    for c in cmds.iter().map(|c| env.with_env(c.clone())) {
+        trace!("Running post-benchmark command: {}", c.print_command());
+        let _ = c.run()?;
+    }
+
+    Ok(())
+}
+
+pub fn run_test_bench_cmd(
+    cmd: &Command,
+    env: &FileEnvVars,
+) -> Result<CommandOutput> {
     // Run benchmark command.
     let benchmark_cmd = env.with_env(cmd.clone());
     trace!(
@@ -84,16 +108,5 @@ pub fn run_test_cmds(
     let output = benchmark_cmd
         .run_and_time()
         .context("failed to run benchmark command")?;
-
-    // Write logs.
-    output.write_stdout(&env.output.join("stdout.log"))?;
-    output.write_stderr(&env.output.join("stderr.log"))?;
-
-    // Run all post-benchmark commands.
-    for c in post_cmds.iter().map(|c| env.with_env(c.clone())) {
-        trace!("Running post-benchmark command: {}", c.print_command());
-        let _ = c.run()?;
-    }
-
     Ok(output)
 }

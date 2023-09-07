@@ -1,6 +1,4 @@
-use anyhow::Context;
 use log::{warn, trace};
-use std::fs::remove_dir_all;
 use std::{fmt::Debug, fs::create_dir};
 use std::path::PathBuf;
 

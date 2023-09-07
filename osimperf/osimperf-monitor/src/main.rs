@@ -42,12 +42,15 @@ pub struct Args {
     pub max_fail: usize,
 
     /// Number of times to repeat the benchmark tests before starting a new compilation.
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 2)]
     pub test_repeats: usize,
+
+    #[arg(long)]
+    pub write_intermediate_results: bool,
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
     info!("Starting OSimPerf-Monitor");
 
     let args = Args::parse();
@@ -105,16 +108,15 @@ fn do_main_loop(args: &Args) -> Result<()> {
     // 4. Goto step 1.
     let mut last_pull = None;
     let mut rng = rand::thread_rng();
-    let test_max_iter = 100;
-    let test_max_failure = 3;
     loop {
         // Run the benchmark tests.
-        let mut tests = Vec::new();
         let nodes = CompilationNode::collect_archived(&archive)?;
         let test_setups = BenchTestSetup::find_all(&tests_dir)?;
+        let mut tests = Vec::new();
         for node in nodes.iter() {
             for setup in test_setups.iter() {
                 trace!("Queueing test at {:#?} at {:#?}", setup, node);
+                // Creating the test node also sets up the context.
                 if let Some(test) = TestNode::new(&setup, &node, &home, &results_dir)? {
                     tests.push(test);
                 }
@@ -122,7 +124,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
         }
 
         while tests.len() > 0 {
-            tests.retain(|t| t.should_run(test_max_iter, test_max_failure));
+            // Dropping tests triggers post benchmark cmds.
+            tests.retain(|t| t.should_run(args.test_repeats, args.max_fail));
             tests.shuffle(&mut rng);
 
             for test in tests.iter_mut() {
@@ -131,6 +134,9 @@ fn do_main_loop(args: &Args) -> Result<()> {
                 if res.failed_count > 0 {
                     trace!("Failed bench test: {:#?}", test);
                 }
+                // if args.write_intermediate_results {
+                    test.try_write()?;
+                // }
             }
         }
 

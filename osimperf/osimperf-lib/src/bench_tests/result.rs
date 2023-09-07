@@ -29,7 +29,12 @@ impl BenchTestResult {
 
     /// Returns the path that this result would be stored at.
     pub fn path_to_node<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> PathBuf {
-        results.path().unwrap().join(id.subfolder_name()).join(name).join(Self::magic_file())
+        results
+            .path()
+            .unwrap()
+            .join(id.subfolder_name())
+            .join(name)
+            .join(Self::magic_file())
     }
 
     fn new_helper<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Self {
@@ -45,11 +50,7 @@ impl BenchTestResult {
         Ok(out)
     }
 
-    pub fn read<'a>(
-        results: &ResultsFolder,
-        id: &Id<'a>,
-        name: &str,
-    ) -> Result<Option<Self>> {
+    pub fn read<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Result<Option<Self>> {
         let mut out = Self::new_helper(results, id, name);
         let success = out.try_read().is_ok();
         Ok(Some(out).filter(|_| success))
