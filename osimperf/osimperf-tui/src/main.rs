@@ -7,7 +7,7 @@ use crossterm::{
 };
 use osimperf_lib::{
     bench_tests::{BenchTestResult, BenchTestSetup},
-    Archive, CompilationNode, Complete, CompilationTarget, Folder, Home, Progress, ResultsFolder, Status,
+    Archive, CompilationNode, CompilationTarget, Folder, Home, Progress, ResultsFolder, Status,
 };
 use ratatui::{prelude::*, widgets::*};
 use std::{
@@ -129,8 +129,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         }
         if node.state.get().iter().all(|s| s.is_done()) {
             cells.push(match node.state.get()[1] {
-                Status::Done(Complete { duration, size }) => {
-                    compiled_size += size;
+                Status::Done(duration) => {
+                    compiled_size += node.read_disk_size().iter().sum::<usize>();
                     compiled_duration += duration.as_secs() / 60;
                     Cell::from("Done").set_style(Style::default().bg(Color::Green))
                 }

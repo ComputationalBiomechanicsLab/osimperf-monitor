@@ -11,7 +11,7 @@ pub enum Status {
     Idle,
     Compiling(Progress),
     Error(String),
-    Done(Complete),
+    Done(Duration),
 }
 
 impl Status {
@@ -32,25 +32,12 @@ impl Status {
 
     pub fn from_output(
         // TODO refine output and status construction
-        output: anyhow::Result<Complete>,
+        output: anyhow::Result<Duration>,
     ) -> Self {
         match output {
-            Ok(done) => Self::Done(done),
+            Ok(duration) => Self::Done(duration),
             Err(err) => Self::Error(format!("{:?}", err)),
         }
-    }
-
-    pub fn print_table_entry(&self) -> String {
-        return match self {
-            Status::Idle => "Queued".to_string(),
-            Status::Compiling(Progress { percentage, .. }) => format!("{:.2}%", percentage),
-            Status::Error(_) => "Error".to_string(),
-            Status::Done(Complete { duration, size }) => format!(
-                "{} [min], {} [Gb]",
-                duration.as_secs() / 60,
-                *size as f64 / 1000.
-            ),
-        };
     }
 }
 
@@ -84,12 +71,6 @@ impl State {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Progress {
     pub percentage: f64,
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Hash)]
-pub struct Complete {
-    pub duration: Duration,
-    pub size: usize,
 }
 
 impl Hash for Progress {

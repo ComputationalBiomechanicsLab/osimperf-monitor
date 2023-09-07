@@ -1,16 +1,16 @@
 mod cmake;
 mod file;
-mod target;
 mod installed_size;
 mod repo;
 mod status;
+mod target;
 
 use anyhow::{Context, Result};
 pub use cmake::*;
 pub use file::NodeFile;
-pub use target::CompilationTarget;
 pub use repo::*;
-pub use status::{Complete, Progress, State, Status};
+pub use status::{Progress, State, Status};
+pub use target::CompilationTarget;
 
 use chrono::NaiveDate;
 
@@ -30,7 +30,11 @@ pub fn path_to_install<'a>(target: CompilationTarget, id: &Id<'a>) -> PathBuf {
     id.path().join(target.to_str())
 }
 
-pub fn path_to_source(target: CompilationTarget, home: &Home, repo: &RepositoryState) -> Result<PathBuf> {
+pub fn path_to_source(
+    target: CompilationTarget,
+    home: &Home,
+    repo: &RepositoryState,
+) -> Result<PathBuf> {
     Ok(match target {
         CompilationTarget::OpenSimCore => repo.path().to_owned(),
         CompilationTarget::Dependencies => repo.path().join("dependencies"),
@@ -98,6 +102,10 @@ impl CompilationNode {
         Ok(out)
     }
 
+    fn install_dir(&self, target: CompilationTarget) -> PathBuf {
+        self.id().path().join(target.to_str())
+    }
+
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
         // Check if the config changed since last time we compiled.
         let mut hasher = DefaultHasher::new();
@@ -110,20 +118,17 @@ impl CompilationNode {
             self.state.reset();
         }
 
-        // Returns true if there was any compilation being done.
-        let mut ret = false;
-
-        let checked_out = self.repo.checkout(&self.commit)?;
+        // Returns true if there was any compilation done.
+        let mut ret = self.state.get().iter().any(|x| x.should_compile());
 
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
             // Start compiling project.
             let target = CompilationTarget::from(i);
-            let install_dir = self.id().path().join(target.to_str());
+            let install_dir = self.install_dir(target);
 
             if self.state.get()[i].should_compile() {
-                ret = true;
-                // || i == 2 { // TODO this will always recompile tests from source...
+                let checked_out = self.repo.checkout(&self.commit)?;
 
                 // First update the status.
                 self.state
@@ -149,25 +154,8 @@ impl CompilationNode {
                     .run(&mut progress)
                     .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
-                // Strange crashes happen if we evaluate the size here...
-                let output = output.map(|duration| Complete { duration, size: 0 });
-
                 // Update the status.
                 self.state.set(target, Status::from_output(output));
-                self.try_write()?;
-            }
-
-            // Update install size... this was causing bugs if done right after install.... weird.
-            if let Status::Done(Complete { duration, size: 0 }) = self.state.get()[i] {
-                let size = folder_size(&install_dir).context("failed to get size of install")?;
-
-                let updated = Ok(Complete {
-                    duration: duration,
-                    size,
-                });
-
-                // Update the status.
-                self.state.set(target, Status::from_output(updated));
                 self.try_write()?;
             }
 
@@ -186,5 +174,11 @@ impl CompilationNode {
             date: &self.commit.date,
             path: &self.archive,
         }
+    }
+
+    pub fn read_disk_size(&self) -> [usize; 3] {
+        [0, 1, 2].map(|i| CompilationTarget::from(i)).map(|target| {
+            folder_size(&self.install_dir(target)).expect("failed to get size of install")
+        })
     }
 }
