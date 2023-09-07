@@ -172,8 +172,6 @@ impl Repository {
         }
         Ok(RepositoryState {
             path: self.path.clone(),
-            // branch: &self.branch,
-            // hash: &commit.hash,
         })
     }
 

@@ -119,7 +119,7 @@ impl CompilationNode {
         }
 
         // Returns true if there was any compilation done.
-        let mut ret = self.state.get().iter().any(|x| x.should_compile());
+        let ret = self.state.get().iter().any(|x| x.should_compile());
 
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
