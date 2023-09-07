@@ -158,22 +158,25 @@ fn do_main_loop(args: &Args) -> Result<()> {
             garbage_collector(&archive, &repo)?;
         }
 
-        // Do one compilation.
+        // Start compiling opensim.
 
         // Continue from the top after compiling a single node.
         let mut compiled_a_node = false;
 
-        // Start compiling the external biolab repo.
+        // First consider any external biolab repo.
         for i in 0..biolab.len() {
             let commit = biolab[i].last_commit()?;
             let mut node = CompilationNode::new(biolab[i].clone(), commit, &archive)?;
 
             compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+
+            // Stop after a single compilation.
             if compiled_a_node {
                 break;
             }
         }
 
+        // Go back to the benchmarking after a succesful compilation.
         if compiled_a_node {
             continue;
         }
