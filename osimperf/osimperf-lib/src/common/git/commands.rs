@@ -1,8 +1,8 @@
-use anyhow::{ensure, Context, Result};
 use crate::{Command, CommandTrait, PipedCommands};
+use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::hash::Hash;
+use std::path::Path;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 // Can be created from the [Repository]
