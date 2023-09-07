@@ -10,9 +10,23 @@ use osimperf_lib::{
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, thread::sleep, time::Duration};
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
+pub struct OldRepository {
+    /// For nicer folder and results identifiers.
+    name: String,
+    /// Path to repository.
+    path: PathBuf,
+    /// For checking that path is correct.
+    url: String,
+    /// The branch the commit should belong to.
+    branch: String,
+    date: String,
+    hash: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct OldConfig {
-    pub repo: Repository,
+    pub repo: OldRepository,
     pub commit: Commit,
     /// Compilation status.
     pub state: OldState,
@@ -67,8 +81,8 @@ impl OldConfig {
 
     pub fn id<'a>(&'a self) -> Id<'a> {
         Id {
-            name: self.repo.name(),
-            branch: self.repo.branch(),
+            name: &self.repo.name,
+            branch: &self.repo.branch,
             hash: &self.commit.hash,
             date: &self.commit.date,
             path: &self.archive,
@@ -95,9 +109,10 @@ fn do_main(args: Args) -> Result<()> {
     info!("found old_nodes: {:#?}", old_nodes);
 
     for old in old_nodes.drain(..) {
+        let t = convert_repo(old.repo);
         let new = CompilationNode {
-            repo: old.repo,
-            commit: old.commit,
+            repo: t.0,
+            commit: t.1,
             state: convert_state(old.state),
             archive: old.archive,
             config_hash: old.config_hash,
@@ -126,4 +141,18 @@ fn convert_status(old: OldStatus) -> Status {
         OldStatus::Error(e) => Status::Error(e),
         OldStatus::Done(Complete { duration, .. }) => Status::Done(duration),
     }
+}
+fn convert_repo(old: OldRepository) -> (Repository, Commit) {
+    (
+        Repository {
+            name: old.name,
+            path: old.path,
+            url: old.url,
+            branch: old.branch,
+        },
+        Commit {
+            hash: old.hash,
+            date: old.date,
+        },
+    )
 }
