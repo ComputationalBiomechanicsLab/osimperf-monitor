@@ -90,32 +90,6 @@ impl State {
             &self.status_tests_source,
         ];
     }
-
-    pub fn get_compiler_list(&self) -> [Option<CompilationTarget>; 3] {
-        [
-            Some(CompilationTarget::Dependencies),
-            Some(CompilationTarget::OpenSimCore),
-            Some(CompilationTarget::TestsSource),
-        ]
-        .map(|f| f.filter(|x| self.get_compiler_job(x)))
-    }
-
-    fn get_compiler_job(&self, target: &CompilationTarget) -> bool {
-        match target {
-            CompilationTarget::Dependencies => match self.status_dependencies {
-                Status::Done(_) => return false,
-                _ => return true,
-            },
-            CompilationTarget::OpenSimCore => match self.status_opensim_core {
-                Status::Done(_) => return false,
-                _ => return true,
-            },
-            CompilationTarget::TestsSource => match self.status_tests_source {
-                Status::Done(_) => return false,
-                _ => return true,
-            },
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
