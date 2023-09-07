@@ -1,25 +1,24 @@
+use super::Durations;
 use anyhow::Result;
-use log::{debug, trace};
+use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
-use crate::{CommandOutput, Folder, Id, NodeFile, ResultsFolder};
+use crate::{Folder, Id, NodeFile, ResultsFolder};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct BenchTestResult {
     pub hash: Option<u64>,
-    pub duration: Option<f64>,
-    pub duration_stddev: Option<f64>,
-    pub iteration: usize,
     pub failed_count: usize,
-    pub path_to_node: PathBuf,
+    pub durations: Durations,
+    pub path_to_self: PathBuf,
 }
 
 impl NodeFile for BenchTestResult {
     const SUBFOLDER_LEVEL: usize = 2;
 
     fn path_to_self(&self) -> PathBuf {
-        self.path_to_node.join(Self::magic_file())
+        self.path_to_self.clone()
     }
 }
 
@@ -28,70 +27,56 @@ impl BenchTestResult {
         ".osimperf-result.node"
     }
 
-    fn new_helper<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Result<Self> {
-        let path_to_root = results.path()?.join(id.subfolder_name()).join(name);
-        Ok(Self {
-            hash: None,
-            duration: None,
-            duration_stddev: None,
-            iteration: 0,
-            failed_count: 0,
-            path_to_node: path_to_root,
-        })
+    /// Returns the path that this result would be stored at.
+    pub fn path_to_node<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> PathBuf {
+        results.path().unwrap().join(id.subfolder_name()).join(name).join(Self::magic_file())
+    }
+
+    fn new_helper<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Self {
+        Self {
+            path_to_self: Self::path_to_node(results, id, name),
+            ..Default::default()
+        }
     }
 
     pub(crate) fn new<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Result<Self> {
-        let mut out = Self::new_helper(results, id, name)?;
+        let mut out = Self::new_helper(results, id, name);
         out.read_or_write_new()?;
         Ok(out)
     }
 
-    pub fn read<'a>(results: &ResultsFolder, id: &Id<'a>, name: &str) -> Result<Option<Self>> {
-        let mut out = Self::new_helper(results, id, name)?;
+    pub fn read<'a>(
+        results: &ResultsFolder,
+        id: &Id<'a>,
+        name: &str,
+    ) -> Result<Option<Self>> {
+        let mut out = Self::new_helper(results, id, name);
         let success = out.try_read().is_ok();
         Ok(Some(out).filter(|_| success))
     }
 
-    fn reset(&mut self) {
-        *self = Self {
-            hash: None,
-            duration: None,
-            duration_stddev: None,
-            iteration: 0,
-            failed_count: 0,
-            path_to_node: self.path_to_node.clone(),
-        };
+    pub(crate) fn should_run(&self, max_iter: usize, max_failures: usize) -> bool {
+        self.durations.len() < max_iter && self.failed_count < max_failures
     }
 
-    pub(crate) fn process(&mut self, cmd_output: CommandOutput, hash: u64) -> Result<()> {
-        // Check hash for config changes.
-        if self.hash != Some(hash) {
-            debug!("Changed config detected! Reset test result");
-            self.reset();
+    pub(crate) fn update_hash(&mut self, hash: u64) {
+        if self.hash == Some(hash) {
+            return;
         }
+        debug!("Changed config detected! Reset test result");
+        self.failed_count = 0;
+        self.durations.clear();
         self.hash = Some(hash);
-        if !cmd_output.success() {
-            self.failed_count += 1;
-            self.duration = None;
-            self.iteration = 0;
+    }
+
+    pub(crate) fn update_result(&mut self, cmd_output: Option<Duration>) {
+        if let Some(duration) = cmd_output {
+            // If the command was succesfully executed:
+            self.durations.add_sample(duration);
         } else {
-            let count = self.iteration.min(99) as f64;
-            let measured_dt = cmd_output.duration.as_secs_f64();
-
-            // Update mean estimate duration.
-            let mean = self.duration.get_or_insert(measured_dt);
-            *mean = (*mean * count + measured_dt) / (count + 1.);
-
-            // Update stddev estimate duration.
-            let measured_var = (measured_dt - *mean).powi(2);
-            let stddev = self.duration_stddev.get_or_insert(measured_var.sqrt());
-            let filtered_var = stddev.powi(2);
-            let var = (filtered_var * count + measured_var) / (count + 1.);
-            *stddev = var.sqrt();
-            self.iteration += 1;
+            // If the command was failed.
+            self.failed_count += 1;
+            self.durations.clear();
         }
-        trace!("Updating result: {:#?}", &self);
-        self.try_write()?;
-        Ok(())
     }
 }
