@@ -63,6 +63,7 @@ impl Default for Status {
 /// The three compilation targets:
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct State {
+    /// One status for each target.
     status: [Status; 3],
 }
 
