@@ -38,7 +38,7 @@ pub struct RepositoryConfig {
 impl Default for RepositoryConfig {
     fn default() -> Self {
         Self {
-            name: "opensim".to_string(),
+            name: "opensim-core".to_string(),
             branch: "main".to_string(),
             path: None,
             url: None,
