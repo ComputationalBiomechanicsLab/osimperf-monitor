@@ -69,18 +69,8 @@ impl<'a, 'b> TestNode<'a, 'b> {
 }
 
 fn compute_test_config_hash(test: &BenchTestSetup, compiler: &CompilationNode) -> u64 {
-    combine_hashes(compute_hash(test), compute_hash(compiler))
-}
-
-fn compute_hash(x: &impl Hash) -> u64 {
     let mut hasher = DefaultHasher::new();
-    x.hash(&mut hasher);
-    hasher.finish()
-}
-
-fn combine_hashes(hash1: u64, hash2: u64) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    hash1.hash(&mut hasher);
-    hash2.hash(&mut hasher);
+    test.hash(&mut hasher);
+    compiler.hash(&mut hasher);
     hasher.finish()
 }
