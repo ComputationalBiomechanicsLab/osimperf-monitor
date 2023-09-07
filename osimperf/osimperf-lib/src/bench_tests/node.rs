@@ -17,6 +17,7 @@ pub struct TestNode<'a, 'b, 'c, 'd> {
     results: &'d ResultsFolder,
     result: BenchTestResult,
     last_command_output: Option<CommandOutput>,
+    warm_start_buffer: usize,
 }
 
 impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
@@ -25,6 +26,7 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
         compiler: &'b CompilationNode,
         home: &'c Home,
         results: &'d ResultsFolder,
+        warm_start_buffer: usize,
     ) -> Result<Self> {
         Ok(Self {
             test,
@@ -33,6 +35,7 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
             results,
             result: BenchTestResult::new(results, &compiler.id(), &test.name)?,
             last_command_output: None,
+            warm_start_buffer,
         })
     }
 
@@ -41,8 +44,9 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
         compiler: &'b CompilationNode,
         home: &'c Home,
         results: &'d ResultsFolder,
+        warm_start_buffer: usize,
     ) -> Result<Option<Self>> {
-        let mut out = Self::new_helper(test, compiler, home, results)?;
+        let mut out = Self::new_helper(test, compiler, home, results, warm_start_buffer)?;
         if !out.compiler.is_done() {
             return Ok(None);
         }
@@ -115,12 +119,15 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
 
         self.last_command_output = Some(run_test_bench_cmd(&self.test.benchmark_cmd, &env_vars)?);
 
-        self.result.update_result(
-            self.last_command_output
-                .as_ref()
-                .filter(|x| x.success())
-                .map(|x| x.duration),
-        );
+        self.warm_start_buffer = self.warm_start_buffer.saturating_sub(1);
+        if self.warm_start_buffer == 0 {
+            self.result.update_result(
+                self.last_command_output
+                    .as_ref()
+                    .filter(|x| x.success())
+                    .map(|x| x.duration),
+            );
+        }
 
         Ok(&self.result)
     }

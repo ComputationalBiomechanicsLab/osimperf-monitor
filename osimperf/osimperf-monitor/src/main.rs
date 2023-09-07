@@ -47,6 +47,9 @@ pub struct Args {
 
     #[arg(long)]
     pub write_intermediate_results: bool,
+
+    #[arg(long, default_value_t = 10)]
+    pub warm_start_buffer: usize,
 }
 
 fn main() -> Result<()> {
@@ -117,7 +120,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
             for setup in test_setups.iter() {
                 trace!("Queueing test at {:#?} at {:#?}", setup, node);
                 // Creating the test node also sets up the context.
-                if let Some(test) = TestNode::new(&setup, &node, &home, &results_dir)? {
+                if let Some(test) = TestNode::new(&setup, &node, &home, &results_dir, args.warm_start_buffer)? {
                     tests.push(test);
                 }
             }
