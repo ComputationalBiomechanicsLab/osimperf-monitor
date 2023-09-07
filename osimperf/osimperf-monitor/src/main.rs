@@ -137,9 +137,9 @@ fn do_main_loop(args: &Args) -> Result<()> {
                 if res.failed_count > 0 {
                     trace!("Failed bench test: {:#?}", test);
                 }
-                // if args.write_intermediate_results {
+                if args.write_intermediate_results {
                     test.try_write()?;
-                // }
+                }
             }
         }
 
