@@ -105,8 +105,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
     for node in nodes.iter() {
         let mut cells: Vec<Cell> = Vec::new();
 
-        cells.push(Cell::from(node.repo.name.as_str()));
-        cells.push(Cell::from(node.repo.date.as_str()));
+        cells.push(Cell::from(node.repo.name()));
+        cells.push(Cell::from(node.commit.date.as_str()));
         for (i, state) in node
             .state
             .get()
@@ -163,10 +163,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                         Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
                             .style(Style::default().fg(Color::DarkGray))
                     }
-                    (Some(dt), None, Some(iter), _) => {
-                        Cell::from(format!("{:.2} ({iter}X)", dt))
-                            .style(Style::default().fg(Color::DarkGray))
-                    }
+                    (Some(dt), None, Some(iter), _) => Cell::from(format!("{:.2} ({iter}X)", dt))
+                        .style(Style::default().fg(Color::DarkGray)),
                     _ => Cell::from("Queued"),
                 });
             }

@@ -20,6 +20,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use crate::common::collect_configs;
+use crate::git::Commit;
 use crate::{erase_folder, Archive, BuildFolder, Folder, Home};
 
 use self::installed_size::folder_size;
@@ -29,10 +30,10 @@ pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
     id.path().join(focus.to_str())
 }
 
-pub fn path_to_source(focus: Focus, home: &Home, source: &Source) -> Result<PathBuf> {
+pub fn path_to_source(focus: Focus, home: &Home, repo: &RepositoryState) -> Result<PathBuf> {
     Ok(match focus {
-        Focus::OpenSimCore => source.path()?.to_owned(),
-        Focus::Dependencies => source.path()?.join("dependencies"),
+        Focus::OpenSimCore => repo.path().to_owned(),
+        Focus::Dependencies => repo.path().join("dependencies"),
         Focus::TestsSource => home.path()?.join("source"),
     })
 }
@@ -45,9 +46,10 @@ pub fn path_to_build(focus: Focus, build: &BuildFolder) -> Result<PathBuf> {
 ///
 /// Stored at:
 /// archive/ID/.compilation-node.osimperf
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct CompilationNode {
     pub repo: Repository,
+    pub commit: Commit,
     /// Compilation status.
     pub state: State,
     /// Path to the archive.
@@ -77,30 +79,26 @@ impl CompilationNode {
         let mut vec = collect_configs::<Self>(archive.path()?, Self::magic_file())?;
         // vec.sort_by_key(|x| NaiveDate::parse_from_str(&x.repo.date, "%Y_%m_%d").unwrap());
         vec.sort_by(|a, b| {
-            NaiveDate::parse_from_str(&b.repo.date, "%Y_%m_%d")
+            NaiveDate::parse_from_str(&b.commit.date, "%Y_%m_%d")
                 .unwrap()
-                .cmp(&NaiveDate::parse_from_str(&a.repo.date, "%Y_%m_%d").unwrap())
+                .cmp(&NaiveDate::parse_from_str(&a.commit.date, "%Y_%m_%d").unwrap())
         });
         Ok(vec)
     }
 
-    pub fn new(input: Input, params: Commit, archive: &Archive) -> Result<Self> {
-        let repo = Repository::new(input, params)?;
+    pub fn new(repo: Repository, commit: Commit, archive: &Archive) -> Result<Self> {
         let mut out = Self {
             archive: archive.path()?.to_path_buf(),
             repo,
-            ..Default::default()
+            commit,
+            state: State::default(),
+            config_hash: None,
         };
         out.read_or_write_new()?;
         Ok(out)
     }
 
-    pub fn run(
-        &mut self,
-        home: &Home,
-        build: &BuildFolder,
-        config: &CMakeConfig,
-    ) -> Result<bool> {
+    pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
         // Check if the config changed since last time we compiled.
         let mut hasher = DefaultHasher::new();
         config.hash(&mut hasher);
@@ -114,6 +112,8 @@ impl CompilationNode {
 
         // Returns true if there was any compilation being done.
         let mut ret = false;
+
+        let checked_out = self.repo.checkout(&self.commit)?;
 
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
@@ -131,12 +131,8 @@ impl CompilationNode {
                 self.try_write()?;
 
                 // Setup cmake commands.
-                let cmd =
-                    CMakeCmds::new(&self.id(), &self.repo.source(), home, build, config, focus)?;
+                let cmd = CMakeCmds::new(&self.id(), &checked_out, home, build, config, focus)?;
                 trace!("CMAKE COMMAND:\n{}", cmd.print_pretty());
-
-                // Switch to correct commit (only switches if not there already).
-                self.repo.source().checkout()?;
 
                 // Erase the install dir.
                 erase_folder(&install_dir)
@@ -184,10 +180,10 @@ impl CompilationNode {
 
     pub fn id<'a>(&'a self) -> Id<'a> {
         Id {
-            name: &self.repo.name,
-            branch: &self.repo.branch,
-            hash: &self.repo.hash,
-            date: &self.repo.date,
+            name: self.repo.name(),
+            branch: self.repo.branch(),
+            hash: &self.commit.hash,
+            date: &self.commit.date,
             path: &self.archive,
         }
     }

@@ -8,9 +8,9 @@ use anyhow::{anyhow, ensure, Context};
 use std::{io::Write, time::Duration};
 
 use super::CMakeConfig;
-use crate::node::{Focus, Id, Source};
+use crate::node::{Focus, Id};
 use crate::{
-    path_to_build, path_to_install, path_to_source, BuildFolder, Command, CommandTrait, Home,
+    path_to_build, path_to_install, path_to_source, BuildFolder, Command, CommandTrait, Home, RepositoryState,
 };
 
 pub struct CMakeCmds {
@@ -21,7 +21,7 @@ pub struct CMakeCmds {
 impl CMakeCmds {
     pub fn new<'a>(
         id: &Id<'a>,
-        source: &Source<'a>,
+        repo: &RepositoryState,
         home: &Home,
         build: &BuildFolder,
         config: &CMakeConfig,
@@ -33,7 +33,7 @@ impl CMakeCmds {
             Focus::TestsSource => Some(path_to_install(Focus::OpenSimCore, id)),
         };
 
-        let source = path_to_source(focus, home, source)?;
+        let source = path_to_source(focus, home, repo)?;
 
         let target = match focus {
             Focus::Dependencies => None,

@@ -5,7 +5,8 @@ use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
     common::{duration_since_boot, read_config, write_default_config},
-    CMakeConfig, CompilationNode, Folder, Home, Input, Commit, ReadInputs, OPENSIM_CORE_URL,
+    BioLabRepositoryConfig, CMakeConfig, CompilationNode, Folder, Home,
+    RepositoryConfig,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -84,30 +85,18 @@ fn do_main_loop(args: &Args) -> Result<()> {
     let cmake_config = read_config(&cmake_config_path)?;
     debug!("compile flags = {:#?}", cmake_config);
 
-    let input = Input {
-        repo: home.path()?.join("software/opensim-core"),
-        url: OPENSIM_CORE_URL.to_string(),
-        branch: "main".to_string(),
-        name: "opensim-core".to_string(),
-    };
-    debug!("OpenSim repo = {:#?}", input);
+    let repo = RepositoryConfig::default().take(&home)?;
+    debug!("OpenSim repo = {:#?}", repo);
 
     // Check if there are any other repositories to follow.
-    let biolab: Vec<Input> = if let Ok(x) = read_config::<ReadInputs>(
+    let biolab = read_config::<BioLabRepositoryConfig>(
         &home
             .path()?
             .join("compile-flags")
             .join("osimperf-biolab-targets.conf"),
     )
-    .as_mut()
-    {
-        x.repositories
-            .drain(..)
-            .map(|c| Input::from(c, &home))
-            .collect()
-    } else {
-        Vec::new()
-    };
+    .map(|x| x.take(&home).expect("failed to verify repository"))
+    .unwrap_or(Vec::new());
 
     // Loop:
     // 1. Warm start.
@@ -121,7 +110,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
     loop {
         // Run the benchmark tests.
         let mut tests = Vec::new();
-        let nodes =CompilationNode::collect_archived(&archive)?;
+        let nodes = CompilationNode::collect_archived(&archive)?;
         let test_setups = BenchTestSetup::find_all(&tests_dir)?;
         for node in nodes.iter() {
             for setup in test_setups.iter() {
@@ -152,7 +141,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
             if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
                 *prev_dt = dt;
                 // TODO Need to implement pulling latest commits
-                // git::pull(input.repo, input.branch)?;
+                // git::pull(repo.repo, repo.branch)?;
             }
         }
 
@@ -163,8 +152,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
 
         // Start compiling the external biolab repo.
         for i in 0..biolab.len() {
-            let param = Commit::last_commit(&biolab[i])?;
-            let mut node = CompilationNode::new(biolab[i].clone(), param, &archive)?;
+            let commit = biolab[i].last_commit()?;
+            let mut node = CompilationNode::new(biolab[i].clone(), commit, &archive)?;
 
             compiled_a_node |= node.run(&home, &build, &cmake_config)?;
             if compiled_a_node {
@@ -181,8 +170,11 @@ fn do_main_loop(args: &Args) -> Result<()> {
         // Take larger monthly versions, and record the date from which we can still compile.
         let mut ok_start_date = None;
 
-        for param in Commit::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
-            let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
+        for commit in repo
+            .collect_monthly_commits(Some(&args.start_date), None)?
+            .drain(..)
+        {
+            let mut node = CompilationNode::new(repo.clone(), commit, &archive)?;
 
             debug!("Start compiling monthly {:#?}", node);
             compiled_a_node |= node.run(&home, &build, &cmake_config)?;
@@ -193,7 +185,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
             } else {
                 // Reset counter.
                 failed_count = 0;
-                ok_start_date = Some(param.date.clone());
+                ok_start_date = Some(node.commit.date.clone());
             }
             if failed_count > args.max_fail {
                 debug!("Failed {failed_count} times in a row, stopping");
@@ -218,8 +210,11 @@ fn do_main_loop(args: &Args) -> Result<()> {
         };
 
         // Now do another finer Daily commits compilation.
-        for param in Commit::collect_daily_commits(&input, Some(&fine_start_date), None)?.iter() {
-            let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
+        for commit in repo
+            .collect_daily_commits(Some(&fine_start_date), None)?
+            .drain(..)
+        {
+            let mut node = CompilationNode::new(repo.clone(), commit, &archive)?;
 
             debug!("Start compiling daily {:#?}", node);
             compiled_a_node |= node.run(&home, &build, &cmake_config)?;

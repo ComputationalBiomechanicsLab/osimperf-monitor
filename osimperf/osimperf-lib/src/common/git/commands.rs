@@ -1,6 +1,17 @@
-use crate::{Command, CommandTrait, PipedCommands};
 use anyhow::{ensure, Context, Result};
+use crate::{Command, CommandTrait, PipedCommands};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::hash::Hash;
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
+// Can be created from the [Repository]
+pub struct Commit {
+    /// The commit we are checking out.
+    pub hash: String,
+    /// The date is for ordering results.
+    pub date: String,
+}
 
 pub fn read_current_branch(repo: &Path) -> Result<String> {
     // git rev-parse --abbrev-ref HEAD
@@ -13,17 +24,17 @@ pub fn read_current_branch(repo: &Path) -> Result<String> {
     Ok(cmd.run_trim()?)
 }
 
-pub fn commit_merged_to(repo: &Path, commit: &str) -> Result<String> {
+pub fn commit_merged_to(repo: &Path, hash: &str) -> Result<String> {
     PipedCommands::parse(&format!(
         r#"git -C {} branch --contains {} --no-color|sed -E s/\*//"#,
         repo.to_str().unwrap(),
-        commit
+        hash
     ))
     .run()
 }
 
-pub fn was_commit_merged_to_branch(repo: &Path, branch: &str, commit: &str) -> Result<bool> {
-    let output = commit_merged_to(repo, commit)?;
+pub fn was_commit_merged_to_branch(repo: &Path, branch: &str, hash: &str) -> Result<bool> {
+    let output = commit_merged_to(repo, hash)?;
     Ok(output.lines().any(|line| line.trim() == branch))
 }
 
@@ -36,12 +47,12 @@ pub fn read_current_commit(repo: &Path) -> Result<String> {
     Ok(cmd.run_trim()?)
 }
 
-pub fn checkout_commit(repo: &Path, commit: &str) -> Result<()> {
+pub fn checkout_commit(repo: &Path, hash: &str) -> Result<()> {
     let mut cmd = Command::new("git");
     cmd.add_arg("-C");
     cmd.add_arg(repo.to_str().unwrap());
     cmd.add_arg("checkout");
-    cmd.add_arg(&commit);
+    cmd.add_arg(&hash);
     cmd.run()?;
     Ok(())
 }
