@@ -87,7 +87,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
 
-    const node_cols: usize = 3;
     let bench_cols = tests.len();
 
     let normal_style = Style::default().bg(Color::Blue);
@@ -101,8 +100,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
 
     let mut compiled_size = 0;
     let mut compiled_duration = 0;
-
-    let mut tests_duration = vec![0; bench_cols];
 
     let mut rows: Vec<Row> = Vec::new();
     for node in nodes.iter() {
@@ -149,31 +146,29 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
                 cells.push(Cell::from(" "));
             }
         } else {
-            for (i, t) in tests.iter().enumerate() {
+            for t in tests.iter() {
                 let result = BenchTestResult::read(&app.results_dir, &node.id(), &t.name)?;
-                cells.push(
-                    match (
-                        result.as_ref().and_then(|x| x.duration),
-                        result
-                            .as_ref()
-                            .and_then(|x| x.duration_stddev)
-                            .unwrap_or(f64::NAN),
-                        result.as_ref().map(|x| x.iteration),
-                        result.as_ref().map(|x| x.failed_count),
-                    ) {
-                        (_, _, _, Some(i)) if i > 0 => {
-                            Cell::from("Failed").style(Style::default().fg(Color::Red))
-                        }
-                        (Some(dt), stddev, Some(_), _) if stddev < 1e-2 => {
-                            Cell::from(format!("{:.2}", dt))
-                        }
-                        (Some(dt), stddev, Some(iter), _) => {
-                            Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
-                                .style(Style::default().fg(Color::DarkGray))
-                        }
-                        _ => Cell::from("Queued"),
-                    },
-                );
+                let dt_mean = result.as_ref().and_then(|x| x.durations.get_mean());
+                let dt_stddev = result.as_ref().and_then(|x| x.durations.get_stddev());
+                let iteration = result.as_ref().map(|x| x.durations.len());
+                let failed_count = result.as_ref().map(|x| x.failed_count);
+                cells.push(match (dt_mean, dt_stddev, iteration, failed_count) {
+                    (_, _, _, Some(i)) if i > 0 => {
+                        Cell::from("Failed").style(Style::default().fg(Color::Red))
+                    }
+                    (Some(dt), Some(stddev), Some(_), _) if stddev < 1e-2 => {
+                        Cell::from(format!("{:.2}", dt))
+                    }
+                    (Some(dt), Some(stddev), Some(iter), _) => {
+                        Cell::from(format!("{:.2} ({:.3}, {iter}X)", dt, stddev))
+                            .style(Style::default().fg(Color::DarkGray))
+                    }
+                    (Some(dt), None, Some(iter), _) => {
+                        Cell::from(format!("{:.2} ({iter}X)", dt))
+                            .style(Style::default().fg(Color::DarkGray))
+                    }
+                    _ => Cell::from("Queued"),
+                });
             }
         }
         rows.push(Row::new(cells));
@@ -184,7 +179,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
         Cell::from("Date"),
         Cell::from(format!(
             "Status\n{}Gb {}min",
-            compiled_size / 1000, compiled_duration
+            compiled_size / 1000,
+            compiled_duration
         )),
     ];
 

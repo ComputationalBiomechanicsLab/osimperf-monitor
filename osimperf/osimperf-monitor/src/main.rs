@@ -4,7 +4,7 @@ use env_logger::Env;
 use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
-    common::{collect_configs, duration_since_boot, read_config, write_default_config},
+    common::{duration_since_boot, read_config, write_default_config},
     CMakeConfig, CompilationNode, Folder, Home, Input, Params, ReadInputs, OPENSIM_CORE_URL,
 };
 use rand::prelude::*;
@@ -116,20 +116,26 @@ fn do_main_loop(args: &Args) -> Result<()> {
     // 4. Goto step 1.
     let mut last_pull = None;
     let mut rng = rand::thread_rng();
+    let test_max_iter = 100;
+    let test_max_failure = 3;
     loop {
         // Run the benchmark tests.
         let mut tests = Vec::new();
-        for node in CompilationNode::collect_archived(&archive)?.drain(..) {
-            for setup in BenchTestSetup::find_all(&tests_dir)?.drain(..) {
+        let nodes =CompilationNode::collect_archived(&archive)?;
+        let test_setups = BenchTestSetup::find_all(&tests_dir)?;
+        for node in nodes.iter() {
+            for setup in test_setups.iter() {
                 trace!("Queueing test at {:#?} at {:#?}", setup, node);
-                if let Some(test) = TestNode::new(setup, node.clone(), &home, &results_dir)? {
+                if let Some(test) = TestNode::new(&setup, &node, &home, &results_dir)? {
                     tests.push(test);
                 }
             }
         }
-        tests.shuffle(&mut rng);
 
-        for _ in 0..args.test_repeats {
+        while tests.len() > 0 {
+            tests.retain(|t| t.should_run(test_max_iter, test_max_failure));
+            tests.shuffle(&mut rng);
+
             for test in tests.iter_mut() {
                 trace!("Start bench test: {:#?}", test);
                 let res = test.run()?;
