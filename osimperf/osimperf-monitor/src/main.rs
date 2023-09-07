@@ -5,7 +5,7 @@ use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
     common::{duration_since_boot, read_config, write_default_config},
-    CMakeConfig, CompilationNode, Folder, Home, Input, Params, ReadInputs, OPENSIM_CORE_URL,
+    CMakeConfig, CompilationNode, Folder, Home, Input, Commit, ReadInputs, OPENSIM_CORE_URL,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -163,7 +163,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
 
         // Start compiling the external biolab repo.
         for i in 0..biolab.len() {
-            let param = Params::last_commit(&biolab[i])?;
+            let param = Commit::last_commit(&biolab[i])?;
             let mut node = CompilationNode::new(biolab[i].clone(), param, &archive)?;
 
             compiled_a_node |= node.run(&home, &build, &cmake_config)?;
@@ -181,7 +181,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
         // Take larger monthly versions, and record the date from which we can still compile.
         let mut ok_start_date = None;
 
-        for param in Params::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
+        for param in Commit::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
             let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
             debug!("Start compiling monthly {:#?}", node);
@@ -218,7 +218,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
         };
 
         // Now do another finer Daily commits compilation.
-        for param in Params::collect_daily_commits(&input, Some(&fine_start_date), None)?.iter() {
+        for param in Commit::collect_daily_commits(&input, Some(&fine_start_date), None)?.iter() {
             let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
             debug!("Start compiling daily {:#?}", node);

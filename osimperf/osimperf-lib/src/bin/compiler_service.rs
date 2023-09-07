@@ -93,7 +93,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
     // Keep going back in time until failing to compile for a number of consecutive times.
     let mut failed_count = 0;
     let mut ok_start_date = None;
-    for param in Params::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
+    for param in Commit::collect_monthly_commits(&input, Some(&args.start_date), None)?.iter() {
         let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
         // Maintain the list of stray nodes.
@@ -128,7 +128,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
     };
 
     // Now do another finer Daily commits compilation.
-    for param in Params::collect_monthly_commits(&input, Some(&fine_start_date), None)?.iter() {
+    for param in Commit::collect_monthly_commits(&input, Some(&fine_start_date), None)?.iter() {
         let mut node = CompilationNode::new(input.clone(), param.clone(), &archive)?;
 
         // Maintain the list of stray nodes.

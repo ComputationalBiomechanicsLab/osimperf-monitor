@@ -84,7 +84,7 @@ impl CompilationNode {
         Ok(vec)
     }
 
-    pub fn new(input: Input, params: Params, archive: &Archive) -> Result<Self> {
+    pub fn new(input: Input, params: Commit, archive: &Archive) -> Result<Self> {
         let repo = Repository::new(input, params)?;
         let mut out = Self {
             archive: archive.path()?.to_path_buf(),

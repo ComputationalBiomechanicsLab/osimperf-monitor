@@ -5,14 +5,14 @@ use log::{debug, info, trace};
 
 #[derive(Clone, Debug)]
 // Can be created from the [Input]
-pub struct Params {
+pub struct Commit {
     /// The commit we are checking out.
     pub hash: String,
     /// The date is for ordering results.
     pub date: String,
 }
 
-impl Params {
+impl Commit {
     pub fn last_commit(input: &Input) -> anyhow::Result<Self> {
         git::get_last_commit(&input.repo, &input.branch).map(|c| Self {
             hash: c.0,
@@ -40,7 +40,7 @@ impl Params {
         input: &Input,
         after_date: Option<&str>,
         before_date: Option<&str>,
-    ) -> anyhow::Result<Vec<Params>> {
+    ) -> anyhow::Result<Vec<Commit>> {
         let mut commits = Vec::<Self>::new();
         for c in Self::commits_between(&input, after_date, before_date)?.drain(..) {
             if let Some(last) = commits.last() {
@@ -62,7 +62,7 @@ impl Params {
         input: &Input,
         after_date: Option<&str>,
         before_date: Option<&str>,
-    ) -> anyhow::Result<Vec<Params>> {
+    ) -> anyhow::Result<Vec<Commit>> {
         let mut commits = Vec::<Self>::new();
         for c in Self::commits_between(&input, after_date, before_date)?.drain(..) {
             if let Some(last) = commits.last() {

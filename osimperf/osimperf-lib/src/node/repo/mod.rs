@@ -4,12 +4,12 @@ use std::hash::Hash;
 
 mod id;
 mod input;
-mod params;
+mod commit;
 mod source;
 
 pub use id::Id;
 pub use input::{ReadInput, Input, ReadInputs};
-pub use params::Params;
+pub use commit::Commit;
 pub use source::Source;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
@@ -29,7 +29,7 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn new(input: Input, params: Params) -> anyhow::Result<Self> {
+    pub fn new(input: Input, params: Commit) -> anyhow::Result<Self> {
         input.verify_url()?;
         Ok(Self {
             name: input.name,
