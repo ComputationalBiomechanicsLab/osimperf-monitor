@@ -63,32 +63,20 @@ impl Default for Status {
 /// The three compilation targets:
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 pub struct State {
-    pub status_dependencies: Status,
-    pub status_opensim_core: Status,
-    pub status_tests_source: Status,
+    status: [Status; 3],
 }
 
 impl State {
     pub fn set(&mut self, target: CompilationTarget, status: Status) {
-        match target {
-            CompilationTarget::Dependencies => self.status_dependencies = status,
-            CompilationTarget::OpenSimCore => self.status_opensim_core = status,
-            CompilationTarget::TestsSource => self.status_tests_source = status,
-        }
+        self.status[target as usize] = status;
     }
 
     pub fn reset(&mut self) {
-        self.status_dependencies = Status::Idle;
-        self.status_opensim_core = Status::Idle;
-        self.status_tests_source = Status::Idle;
+        self.status.iter_mut().for_each(|s| *s = Status::Idle);
     }
 
-    pub fn get(&self) -> [&Status; 3] {
-        return [
-            &self.status_dependencies,
-            &self.status_opensim_core,
-            &self.status_tests_source,
-        ];
+    pub fn get(&self) -> &[Status; 3] {
+        &self.status
     }
 }
 

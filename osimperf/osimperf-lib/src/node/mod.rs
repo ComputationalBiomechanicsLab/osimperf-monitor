@@ -162,7 +162,7 @@ impl CompilationNode {
                 let size = folder_size(&install_dir).context("failed to get size of install")?;
 
                 let updated = Ok(Complete {
-                    duration: *duration,
+                    duration: duration,
                     size,
                 });
 
