@@ -7,7 +7,7 @@ use crossterm::{
 };
 use osimperf_lib::{
     bench_tests::{BenchTestResult, BenchTestSetup},
-    Archive, CompilationNode, Complete, Focus, Folder, Home, Progress, ResultsFolder, Status,
+    Archive, CompilationNode, Complete, CompilationTarget, Folder, Home, Progress, ResultsFolder, Status,
 };
 use ratatui::{prelude::*, widgets::*};
 use std::{
@@ -114,14 +114,14 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
             .enumerate()
             .filter(|(_, s)| !s.is_done())
         {
-            let focus = Focus::from(i);
+            let target = CompilationTarget::from(i);
             cells.push(match state {
-                Status::Idle => Cell::from(format!("Queued {}", focus.short_desc())),
+                Status::Idle => Cell::from(format!("Queued {}", target.short_desc())),
                 Status::Compiling(Progress { percentage }) => {
-                    Cell::from(format!("{}: {}%", focus.short_desc(), percentage))
+                    Cell::from(format!("{}: {}%", target.short_desc(), percentage))
                         .set_style(Style::default().bg(Color::Blue))
                 }
-                Status::Error(_) => Cell::from(format!("{}: Failed", focus.short_desc()))
+                Status::Error(_) => Cell::from(format!("{}: Failed", target.short_desc()))
                     .set_style(Style::default().bg(Color::Red)),
                 _ => panic!(),
             });

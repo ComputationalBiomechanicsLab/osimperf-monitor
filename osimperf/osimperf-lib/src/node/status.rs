@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
-use super::Focus;
+use super::CompilationTarget;
 
 // TODO status improvements
 // size of install
@@ -69,11 +69,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn set(&mut self, focus: Focus, status: Status) {
-        match focus {
-            Focus::Dependencies => self.status_dependencies = status,
-            Focus::OpenSimCore => self.status_opensim_core = status,
-            Focus::TestsSource => self.status_tests_source = status,
+    pub fn set(&mut self, target: CompilationTarget, status: Status) {
+        match target {
+            CompilationTarget::Dependencies => self.status_dependencies = status,
+            CompilationTarget::OpenSimCore => self.status_opensim_core = status,
+            CompilationTarget::TestsSource => self.status_tests_source = status,
         }
     }
 
@@ -91,26 +91,26 @@ impl State {
         ];
     }
 
-    pub fn get_compiler_list(&self) -> [Option<Focus>; 3] {
+    pub fn get_compiler_list(&self) -> [Option<CompilationTarget>; 3] {
         [
-            Some(Focus::Dependencies),
-            Some(Focus::OpenSimCore),
-            Some(Focus::TestsSource),
+            Some(CompilationTarget::Dependencies),
+            Some(CompilationTarget::OpenSimCore),
+            Some(CompilationTarget::TestsSource),
         ]
         .map(|f| f.filter(|x| self.get_compiler_job(x)))
     }
 
-    fn get_compiler_job(&self, focus: &Focus) -> bool {
-        match focus {
-            Focus::Dependencies => match self.status_dependencies {
+    fn get_compiler_job(&self, target: &CompilationTarget) -> bool {
+        match target {
+            CompilationTarget::Dependencies => match self.status_dependencies {
                 Status::Done(_) => return false,
                 _ => return true,
             },
-            Focus::OpenSimCore => match self.status_opensim_core {
+            CompilationTarget::OpenSimCore => match self.status_opensim_core {
                 Status::Done(_) => return false,
                 _ => return true,
             },
-            Focus::TestsSource => match self.status_tests_source {
+            CompilationTarget::TestsSource => match self.status_tests_source {
                 Status::Done(_) => return false,
                 _ => return true,
             },

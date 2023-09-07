@@ -1,4 +1,4 @@
-use super::super::Focus;
+use super::super::CompilationTarget;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
@@ -13,23 +13,23 @@ pub struct CMakeConfig {
 }
 
 impl CMakeConfig {
-    pub fn cmake_args(&self, focus: Focus) -> Vec<String> {
-        match focus {
-            Focus::OpenSimCore => self
+    pub fn cmake_args(&self, target: CompilationTarget) -> Vec<String> {
+        match target {
+            CompilationTarget::OpenSimCore => self
                 .common
                 .iter()
                 .chain(self.opensim_and_dependencies.iter())
                 .chain(self.opensim.iter())
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>(),
-            Focus::Dependencies => self
+            CompilationTarget::Dependencies => self
                 .common
                 .iter()
                 .chain(self.opensim_and_dependencies.iter())
                 .chain(self.dependencies.iter())
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>(),
-            Focus::TestsSource => self
+            CompilationTarget::TestsSource => self
                 .common
                 .iter()
                 .chain(self.tests.iter())

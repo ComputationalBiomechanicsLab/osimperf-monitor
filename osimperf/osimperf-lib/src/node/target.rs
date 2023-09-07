@@ -1,12 +1,12 @@
 #[repr(usize)]
 #[derive(Copy, Clone, Debug)]
-pub enum Focus {
+pub enum CompilationTarget {
     Dependencies = 0,
     OpenSimCore = 1,
     TestsSource = 2,
 }
 
-impl Focus {
+impl CompilationTarget {
     pub fn to_str(&self) -> &str {
         match self {
             Self::OpenSimCore => "opensim-core",

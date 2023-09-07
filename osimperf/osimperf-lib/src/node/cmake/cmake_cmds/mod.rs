@@ -8,7 +8,7 @@ use anyhow::{anyhow, ensure, Context};
 use std::{io::Write, time::Duration};
 
 use super::CMakeConfig;
-use crate::node::{Focus, Id};
+use crate::node::{CompilationTarget, Id};
 use crate::{
     path_to_build, path_to_install, path_to_source, BuildFolder, Command, CommandTrait, Home, RepositoryState,
 };
@@ -25,24 +25,24 @@ impl CMakeCmds {
         home: &Home,
         build: &BuildFolder,
         config: &CMakeConfig,
-        focus: Focus,
+        cmp_target: CompilationTarget,
     ) -> anyhow::Result<Self> {
-        let dependency = match focus {
-            Focus::Dependencies => None,
-            Focus::OpenSimCore => Some(path_to_install(Focus::Dependencies, id)),
-            Focus::TestsSource => Some(path_to_install(Focus::OpenSimCore, id)),
+        let dependency = match cmp_target {
+            CompilationTarget::Dependencies => None,
+            CompilationTarget::OpenSimCore => Some(path_to_install(CompilationTarget::Dependencies, id)),
+            CompilationTarget::TestsSource => Some(path_to_install(CompilationTarget::OpenSimCore, id)),
         };
 
-        let source = path_to_source(focus, home, repo)?;
+        let source = path_to_source(cmp_target, home, repo)?;
 
-        let target = match focus {
-            Focus::Dependencies => None,
-            Focus::OpenSimCore => Some("install"),
-            Focus::TestsSource => Some("install"),
+        let target = match cmp_target {
+            CompilationTarget::Dependencies => None,
+            CompilationTarget::OpenSimCore => Some("install"),
+            CompilationTarget::TestsSource => Some("install"),
         };
 
-        let mut args = config.cmake_args(focus);
-        if let Focus::OpenSimCore = focus {
+        let mut args = config.cmake_args(cmp_target);
+        if let CompilationTarget::OpenSimCore = cmp_target {
             let add_arg = format!(
                 "-DOPENSIM_DEPENDENCIES_DIR={}",
                 dependency.clone().unwrap().to_str().unwrap()
@@ -53,14 +53,14 @@ impl CMakeCmds {
         Ok(Self {
             configure: CMakeConfigurerer {
                 source,
-                build: path_to_build(focus, build)?,
-                install: path_to_install(focus, id),
+                build: path_to_build(cmp_target, build)?,
+                install: path_to_install(cmp_target, id),
                 args: args.iter(),
                 dependency,
             }
             .into_cmd(),
             build: CMakeBuilder {
-                build: path_to_build(focus, build)?,
+                build: path_to_build(cmp_target, build)?,
                 target,
                 num_jobs: config.num_jobs,
             }

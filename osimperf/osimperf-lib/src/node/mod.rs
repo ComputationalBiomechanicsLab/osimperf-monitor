@@ -1,6 +1,6 @@
 mod cmake;
 mod file;
-mod focus;
+mod target;
 mod installed_size;
 mod repo;
 mod status;
@@ -8,7 +8,7 @@ mod status;
 use anyhow::{Context, Result};
 pub use cmake::*;
 pub use file::NodeFile;
-pub use focus::Focus;
+pub use target::CompilationTarget;
 pub use repo::*;
 pub use status::{Complete, Progress, State, Status};
 
@@ -26,20 +26,20 @@ use crate::{erase_folder, Archive, BuildFolder, Folder, Home};
 use self::installed_size::folder_size;
 use log::trace;
 
-pub fn path_to_install<'a>(focus: Focus, id: &Id<'a>) -> PathBuf {
-    id.path().join(focus.to_str())
+pub fn path_to_install<'a>(target: CompilationTarget, id: &Id<'a>) -> PathBuf {
+    id.path().join(target.to_str())
 }
 
-pub fn path_to_source(focus: Focus, home: &Home, repo: &RepositoryState) -> Result<PathBuf> {
-    Ok(match focus {
-        Focus::OpenSimCore => repo.path().to_owned(),
-        Focus::Dependencies => repo.path().join("dependencies"),
-        Focus::TestsSource => home.path()?.join("source"),
+pub fn path_to_source(target: CompilationTarget, home: &Home, repo: &RepositoryState) -> Result<PathBuf> {
+    Ok(match target {
+        CompilationTarget::OpenSimCore => repo.path().to_owned(),
+        CompilationTarget::Dependencies => repo.path().join("dependencies"),
+        CompilationTarget::TestsSource => home.path()?.join("source"),
     })
 }
 
-pub fn path_to_build(focus: Focus, build: &BuildFolder) -> Result<PathBuf> {
-    Ok(build.path()?.join(focus.to_str()))
+pub fn path_to_build(target: CompilationTarget, build: &BuildFolder) -> Result<PathBuf> {
+    Ok(build.path()?.join(target.to_str()))
 }
 
 ///
@@ -118,8 +118,8 @@ impl CompilationNode {
         // Go over compile targets: [dependencies, opensim-core, tests].
         for i in 0..3 {
             // Start compiling project.
-            let focus = Focus::from(i);
-            let install_dir = self.id().path().join(focus.to_str());
+            let target = CompilationTarget::from(i);
+            let install_dir = self.id().path().join(target.to_str());
 
             if self.state.get()[i].should_compile() {
                 ret = true;
@@ -127,11 +127,11 @@ impl CompilationNode {
 
                 // First update the status.
                 self.state
-                    .set(focus, Status::Compiling(Progress { percentage: 0. }));
+                    .set(target, Status::Compiling(Progress { percentage: 0. }));
                 self.try_write()?;
 
                 // Setup cmake commands.
-                let cmd = CMakeCmds::new(&self.id(), &checked_out, home, build, config, focus)?;
+                let cmd = CMakeCmds::new(&self.id(), &checked_out, home, build, config, target)?;
                 trace!("CMAKE COMMAND:\n{}", cmd.print_pretty());
 
                 // Erase the install dir.
@@ -139,10 +139,10 @@ impl CompilationNode {
                     .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
 
                 // Erase the build dir.
-                erase_folder(&build.path()?.join(focus.to_str()))
+                erase_folder(&build.path()?.join(target.to_str()))
                     .with_context(|| format!("failed to erase build dir"))?;
 
-                let mut progress = CMakeProgressStreamer::new(self, focus);
+                let mut progress = CMakeProgressStreamer::new(self, target);
 
                 // Start compilation.
                 let output = cmd
@@ -153,7 +153,7 @@ impl CompilationNode {
                 let output = output.map(|duration| Complete { duration, size: 0 });
 
                 // Update the status.
-                self.state.set(focus, Status::from_output(output));
+                self.state.set(target, Status::from_output(output));
                 self.try_write()?;
             }
 
@@ -167,7 +167,7 @@ impl CompilationNode {
                 });
 
                 // Update the status.
-                self.state.set(focus, Status::from_output(updated));
+                self.state.set(target, Status::from_output(updated));
                 self.try_write()?;
             }
 

@@ -6,12 +6,12 @@ use std::str;
 
 use crate::{
     node::status::{Progress, Status},
-    CompilationNode, Focus, NodeFile,
+    CompilationNode, CompilationTarget, NodeFile,
 };
 
 #[derive(Debug)]
 pub struct CMakeProgressStreamer<'a> {
-    focus: Focus,
+    target: CompilationTarget,
     buffer: String,
     percentage: Option<f64>,
     parent: &'a mut CompilationNode,
@@ -19,9 +19,9 @@ pub struct CMakeProgressStreamer<'a> {
 }
 
 impl<'a> CMakeProgressStreamer<'a> {
-    pub fn new(parent: &'a mut CompilationNode, focus: Focus) -> Self {
+    pub fn new(parent: &'a mut CompilationNode, target: CompilationTarget) -> Self {
         Self {
-            focus,
+            target,
             buffer: String::new(),
             percentage: None,
             parent,
@@ -47,7 +47,7 @@ impl<'a> CMakeProgressStreamer<'a> {
                             })?);
 
                         self.parent.state.set(
-                            self.focus,
+                            self.target,
                             Status::Compiling(Progress {
                                 percentage: self.percentage.unwrap_or(0.),
                             }),
