@@ -5,8 +5,8 @@ use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
     common::{duration_since_boot, read_config, write_default_config},
-    BioLabRepositoryConfig, CMakeConfig, CompilationNode, Folder, Home,
-    RepositoryConfig,
+    Archive, BioLabRepositoryConfig, CMakeConfig, CompilationNode, Folder, Home, NodeFile,
+    Repository, RepositoryConfig,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -85,11 +85,11 @@ fn do_main_loop(args: &Args) -> Result<()> {
     let cmake_config = read_config(&cmake_config_path)?;
     debug!("compile flags = {:#?}", cmake_config);
 
-    let repo = RepositoryConfig::default().take(&home)?;
+    let mut repo = RepositoryConfig::default().take(&home)?;
     debug!("OpenSim repo = {:#?}", repo);
 
     // Check if there are any other repositories to follow.
-    let biolab = read_config::<BioLabRepositoryConfig>(
+    let mut biolab = read_config::<BioLabRepositoryConfig>(
         &home
             .path()?
             .join("compile-flags")
@@ -135,14 +135,18 @@ fn do_main_loop(args: &Args) -> Result<()> {
         }
 
         // Pull latest changes to opensim.
-        if false {
-            let dt = duration_since_boot().context("Failed to read system clock")?;
-            let prev_dt = last_pull.get_or_insert(dt);
-            if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
-                *prev_dt = dt;
-                // TODO Need to implement pulling latest commits
-                // git::pull(repo.repo, repo.branch)?;
+        let dt = duration_since_boot().context("Failed to read system clock")?;
+        let prev_dt = last_pull.get_or_insert(dt);
+        if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
+            *prev_dt = dt;
+            info!("Pull latest OpenSim-Core");
+            info!("{}", repo.pull()?);
+            for r in biolab.iter_mut() {
+                info!("Pull latest Computational Biomechanics");
+                info!("{}", r.pull()?);
             }
+
+            garbage_collector(&archive, &repo)?;
         }
 
         // Do one compilation.
@@ -244,4 +248,38 @@ fn warm_up() -> usize {
         sum = sum.overflowing_add(*d).0;
     }
     sum
+}
+
+fn garbage_collector(archive: &Archive, repo: &Repository) -> Result<()> {
+    // Cleanup archive:
+    // We want to have a daily version installed: but we pull periodically per day.
+    // This means that we might install different versions
+    let mut stray_nodes = CompilationNode::collect_archived(&archive)?;
+    let daily_commits = repo.collect_daily_commits(None, None)?;
+    // Look for nodes that have a duplicate day, and are not part of the daily commits
+    // list. We do not want to accidentally delete stuff from the daily commit list,
+    // nor do we want to remove something unique.
+    while stray_nodes.len() > 0 {
+        let check_node = stray_nodes.remove(0);
+        // Check if there are multiple nodes on the same day.
+        let mut duplicate_day = stray_nodes
+            .iter()
+            .filter(|n| n.commit.date == check_node.commit.date)
+            .count()
+            > 1;
+        // Check if it is not part of the daily list.
+        duplicate_day &= daily_commits
+            .iter()
+            .filter(|n| n.date == check_node.commit.date)
+            .count()
+            != 1;
+        // This node is OK, we keep it.
+        if !duplicate_day {
+            continue;
+        }
+        // Delete the stray node.
+        check_node.delete_folder()?;
+        // TODO delete stray test results.
+    }
+    Ok(())
 }

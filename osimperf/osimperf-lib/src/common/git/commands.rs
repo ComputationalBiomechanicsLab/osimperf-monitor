@@ -146,3 +146,7 @@ pub fn verify_repository(repo: &Path, expected_url: &str) -> Result<()> {
         .context("failed to verify path points to correct repo")?;
     Ok(())
 }
+
+pub fn pull(repo: &Path) -> Result<String> {
+    Command::parse(&format!("git -C {} pull", repo.to_str().unwrap())).run_trim()
+}

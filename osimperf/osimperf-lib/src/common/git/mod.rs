@@ -1,6 +1,6 @@
 mod commands;
 
-pub use commands::{read_repo_url, was_commit_merged_to_branch, read_current_commit, checkout_commit};
+pub use commands::{read_repo_url, was_commit_merged_to_branch, read_current_commit, checkout_commit, pull};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

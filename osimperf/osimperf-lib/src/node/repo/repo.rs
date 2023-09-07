@@ -182,6 +182,10 @@ impl Repository {
     pub fn branch(&self) -> &str {
         self.branch.as_ref()
     }
+
+    pub fn pull(&mut self) -> Result<String> {
+        git::pull(&self.path)
+    }
 }
 
 /// This is the repository at the current checked out commit.

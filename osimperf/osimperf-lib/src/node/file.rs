@@ -1,4 +1,6 @@
-use log::trace;
+use anyhow::Context;
+use log::{warn, trace};
+use std::fs::remove_dir_all;
 use std::{fmt::Debug, fs::create_dir};
 use std::path::PathBuf;
 
@@ -68,6 +70,15 @@ pub trait NodeFile: Serialize + DeserializeOwned + Debug {
             self.try_write()?;
         }
 
+        Ok(())
+    }
+
+    fn delete_folder(self) -> anyhow::Result<()> {
+        let file = self.path_to_self();
+        let dir = file.parent().unwrap();
+        warn!("Removing directory {:?}", dir);
+        warn!("Miising directory removal implementation");
+        // remove_dir_all(&dir).context(format!("Failed to remove directory: {:?}", dir))?;
         Ok(())
     }
 }
