@@ -37,7 +37,7 @@ fn do_main(args: Args) -> Result<()> {
     for node in nodes.iter() {
         info!(
             "{}, {}, {}",
-            node.repo.name, node.commit.date, node.commit.hash
+            node.repo.name(), node.commit.date, node.commit.hash
         );
     }
 
