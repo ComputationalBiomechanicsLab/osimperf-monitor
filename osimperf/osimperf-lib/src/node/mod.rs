@@ -75,6 +75,7 @@ impl CompilationNode {
         ".osimperf-compiler.node"
     }
 
+    /// Returns true if everything compiled succesfully.
     pub fn is_done(&self) -> bool {
         self.state.get().iter().all(|s| s.is_done())
     }
@@ -107,28 +108,42 @@ impl CompilationNode {
     }
 
     pub fn run(&mut self, home: &Home, build: &BuildFolder, config: &CMakeConfig) -> Result<bool> {
+        // Returns whether there was any compilation attempted.
+        let already_compiled = self.state.get().iter().all(|x| x.is_done());
+        if already_compiled {
+            return Ok(false);
+        }
+
         // Check if the config changed since last time we compiled.
         let mut hasher = DefaultHasher::new();
         config.hash(&mut hasher);
         let hash = hasher.finish();
         let changed = hash != *self.config_hash.replace(hash).get_or_insert(hash);
 
-        // If config changed, we need to recompile.
+        // If config changed, and compilation not yet succesful, we recompile.
         if changed {
+            warn!("Cmake config changed -- retry compilation");
             self.state.reset();
         }
 
-        // Returns true if there was any compilation done.
-        let ret = self.state.get().iter().any(|x| x.should_compile());
+        // If we already failed compiling, no need to try again.
+        let already_failed = self.state.get().iter().any(|x| x.has_failed());
+        if already_failed {
+            return Ok(false);
+        }
+
+        // Otherwise we start compiling.
 
         // Go over compile targets: [dependencies, opensim-core, tests].
-        for i in 0..3 {
+        for target in CompilationTarget::list_all() {
             // Start compiling project.
-            let target = CompilationTarget::from(i);
             let install_dir = self.install_dir(target);
 
-            if self.state.get()[i].should_compile() {
-                let checked_out = self.repo.checkout(&self.commit)?;
+            // Check the status of this target, and if we should attempt compilation.
+            if self.state.status(target).should_compile() {
+
+                // Check-out the Repository to the correct commit.
+                let checked_out_token = self.repo.checkout(&self.commit)?;
 
                 // First update the status.
                 self.state
@@ -136,7 +151,7 @@ impl CompilationNode {
                 self.try_write()?;
 
                 // Setup cmake commands.
-                let cmd = CMakeCmds::new(&self.id(), &checked_out, home, build, config, target)?;
+                let cmd = CMakeCmds::new(&self.id(), &checked_out_token, home, build, config, target)?;
                 trace!("CMAKE COMMAND:\n{}", cmd.print_pretty());
 
                 // Erase the install dir.
@@ -147,6 +162,7 @@ impl CompilationNode {
                 erase_folder(&build.path()?.join(target.to_str()))
                     .with_context(|| format!("failed to erase build dir"))?;
 
+                // Setup something to keep track of the progres (for the UI).
                 let mut progress = CMakeProgressStreamer::new(self, target);
 
                 // Start compilation.
@@ -156,16 +172,22 @@ impl CompilationNode {
 
                 // Update the status.
                 self.state.set(target, Status::from_output(output));
+
+                // Update the file backing this struct.
                 self.try_write()?;
             }
 
-            if !self.state.get()[i].is_done() {
+            // We failed to compile, so we stop.
+            if !self.state.status(target).is_done() {
                 break;
             }
         }
-        Ok(ret)
+
+        // Return that we at least attempted to compile something.
+        Ok(true)
     }
 
+    /// This id is used to create a file name that is discernable from the others.
     pub fn id<'a>(&'a self) -> Id<'a> {
         Id {
             name: self.repo.name(),

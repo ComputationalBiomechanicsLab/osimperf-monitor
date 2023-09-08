@@ -23,6 +23,13 @@ impl Status {
         }
     }
 
+    pub fn has_failed(&self) -> bool {
+        if let Self::Error(_) = self {
+            return true;
+        }
+        false
+    }
+
     pub fn is_done(&self) -> bool {
         if let Self::Done(_) = self {
             return true;
@@ -66,9 +73,13 @@ impl State {
     pub fn get(&self) -> &[Status; 3] {
         &self.status
     }
+
+    pub fn status(&self, target: CompilationTarget) -> &Status {
+        &self.status[target as usize]
+    }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Progress {
     pub percentage: f64,
 }

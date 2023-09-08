@@ -31,4 +31,8 @@ impl CompilationTarget {
             _ => panic!(),
         }
     }
+
+    pub fn list_all() -> [Self; 3] {
+        [Self::Dependencies, Self::OpenSimCore, Self::TestsSource]
+    }
 }
