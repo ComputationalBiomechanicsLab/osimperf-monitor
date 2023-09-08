@@ -151,7 +151,7 @@ impl CompilationNode {
 
                 // Start compilation.
                 let output = cmd
-                    .run(&mut progress)
+                    .run(&mut progress, &install_dir)
                     .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
                 // Update the status.

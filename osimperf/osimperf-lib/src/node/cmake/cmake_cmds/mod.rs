@@ -5,6 +5,7 @@ pub use build::CMakeBuilder;
 pub use configure::CMakeConfigurerer;
 
 use anyhow::{anyhow, ensure, Context};
+use std::path::Path;
 use std::{io::Write, time::Duration};
 
 use super::CMakeConfig;
@@ -68,9 +69,11 @@ impl CMakeCmds {
         })
     }
 
-    pub fn run(&self, log: &mut impl Write) -> anyhow::Result<Duration> {
+    pub fn run(&self, log: &mut impl Write, log_dir: &Path) -> anyhow::Result<Duration> {
         let config_output = self.configure.run_and_stream(log)?;
-        config_output.write_logs(log)?;
+
+        config_output.write_stdout(&log_dir.join("osimperf-configure-stdout.log"))?;
+        config_output.write_stderr(&log_dir.join("osimperf-configure-stderr.log"))?;
         if !config_output.success() {
             Err(anyhow!("configuration step failed"))
                 .with_context(|| format!("output = {:?}", config_output.stdout_str_clone()))
@@ -78,8 +81,8 @@ impl CMakeCmds {
         }
 
         let build_output = self.build.run_and_stream(log)?;
-        build_output.write_logs(log)?;
-        ensure!(build_output.success(), "build step failed");
+        build_output.write_stdout(&log_dir.join("osimperf-build-stdout.log"))?;
+        build_output.write_stderr(&log_dir.join("osimperf-build-stderr.log"))?;
         if !build_output.success() {
             Err(anyhow!("build step failed"))
                 .with_context(|| format!("output = {:?}", build_output.stdout_str_clone()))
