@@ -5,8 +5,8 @@ use log::{debug, info, trace, warn};
 use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
     common::{duration_since_boot, read_config, write_default_config},
-    Archive, BioLabRepositoryConfig, CMakeConfig, CompilationNode, Folder, Home, NodeFile,
-    Repository, RepositoryConfig,
+    Archive, BioLabRepositoryConfig, CMakeConfig, CMakeConfigReader, CompilationNode, Folder, Home,
+    NodeFile, Repository, RepositoryConfig,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -83,13 +83,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
     let results_dir = home.default_results()?;
     let tests_dir = home.path()?.join("tests");
 
-    let cmake_config_path = args.cmake.clone().unwrap_or(
-        home.path()?
-            .join("compile-flags")
-            .join("osimperf-cmake.conf"),
-    );
-    let cmake_config = read_config(&cmake_config_path)?;
-    debug!("compile flags = {:#?}", cmake_config);
+    let cmake_config = CMakeConfigReader::read(&home)?;
+    info!("compile flags = {:#?}", cmake_config);
 
     let mut repo = RepositoryConfig::default().take(&home)?;
     debug!("OpenSim repo = {:#?}", repo);
@@ -168,7 +163,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
             let commit = biolab[i].last_commit()?;
             let mut node = CompilationNode::new(biolab[i].clone(), commit, &archive)?;
 
-            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+            let config = cmake_config.get(&node.commit.date()?);
+            compiled_a_node |= node.run(&home, &build, config)?;
 
             // Stop after a single compilation.
             if compiled_a_node {
@@ -193,7 +189,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
             let mut node = CompilationNode::new(repo.clone(), commit, &archive)?;
 
             debug!("Start compiling monthly {:#?}", node);
-            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+            let config = cmake_config.get(&node.commit.date()?);
+            compiled_a_node |= node.run(&home, &build, &config)?;
 
             // Stop compiling if we failed X times in a row.
             if !node.state.get().iter().all(|s| s.is_done()) {
@@ -233,7 +230,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
             let mut node = CompilationNode::new(repo.clone(), commit, &archive)?;
 
             debug!("Start compiling daily {:#?}", node);
-            compiled_a_node |= node.run(&home, &build, &cmake_config)?;
+            let config = cmake_config.get(&node.commit.date()?);
+            compiled_a_node |= node.run(&home, &build, &config)?;
             if compiled_a_node {
                 break;
             }

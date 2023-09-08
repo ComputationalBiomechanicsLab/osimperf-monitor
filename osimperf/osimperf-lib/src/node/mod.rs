@@ -24,7 +24,7 @@ use crate::git::Commit;
 use crate::{erase_folder, Archive, BuildFolder, Folder, Home};
 
 use self::installed_size::folder_size;
-use log::trace;
+use log::{trace, warn};
 
 pub fn path_to_install<'a>(target: CompilationTarget, id: &Id<'a>) -> PathBuf {
     id.path().join(target.to_str())

@@ -1,6 +1,13 @@
+use crate::common::{read_config, visit_dirs};
+use crate::Folder;
+use crate::{git::Date, Home};
+
 use super::super::CompilationTarget;
+use anyhow::{Context, Result};
+use log::{info, debug};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct CMakeConfig {
@@ -62,4 +69,85 @@ impl Default for CMakeConfig {
             tests: vec![],
         }
     }
+}
+
+#[derive(Debug)]
+pub struct CMakeConfigReader {
+    default_config: CMakeConfig,
+    dated_configs: Vec<(Date, CMakeConfig)>,
+}
+
+/// The default file name containing the cmake compiler flags.
+static DEFAULT_CMAKE_CONFIG_FILE_NAME: &'static str = "osimperf-cmake.conf";
+
+static DATED_CMAKE_CONFIG_FILE_NAME_PREFIX: &'static str = "osimperf-cmake-before-";
+
+/// The subfolder that will be searched for all cmake compile flags.
+static DEFAULT_CMAKE_CONFIG_DIR: &'static str = "compile-flags";
+
+impl CMakeConfigReader {
+    fn read_default(home: &Home) -> Result<Self> {
+        let dir = home
+            .path()?
+            .join(DEFAULT_CMAKE_CONFIG_DIR)
+            .join(DEFAULT_CMAKE_CONFIG_FILE_NAME);
+        Ok(Self {
+            default_config: read_config(&dir)?,
+            dated_configs: Vec::new(),
+        })
+    }
+
+    pub fn read(home: &Home) -> Result<Self> {
+        // Must read atleast the default cmake config file.
+        let mut out = Self::read_default(home)?;
+
+        // Proceed by checking if there are any config files with a date in the title.
+        let dir = home.path()?.join(DEFAULT_CMAKE_CONFIG_DIR);
+
+        let mut files = Vec::<PathBuf>::new();
+        visit_dirs(&dir, &mut |entry| {
+            files.push(entry.path());
+        })?;
+
+        for file in files.iter() {
+            if let Some(config) = try_read_as_dated_cmake_config(file)? {
+                out.dated_configs.push(config);
+            }
+        }
+        out.dated_configs.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// Returns the config that is dated to be after the given date, or the default config is there
+    /// is none.
+    pub fn get(&self, date: &Date) -> &CMakeConfig {
+        for (config_date_stamp, config) in self.dated_configs.iter() {
+            if date < config_date_stamp {
+                return config;
+            }
+        }
+        &self.default_config
+    }
+}
+
+fn try_read_as_dated_cmake_config(path: &Path) -> Result<Option<(Date, CMakeConfig)>> {
+    let file_name = if let Some(file_name) = path.file_name().map(|x| x.to_str()).flatten() {
+        file_name
+    } else {
+        return Ok(None);
+    };
+
+    if !file_name.contains(DATED_CMAKE_CONFIG_FILE_NAME_PREFIX) {
+        return Ok(None);
+    }
+    debug!("Found cmake config {}", file_name);
+    let s = file_name
+        .split_at(DATED_CMAKE_CONFIG_FILE_NAME_PREFIX.len())
+        .1
+        .split_at(10)
+        .0;
+    let date =
+        Date::parse_from_str(s, "%Y_%m_%d").context("failed to parse date of cmake config file")?;
+    let config = read_config(path).context("failed to read cmake config file")?;
+    Ok(Some((date, config)))
 }
