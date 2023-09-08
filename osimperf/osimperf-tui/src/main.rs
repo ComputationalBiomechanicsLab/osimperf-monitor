@@ -102,11 +102,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
     let mut compiled_duration = 0;
 
     let mut rows: Vec<Row> = Vec::new();
-    for node in nodes.iter() {
+    let mut prev_was_done = false;
+    for (node_count, node) in nodes.iter().enumerate() {
         let mut cells: Vec<Cell> = Vec::new();
 
         cells.push(Cell::from(node.repo.name()));
         cells.push(Cell::from(node.commit.date.as_str()));
+        // Fill cell in case that it was not yet done compiling.
         for (i, state) in node
             .state
             .get()
@@ -114,19 +116,35 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
             .enumerate()
             .filter(|(_, s)| !s.is_done())
         {
+            if i != 2 {
+                prev_was_done = false;
+            }
             let target = CompilationTarget::from(i);
             cells.push(match state {
                 Status::Idle => Cell::from(format!("Queued {}", target.short_desc())),
+                // Show compilation progress.
                 Status::Compiling(Progress { percentage }) => {
                     Cell::from(format!("{}: {}%", target.short_desc(), percentage))
                         .set_style(Style::default().bg(Color::Blue))
                 }
+                // If compiling the source failed we are still sort of ok.
+                Status::Error(_) if i == 2 => Cell::from(format!("{}: Failed", target.short_desc()))
+                    .set_style(Style::default().bg(Color::Blue)),
+                // If opensim core failed we really failed.
                 Status::Error(_) => Cell::from(format!("{}: Failed", target.short_desc()))
                     .set_style(Style::default().bg(Color::Red)),
                 _ => panic!(),
             });
             break;
         }
+
+        // Skip rows that are consecutively done, after the Xth node.
+        if prev_was_done && node_count > 6 {
+            continue;
+        }
+        prev_was_done = true;
+
+        // Fill cell in case it was done compiling.
         if node.state.get().iter().all(|s| s.is_done()) {
             cells.push(match node.state.get()[1] {
                 Status::Done(duration) => {
