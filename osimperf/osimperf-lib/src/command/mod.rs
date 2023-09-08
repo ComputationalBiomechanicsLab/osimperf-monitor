@@ -14,10 +14,10 @@ use std::{
     path::Path,
     time::Duration,
 };
-use crate::common::duration_since_boot;
 
 #[derive(Debug)]
 pub struct CommandOutput {
+    pub cmd_str: String,
     pub duration: Duration,
     pub output: std::process::Output,
 }
@@ -45,6 +45,7 @@ impl CommandOutput {
                 "failed to open file for writing stdout logs at path = {:?}",
                 path
             ))?;
+        file.write_all(&format!("Executed commands:\n{}\n", self.cmd_str).as_bytes())?;
         file.write_all(&self.output.stdout)?;
         Ok(())
     }
@@ -59,6 +60,7 @@ impl CommandOutput {
                 "failed to open file for writing stderr logs at path = {:?}",
                 path
             ))?;
+        file.write_all(&format!("Executed commands:\n{}\n", self.cmd_str).as_bytes())?;
         file.write_all(&self.output.stderr)?;
         Ok(())
     }
@@ -89,6 +91,7 @@ pub trait CommandTrait {
         let end = duration_since_boot()?;
         let duration = end - start;
         Ok(CommandOutput {
+            cmd_str: self.print_command(),
             duration,
             output: output
                 .with_context(|| format!("failed to execute command: {}", self.print_command()))?,
@@ -153,13 +156,13 @@ pub trait CommandTrait {
             if bytes_read == 0 {
                 break;
             }
-            stream.write_all(line.as_bytes())?;
             stdout_buffer.extend(line.as_bytes());
+            stream.write_all(line.as_bytes())?;
             line.clear();
         }
 
         // Wait for thread to finish and handle any errors.
-        let mut stderr_result = stderr_handle
+        let stderr_result = stderr_handle
             .join()
             .expect("Failed to join stderr thread")?;
 
@@ -168,12 +171,16 @@ pub trait CommandTrait {
             .context("error waiting for command output")
             .with_context(|| format!("failed to execute command: {}", self.print_command()))?;
 
-        output.stdout.extend(stdout_buffer.drain(..));
-        output.stderr.extend(stderr_result.drain(..));
+        output.stdout.extend(stdout_buffer);
+        output.stderr.extend(stderr_result);
 
         let end = duration_since_boot()?;
         let duration = end - start;
-        Ok(CommandOutput { duration, output })
+        Ok(CommandOutput {
+            cmd_str: self.print_command(),
+            duration,
+            output,
+        })
     }
 }
 
