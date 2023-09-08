@@ -198,6 +198,7 @@ impl CompilationNode {
         }
     }
 
+    /// Returns the size of the installed targets.
     pub fn read_disk_size(&self) -> [usize; 3] {
         [0, 1, 2].map(|i| CompilationTarget::from(i)).map(|target| {
             folder_size(&self.install_dir(target)).expect("failed to get size of install")

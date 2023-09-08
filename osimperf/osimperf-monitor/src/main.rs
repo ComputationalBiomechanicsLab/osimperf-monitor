@@ -19,36 +19,40 @@ pub struct Args {
     #[arg(long)]
     pub home: Option<String>,
 
-    /// Specify path to cmake config. Defaults to compiler-flags/osimperf-cmake.conf
-    #[arg(long)]
-    pub cmake: Option<PathBuf>,
-
     /// Write a default cmake config file to a specified path.
     #[arg(long)]
     pub write_default_cmake_config: Option<PathBuf>,
 
+    /// The first version we will attempt to compile.
     #[arg(long, default_value = "2019-01-01")]
     pub start_date: String,
 
+    /// Set this to enable daily compilation, after completing the monthly.
     #[arg(long)]
     pub daily: bool,
 
     /// Period in minutes between polling the repository for latest commits.
-    #[arg(long, default_value_t = 60)]
-    pub pull_period: u64,
+    #[arg(long)]
+    pub pull_period: Option<u64>,
 
     /// Max consecutive compilation failures.
-    #[arg(long, default_value_t = 4)]
-    pub max_fail: usize,
+    #[arg(long, default_value_t = 5)]
+    pub max_compile_fail: usize,
 
-    /// Number of times to repeat the benchmark tests before starting a new compilation.
-    #[arg(long, default_value_t = 2)]
+    /// Number of times to repeat the benchmark tests.
+    #[arg(long, default_value_t = 5)]
     pub test_repeats: usize,
 
+    /// Number of times to repeat a benchmark test before giving up.
+    #[arg(long, default_value_t = 2)]
+    pub max_test_fail: usize,
+
+    /// Set this to write intermediate results to file during benchmarking.
     #[arg(long)]
     pub write_intermediate_results: bool,
 
-    #[arg(long, default_value_t = 10)]
+    /// Number of test cycles that are ignored, before recording results.
+    #[arg(long, default_value_t = 1)]
     pub warm_start_buffer: usize,
 }
 
@@ -115,7 +119,9 @@ fn do_main_loop(args: &Args) -> Result<()> {
             for setup in test_setups.iter() {
                 trace!("Queueing test at {:#?} at {:#?}", setup, node);
                 // Creating the test node also sets up the context.
-                if let Some(test) = TestNode::new(&setup, &node, &home, &results_dir, args.warm_start_buffer)? {
+                if let Some(test) =
+                    TestNode::new(&setup, &node, &home, &results_dir, args.warm_start_buffer)?
+                {
                     tests.push(test);
                 }
             }
@@ -123,7 +129,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
 
         while tests.len() > 0 {
             // Dropping tests triggers post benchmark cmds.
-            tests.retain(|t| t.should_run(args.test_repeats, args.max_fail));
+            tests.retain(|t| t.should_run(args.test_repeats, args.max_test_fail));
             tests.shuffle(&mut rng);
 
             for test in tests.iter_mut() {
@@ -139,18 +145,20 @@ fn do_main_loop(args: &Args) -> Result<()> {
         }
 
         // Pull latest changes to opensim.
-        let dt = duration_since_boot().context("Failed to read system clock")?;
-        let prev_dt = last_pull.get_or_insert(dt);
-        if (dt - *prev_dt).as_secs() / 60 > args.pull_period {
-            *prev_dt = dt;
-            info!("Pull latest OpenSim-Core");
-            info!("{}", repo.pull()?);
-            for r in biolab.iter_mut() {
-                info!("Pull latest Computational Biomechanics");
-                info!("{}", r.pull()?);
-            }
+        if let Some(pull_period) = args.pull_period {
+            let dt = duration_since_boot().context("Failed to read system clock")?;
+            let prev_dt = last_pull.get_or_insert(dt);
+            if (dt - *prev_dt).as_secs() / 60 > pull_period {
+                *prev_dt = dt;
+                info!("Pull latest OpenSim-Core");
+                info!("{}", repo.pull()?);
+                for r in biolab.iter_mut() {
+                    info!("Pull latest Computational Biomechanics");
+                    info!("{}", r.pull()?);
+                }
 
-            garbage_collector(&archive, &repo)?;
+                garbage_collector(&archive, &repo)?;
+            }
         }
 
         // Start compiling opensim.
@@ -200,7 +208,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
                 failed_count = 0;
                 ok_start_date = Some(node.commit.date.clone());
             }
-            if failed_count > args.max_fail {
+            if failed_count > args.max_compile_fail {
                 debug!("Failed {failed_count} times in a row, stopping");
                 break;
             }
@@ -237,27 +245,6 @@ fn do_main_loop(args: &Args) -> Result<()> {
             }
         }
     }
-}
-
-fn warm_up() -> usize {
-    let mut data = vec![0; 1000]; // Initialize a vector with zeros
-    for i in 1..data.len() {
-        data[i] = i;
-    }
-
-    // Perform some trivial operations in a loop
-    for _ in 0..1000 {
-        for i in 1..data.len() {
-            let mut hasher = DefaultHasher::new();
-            data[i - 1].hash(&mut hasher);
-            data[i] = hasher.finish() as usize;
-        }
-    }
-    let mut sum: usize = 0;
-    for d in data.iter() {
-        sum = sum.overflowing_add(*d).0;
-    }
-    sum
 }
 
 fn garbage_collector(archive: &Archive, repo: &Repository) -> Result<()> {
