@@ -6,7 +6,7 @@ use osimperf_lib::{
     bench_tests::{BenchTestSetup, TestNode},
     common::{duration_since_boot, read_config, write_default_config},
     Archive, BioLabRepositoryConfig, CMakeConfig, CMakeConfigReader, CompilationNode, Folder, Home,
-    NodeFile, Repository, RepositoryConfig,
+    NodeFile, Repository, RepositoryConfig, CompilationTarget,
 };
 use rand::prelude::*;
 use std::collections::hash_map::DefaultHasher;
@@ -200,8 +200,8 @@ fn do_main_loop(args: &Args) -> Result<()> {
             let config = cmake_config.get(&node.commit.date()?);
             compiled_a_node |= node.run(&home, &build, &config)?;
 
-            // Stop compiling if we failed X times in a row.
-            if !node.state.get().iter().all(|s| s.is_done()) {
+            // Stop compiling if we failed compiling opensim-core X times in a row.
+            if !node.state.status(CompilationTarget::OpenSimCore).is_done() {
                 failed_count += 1;
             } else {
                 // Reset counter.
