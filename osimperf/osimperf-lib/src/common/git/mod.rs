@@ -1,8 +1,10 @@
 mod commands;
 
-pub use commands::{read_repo_url, was_commit_merged_to_branch, read_current_commit, checkout_commit, pull};
+pub use commands::{
+    checkout_commit, pull, read_current_commit, read_repo_url, was_commit_merged_to_branch,
+};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::path::Path;
@@ -41,5 +43,11 @@ impl Commit {
             hash: hash_and_date.0,
             date: hash_and_date.1,
         }
+    }
+
+    // TODO keep as chrono in struct itself.
+    pub fn date(&self) -> anyhow::Result<chrono::NaiveDate> {
+        Ok(chrono::NaiveDate::parse_from_str(&self.date, "%Y_%m_%d")
+            .with_context(|| format!("failed to parse date {} to NaiveDate", self.date))?)
     }
 }
