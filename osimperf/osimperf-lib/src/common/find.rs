@@ -35,7 +35,7 @@ pub fn collect_configs<C: DeserializeOwned>(root_dir: &Path, file_name: &str) ->
 }
 
 // one possible implementation of walking a directory only visiting files
-pub fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> Result<()> {
+pub fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;

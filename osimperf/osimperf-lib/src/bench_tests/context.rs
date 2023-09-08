@@ -37,7 +37,7 @@ pub fn setup_context(
 
     // Copy all files from setup directory.
     trace!("setup dir = {:?}", setup_dir);
-    visit_dirs(setup_dir, &|entry| {
+    visit_dirs(setup_dir, &mut |entry| {
         filter_copy_file_to_context(entry, context_dir)
     })?;
 
