@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::path::Path;
 
+pub type Date = chrono::NaiveDate;
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
 // Can be created from the [Repository]
 pub struct Commit {
@@ -46,8 +48,8 @@ impl Commit {
     }
 
     // TODO keep as chrono in struct itself.
-    pub fn date(&self) -> anyhow::Result<chrono::NaiveDate> {
-        Ok(chrono::NaiveDate::parse_from_str(&self.date, "%Y_%m_%d")
+    pub fn date(&self) -> anyhow::Result<Date> {
+        Ok(Date::parse_from_str(&self.date, "%Y_%m_%d")
             .with_context(|| format!("failed to parse date {} to NaiveDate", self.date))?)
     }
 }
