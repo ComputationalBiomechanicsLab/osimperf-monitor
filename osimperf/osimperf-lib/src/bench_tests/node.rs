@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{CommandOutput, CompilationNode, Folder, Home, NodeFile, ResultsFolder};
 use anyhow::Result;
-use log::trace;
+use log::{trace, warn};
 use std::hash::{Hash, Hasher};
 use std::{collections::hash_map::DefaultHasher, path::PathBuf};
 
@@ -92,12 +92,20 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
 
         self.result.try_write()?;
 
+        out?;
+
         Ok(())
     }
 
     fn post_benchmark_teardown(&mut self) -> Result<()> {
         trace!("Run post benchmark teardown");
         let env_vars = self.env_vars()?;
+
+        // Write logs of last benchmark command.
+        if let Some(output) = self.last_command_output.as_ref() {
+            output.write_stdout(&env_vars.output.join("osimperf-stdout.log"))?;
+            output.write_stderr(&env_vars.output.join("osimperf-stderr.log"))?;
+        }
 
         let out = run_post_test_cmds(
             &self.test.post_benchmark_cmds,
@@ -106,11 +114,15 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
         );
 
         // Set to failure if post commands failed.
-        if out.is_err() {
-            self.result.update_result(None);
+        if out.is_err() && self.result.failed() {
+            warn!(
+                "Failed to run post benchmark commands after failing the benchmark: {:?}",
+                &self
+            );
+        } else {
+            out?;
         }
 
-        self.result.try_write()?;
         Ok(())
     }
 

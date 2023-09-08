@@ -74,10 +74,15 @@ impl BenchTestResult {
         if let Some(duration) = cmd_output {
             // If the command was succesfully executed:
             self.durations.add_sample(duration);
+            self.failed_count = 0;
         } else {
             // If the command was failed.
-            self.failed_count += 1;
             self.durations.clear();
+            self.failed_count += 1;
         }
+    }
+
+    pub fn failed(&self) -> bool {
+        self.failed_count > 0
     }
 }
