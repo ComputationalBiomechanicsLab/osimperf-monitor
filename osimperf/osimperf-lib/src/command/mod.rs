@@ -4,6 +4,7 @@ mod single_command;
 pub use piped_command::{PipedCommands, PipedCommandsExecutor};
 pub use single_command::{Command, CommandExecutor};
 
+use crate::common::duration_since_boot;
 use anyhow::{Context, Result};
 use std::io::BufReader;
 use std::thread;
