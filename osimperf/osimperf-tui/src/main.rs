@@ -140,7 +140,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<()> {
 
         // Skip rows that are consecutively done, after the Xth node.
         if prev_was_done && node_count > 6 {
-            continue;
+            // continue;
         }
         prev_was_done = true;
 
