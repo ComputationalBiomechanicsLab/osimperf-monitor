@@ -1,3 +1,4 @@
+# This script will scan the results folder for any csv files and plot them.
 import pandas as pd
 import matplotlib.pyplot as plt
 
