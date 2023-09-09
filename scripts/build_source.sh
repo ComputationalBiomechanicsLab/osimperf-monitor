@@ -1,3 +1,5 @@
+# Ignore this file...
+
 #!/bin/bash
 set -ueo pipefail
 
@@ -70,24 +72,8 @@ DAMPING="0.01"
 ID="low"
 runBinary
 
-# DAMPING="0.1"
-# ID="default"
-# runBinary
-
-# DAMPING="0.5"
-# ID="medium"
-# runBinary
-
-# DAMPING="1.0"
-# ID="high"
-# runBinary
-
 cargo install --path "$PERF_HOME/profiler" --root "$PERF_HOME/install/"
 
 # Run profiler
 cd $PERF_HOME
 "$INSTALL_DIR/bin/simperf" --path "$PERF_HOME/profiler/hopper-profiler.conf"
-
-# echo "moving log file to /tmp/plotLog.csv"
-# mv $LOG_FILE "/tmp/plotLog.csv"
-# cat $LOG_FILE | ../../install/csv-plotter/bin/rust-csv-plotter
