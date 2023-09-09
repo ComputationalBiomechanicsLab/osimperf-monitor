@@ -114,10 +114,9 @@ fn do_main_loop(args: &Args) -> Result<()> {
         // Run the benchmark tests.
         let nodes = CompilationNode::collect_archived(&archive)?;
         let test_setups = BenchTestSetup::find_all(&tests_dir)?;
-        let mut tests = Vec::new();
         for node in nodes.iter() {
+            let mut tests = Vec::new();
             for setup in test_setups.iter() {
-                trace!("Queueing test at {:#?} at {:#?}", setup, node);
                 // Creating the test node also sets up the context.
                 if let Some(test) =
                     TestNode::new(&setup, &node, &home, &results_dir, args.warm_start_buffer)?
@@ -125,21 +124,25 @@ fn do_main_loop(args: &Args) -> Result<()> {
                     tests.push(test);
                 }
             }
-        }
 
-        while tests.len() > 0 {
-            // Dropping tests triggers post benchmark cmds.
-            tests.retain(|t| t.should_run(args.test_repeats, args.max_test_fail));
-            tests.shuffle(&mut rng);
+            let mut count = 0;
+            while tests.len() > 0 {
+                // Dropping tests triggers post benchmark cmds.
+                tests.retain(|t| t.should_run(args.test_repeats, args.max_test_fail));
+                tests.shuffle(&mut rng);
+                count +=1;
+                info!("count = {count}");
 
-            for test in tests.iter_mut() {
-                trace!("Start bench test: {:#?}", test);
-                let res = test.run()?;
-                if res.failed_count > 0 {
-                    trace!("Failed bench test: {:#?}", test);
-                }
-                if args.write_intermediate_results {
-                    test.try_write()?;
+                for test in tests.iter_mut() {
+                    info!("running = {}", test.name());
+                    trace!("Start bench test: {:#?}", test);
+                    let res = test.run()?;
+                    if res.failed_count > 0 {
+                        trace!("Failed bench test: {:#?}", test);
+                    }
+                    if args.write_intermediate_results {
+                        test.try_write()?;
+                    }
                 }
             }
         }
