@@ -39,8 +39,8 @@ pub struct Args {
     #[arg(long, default_value_t = 5)]
     pub max_compile_fail: usize,
 
-    /// Number of times to repeat the benchmark tests.
-    #[arg(long, default_value_t = 5)]
+    /// Number of times to repeat succesful benchmark tests.
+    #[arg(long, default_value_t = 50)]
     pub test_repeats: usize,
 
     /// Number of times to repeat a benchmark test before giving up.
@@ -52,7 +52,7 @@ pub struct Args {
     pub write_intermediate_results: bool,
 
     /// Number of test cycles that are ignored, before recording results.
-    #[arg(long, default_value_t = 1)]
+    #[arg(long, default_value_t = 2)]
     pub warm_start_buffer: usize,
 }
 
