@@ -21,6 +21,10 @@ pub struct TestNode<'a, 'b, 'c, 'd> {
 }
 
 impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
+    pub fn name(&self) -> &str {
+        &self.test.name
+    }
+
     fn new_helper(
         test: &'a BenchTestSetup,
         compiler: &'b CompilationNode,
