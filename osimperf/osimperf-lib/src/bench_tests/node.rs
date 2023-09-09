@@ -2,9 +2,9 @@ use super::{
     run_cmds::{run_post_test_cmds, run_pre_test_cmds, run_test_bench_cmd, FileEnvVars},
     BenchTestResult, BenchTestSetup,
 };
-use crate::{CommandOutput, CompilationNode, Folder, Home, NodeFile, ResultsFolder};
+use crate::{CommandOutput, CompilationNode, Folder, Home, NodeFile, ResultsFolder, CommandTrait};
 use anyhow::Result;
-use log::{trace, warn};
+use log::{trace, warn, info};
 use std::hash::{Hash, Hasher};
 use std::{collections::hash_map::DefaultHasher, path::PathBuf};
 
@@ -166,6 +166,7 @@ fn compute_test_node_hash(test: &BenchTestSetup, compiler: &CompilationNode) -> 
 impl<'a, 'b, 'c, 'd> Drop for TestNode<'a, 'b, 'c, 'd> {
     fn drop(&mut self) {
         // Write to the backing file.
+        self.try_write().expect("failed to write result to file");
         self.post_benchmark_teardown()
             .expect("Failed to execute post-benchmark-teardown");
     }
