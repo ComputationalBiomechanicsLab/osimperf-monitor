@@ -6,6 +6,7 @@ set -e
 set -o pipefail
 
 targets="osimperf-monitor osimperf-tui"
+
 perf_home=$PWD
 
 for target in $targets; do
