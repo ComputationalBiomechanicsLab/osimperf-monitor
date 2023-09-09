@@ -3,15 +3,17 @@ import matplotlib.pyplot as plt
 
 df = pd.read_csv("results/RajagopalFreeFall.csv", names=['time', 'label', 'value'])
 
+df['label']=pd.to_datetime(df['label'], format='%Y_%m_%d')
+
 fig, ax = plt.subplots()
 
-for label, group in df.groupby('label'):
-    ax.plot(group['time'], group['value'], label=label)
+ax.plot(df['label'], df['value'])
 
 ax.set_xlabel('Date')
 ax.set_ylabel('WallTime')
 ax.set_title('Plot from CSV Data')
 
-ax.legend()
+plt.xticks(rotation=45)
 
+plt.tight_layout()
 plt.show()
