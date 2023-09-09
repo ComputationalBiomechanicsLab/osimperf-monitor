@@ -209,6 +209,7 @@ fn do_main_loop(args: &Args) -> Result<()> {
             } else {
                 // Reset counter.
                 failed_count = 0;
+                // Update the furthest we can go back in history.
                 ok_start_date = Some(node.commit.date.clone());
             }
             if failed_count > args.max_compile_fail {
