@@ -109,6 +109,8 @@ impl<'a, 'b, 'c, 'd> TestNode<'a, 'b, 'c, 'd> {
         if let Some(output) = self.last_command_output.as_ref() {
             output.write_stdout(&env_vars.output.join("osimperf-stdout.log"))?;
             output.write_stderr(&env_vars.output.join("osimperf-stderr.log"))?;
+        } else {
+            return Ok(());
         }
 
         let out = run_post_test_cmds(
