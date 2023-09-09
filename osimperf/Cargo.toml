@@ -3,6 +3,7 @@ members = [
 	"osimperf-lib",
 	"osimperf-monitor",
 	"osimperf-tui",
+	"osimperf-print-csv",
 ]
 resolver = "2"
 

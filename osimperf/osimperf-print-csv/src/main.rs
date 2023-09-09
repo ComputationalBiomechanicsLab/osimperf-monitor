@@ -1,3 +1,8 @@
+/// Script for generating csv files containing all benchmark results.
+///
+/// Run from osimperf-home folder, or specify osimperf-home using argument --home.
+/// CSVs will be written to the results folder.
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger::Env;
