@@ -3,10 +3,10 @@
 	url = https://github.com/opensim-org/opensim-core.git
 [submodule "software/PlotProbe"]
 	path = software/PlotProbe
-	url = git@github.com:pepbos/PlotProbe.git
+	url = https://github.com/pepbos/PlotProbe.git
 [submodule "tests/opensim-models"]
 	path = tests/opensim-models
 	url = https://github.com/opensim-org/opensim-models.git
 [submodule "software/computational-biomechanics-lab"]
 	path = software/computational-biomechanics-lab
-	url = git@github.com:ComputationalBiomechanicsLab/opensim-core.git
+	url = https://github.com/ComputationalBiomechanicsLab/opensim-core.git
