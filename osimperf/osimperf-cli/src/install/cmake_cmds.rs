@@ -2,10 +2,12 @@ use crate::context::OPENSIM_BUILD_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
 use crate::context::OPENSIM_SRC_ENV_VAR;
 use osimperf_lib::Command;
-use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct CMakeCommands(Vec<(String, Command)>);
+use serde::{Deserialize, Serialize};
+use std::hash::Hash;
+
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+pub struct CMakeCommands(pub Vec<(String, Command)>);
 
 impl Default for CMakeCommands {
     fn default() -> CMakeCommands {
@@ -48,7 +50,8 @@ impl Default for CMakeCommands {
         configure_opensim_cmd.add_arg("-DOPENSIM_DOXYGEN_USE_MATHJAX=OFF");
         configure_opensim_cmd.add_arg("-DOPENSIM_WITH_CASADI=OFF");
         configure_opensim_cmd.add_arg("-DOPENSIM_WITH_TROPTER=OFF");
-        configure_opensim_cmd.add_arg("-DOPENSIM_DEPENDENCIES_DIR=${OPENSIM_INSTALL_ENV_VAR}/dependencies");
+        configure_opensim_cmd
+            .add_arg("-DOPENSIM_DEPENDENCIES_DIR=${OPENSIM_INSTALL_ENV_VAR}/dependencies");
 
         let mut build_opensim_cmd = Command::new("cmake");
         build_opensim_cmd.add_arg("--build");
