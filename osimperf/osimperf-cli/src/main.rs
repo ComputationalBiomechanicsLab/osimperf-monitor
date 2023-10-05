@@ -1,8 +1,40 @@
+mod context;
+mod install;
+mod common;
+mod file_backed_struct;
+
+pub use context::*;
+pub use common::*;
+pub use install::*;
+pub use file_backed_struct::*;
+
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+
+use anyhow::Result;
+
+pub struct Context {}
+
+impl Context {
+    pub fn set_home(&mut self, home: Option<PathBuf>) -> Result<()> {
+        todo!();
+    }
+
+    pub fn set_archive(&mut self, archive: Option<PathBuf>) -> Result<()> {
+        todo!()
+    }
+
+    pub fn home(&self) -> Result<PathBuf> {
+        todo!()
+    }
+
+    pub fn archive(&self) -> Result<PathBuf> {
+        todo!()
+    }
+}
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -43,18 +75,18 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Clones repos
-    #[command(arg_required_else_help = true)]
-    Install {
-        /// The remote to clone
-        remote: String,
-    },
     /// List stuff.
     #[command()]
     Ls {
         /// List all installed versions.
         #[arg(long, short)]
-        installed: bool,
+        installed: Option<PathBuf>,
+    },
+    /// Install dir.
+    #[command(arg_required_else_help = true)]
+    Install {
+        /// The remote to clone
+        remote: String,
     },
     /// Record
     #[command(arg_required_else_help = true)]
@@ -65,13 +97,28 @@ enum Commands {
     },
 }
 
-fn main() {
+impl Commands {
+    fn get_context(&self) -> Result<Ctxt> {
+        let mut context = Ctxt::default();
+        match self {
+            Commands::Ls { installed } => context.set_archive(installed.clone())?,
+            Commands::Install { remote } => todo!(),
+            Commands::Record { test_repeats } => todo!(),
+        }
+        Ok(context)
+    }
+}
+
+fn main() -> Result<()> {
     let args = Cli::parse();
 
+    let context = args.command.get_context()?;
+
     match args.command {
-        Commands::Ls{..} => {
+        Commands::Ls { .. } => {
+            // let nodes = CompilationNode::collect_archived(&archive)?;
             println!("List all test cases")
-        },
+        }
         Commands::Install { remote } => {
             println!("Cloning {remote}");
         }
@@ -79,4 +126,5 @@ fn main() {
     }
 
     // Continued program logic goes here...
+    Ok(())
 }
