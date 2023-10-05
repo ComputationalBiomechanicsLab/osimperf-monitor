@@ -1,8 +1,8 @@
 use super::Ctxt;
 use crate::InstallId;
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
+use std::path::PathBuf;
 
 // OSimPerf environmental variables.
 pub const OPENSIM_BUILD_ENV_VAR: &str = "OSIMPERF_OPENSIM_BUILD";
@@ -31,14 +31,26 @@ pub fn env_vars<'a>(context: &Ctxt, id: InstallId<'a>, repo: Option<PathBuf>) ->
 
 impl EnvVar {
     pub fn opensim_build_dir(context: &Ctxt) -> Self {
-        todo!()
+        Self {
+            key: String::from(OPENSIM_BUILD_ENV_VAR),
+            value: context.opensim_build_dir().to_string_lossy().to_string(),
+        }
     }
 
     pub fn opensim_src_dir(repo: &PathBuf) -> Self {
-        todo!()
+        Self {
+            key: String::from(OPENSIM_SRC_ENV_VAR),
+            value: repo.to_string_lossy().to_string(),
+        }
     }
 
     pub fn opensim_install_dir<'a>(context: &Ctxt, id: InstallId<'a>) -> Self {
-        todo!()
+        Self {
+            key: String::from(OPENSIM_INSTALL_ENV_VAR),
+            value: context
+                .opensim_install_dir(id)
+                .to_string_lossy()
+                .to_string(),
+        }
     }
 }
