@@ -1,7 +1,8 @@
 use crate::context::OPENSIM_BUILD_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
 use crate::context::OPENSIM_SRC_ENV_VAR;
-use osimperf_lib::Command;
+use crate::Command;
+use crate::EnvVar;
 
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
@@ -72,5 +73,19 @@ impl Default for CMakeCommands {
             ),
             (String::from("Build opensim-core"), build_opensim_cmd),
         ])
+    }
+
+}
+
+impl CMakeCommands {
+    #[must_use]
+    pub fn with_env_vars(&self, env: &[EnvVar]) -> Self {
+        let mut out = self.clone();
+        for cmd in out.0.iter_mut() {
+            for e in env.iter() {
+                cmd.1.add_env(e.clone());
+            }
+        }
+        out
     }
 }

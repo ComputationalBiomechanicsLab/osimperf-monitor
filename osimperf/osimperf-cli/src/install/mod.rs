@@ -2,6 +2,7 @@ mod cmake_cmds;
 mod repo;
 mod status;
 
+use anyhow::ensure;
 pub use cmake_cmds::CMakeCommands;
 
 use crate::env_vars;
@@ -24,8 +25,8 @@ use std::path::PathBuf;
 
 use osimperf_lib::common::collect_configs;
 use osimperf_lib::common::git::Commit;
-use osimperf_lib::Command;
-use osimperf_lib::CommandTrait;
+use crate::Command;
+use crate::CommandTrait;
 
 /// Stored at: `archive/ID/.compilation-node.osimperf`
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -109,13 +110,15 @@ impl CompilationNode {
         // Check-out the Repository to the correct commit.
         let checked_out_token = self.repo.checkout(&self.commit)?;
 
+        // Set environmental variables.
         let env_vars = env_vars(context, self.id(), Some(checked_out_token.path().to_owned()));
+        let cmake_cmds = cmake_cmds.with_env_vars(&env_vars);
 
-        for cmd in cmake_cmds.0.iter() {
+        for (task,cmd) in cmake_cmds.0.iter() {
             // First update the status.
             self.status = Status::Compiling(Progress {
                 percentage: 0.,
-                task: cmd.0.clone(),
+                task: task.clone(),
             });
             self.try_write(context)?;
 
@@ -131,23 +134,21 @@ impl CompilationNode {
             // let mut progress = CMakeProgressStreamer::new(self, &cmd.0);
 
             // Start compilation.
-            // let output = cmd
-            //     .run_and_stream(&mut progress, env_vars)
-            //     .with_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
+            let output = cmd.run_and_time();
+                // .run_and_stream(&mut progress);
+                // .vith_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
             // Update the status.
-            // self.status = Status::from_output(output);
+            self.status = Status::from_output(output.map(|x| x.duration));
 
             // Update the file backing this struct.
             self.try_write(context)?;
 
             // We failed to compile, so we stop.
-            if !self.status.done() {
-                break;
-            }
+            ensure!(self.status.done(), "Failed to compile");
         }
 
-        // Return that we at least attempted to compile something.
+        // Return that we compiled something.
         Ok(true)
     }
 

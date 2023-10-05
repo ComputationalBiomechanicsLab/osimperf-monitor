@@ -1,6 +1,8 @@
 use super::Ctxt;
 use crate::InstallId;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 
 // OSimPerf environmental variables.
 pub const OPENSIM_BUILD_ENV_VAR: &str = "OSIMPERF_OPENSIM_BUILD";
@@ -10,6 +12,7 @@ pub const OPENSIM_INSTALL_ENV_VAR: &str = "OSIMPERF_OPENSIM_INSTALL";
 /// OSIMPERF_RESULTS
 /// OSIMPERF_CONFIG
 
+#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct EnvVar {
     pub key: String,
     pub value: String,

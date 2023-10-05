@@ -1,9 +1,11 @@
+mod command;
 mod context;
 mod install;
 mod common;
 mod file_backed_struct;
 
 pub use context::*;
+pub use command::*;
 pub use common::*;
 pub use install::*;
 pub use file_backed_struct::*;
