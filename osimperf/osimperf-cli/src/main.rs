@@ -49,9 +49,13 @@ enum Commands {
         /// The remote to clone
         remote: String,
     },
-    /// List all tests
+    /// List stuff.
     #[command()]
-    Ls,
+    Ls {
+        /// List all installed versions.
+        #[arg(long, short)]
+        installed: bool,
+    },
     /// Record
     #[command(arg_required_else_help = true)]
     Record {
@@ -65,7 +69,9 @@ fn main() {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Ls => println!("List all test cases"),
+        Commands::Ls{..} => {
+            println!("List all test cases")
+        },
         Commands::Install { remote } => {
             println!("Cloning {remote}");
         }
