@@ -116,8 +116,11 @@ fn main() -> Result<()> {
 
     match args.command {
         Commands::Ls { .. } => {
-            // let nodes = CompilationNode::collect_archived(&archive)?;
-            println!("List all test cases")
+            let nodes = CompilationNode::collect_archived(&context)?;
+            println!("Found {} compiled versions", nodes.len());
+            for node in nodes {
+                println!("node = {:#?}", node);
+            }
         }
         Commands::Install { remote } => {
             println!("Cloning {remote}");
