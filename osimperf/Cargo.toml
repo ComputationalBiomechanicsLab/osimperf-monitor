@@ -1,9 +1,10 @@
 [workspace]
 members = [
+	"osimperf-cli",
 	"osimperf-lib",
 	"osimperf-monitor",
-	"osimperf-tui",
 	"osimperf-print-csv",
+	"osimperf-tui",
 ]
 resolver = "2"
 
