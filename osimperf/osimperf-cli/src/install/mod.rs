@@ -2,6 +2,8 @@ mod repo;
 mod status;
 mod cmake_cmds;
 
+pub use cmake_cmds::CMakeCommands;
+
 use crate::Ctxt;
 use crate::FileBackedStruct;
 use repo::{Repository, RepositoryState};

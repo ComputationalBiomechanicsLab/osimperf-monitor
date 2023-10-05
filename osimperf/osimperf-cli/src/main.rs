@@ -88,6 +88,11 @@ enum Commands {
         /// The remote to clone
         remote: String,
     },
+    /// Write default cmake config.
+    #[command(arg_required_else_help = true)]
+    WriteDefaultCmakeConfig {
+        path: PathBuf,
+    },
     /// Record
     #[command(arg_required_else_help = true)]
     Record {
@@ -104,6 +109,7 @@ impl Commands {
             Commands::Ls { installed } => context.set_archive(installed.clone())?,
             Commands::Install { remote } => todo!(),
             Commands::Record { test_repeats } => todo!(),
+            _ => {},
         }
         Ok(context)
     }
@@ -122,6 +128,9 @@ fn main() -> Result<()> {
                 println!("node = {:#?}", node);
             }
         }
+        Commands::WriteDefaultCmakeConfig { path } => {
+            write_default_json::<CMakeCommands>(&path)?
+        },
         Commands::Install { remote } => {
             println!("Cloning {remote}");
         }
