@@ -1,14 +1,14 @@
 mod command;
-mod context;
-mod install;
 mod common;
+mod context;
 mod file_backed_struct;
+mod install;
 
-pub use context::*;
 pub use command::*;
 pub use common::*;
-pub use install::*;
+pub use context::*;
 pub use file_backed_struct::*;
+pub use install::*;
 
 use std::ffi::OsStr;
 use std::ffi::OsString;
@@ -86,15 +86,10 @@ enum Commands {
     },
     /// Install dir.
     #[command(arg_required_else_help = true)]
-    Install {
-        /// The remote to clone
-        remote: String,
-    },
+    Install(InstallCommand),
     /// Write default cmake config.
     #[command(arg_required_else_help = true)]
-    WriteDefaultCmakeConfig {
-        path: PathBuf,
-    },
+    WriteDefaultCmakeConfig { path: PathBuf },
     /// Record
     #[command(arg_required_else_help = true)]
     Record {
@@ -104,14 +99,33 @@ enum Commands {
     },
 }
 
+#[derive(Debug, Args)]
+struct InstallCommand {
+    /// Path to opensim-core repo.
+    #[arg(long)]
+    opensim_core: Option<PathBuf>,
+    #[arg(long)]
+    archive: Option<PathBuf>,
+    #[arg(long)]
+    cmake_config: Option<PathBuf>,
+}
+
+impl InstallCommand {
+    fn get_context(&self) -> Result<Ctxt> {
+        let mut context = Ctxt::default();
+        context.set_opensim_core(self.opensim_core.clone())?;
+        context.set_archive(self.archive.clone())?;
+        Ok(context)
+    }
+}
+
 impl Commands {
     fn get_context(&self) -> Result<Ctxt> {
         let mut context = Ctxt::default();
         match self {
             Commands::Ls { installed } => context.set_archive(installed.clone())?,
-            Commands::Install { remote } => todo!(),
             Commands::Record { test_repeats } => todo!(),
-            _ => {},
+            _ => {}
         }
         Ok(context)
     }
@@ -130,15 +144,28 @@ fn main() -> Result<()> {
                 println!("node = {:#?}", node);
             }
         }
-        Commands::WriteDefaultCmakeConfig { path } => {
-            write_default_json::<CMakeCommands>(&path)?
-        },
-        Commands::Install { remote } => {
-            println!("Cloning {remote}");
+        Commands::WriteDefaultCmakeConfig { path } => write_default_json::<CMakeCommands>(&path)?,
+        Commands::Install(args) => {
+            run_install_cmd(&args)?;
         }
         Commands::Record { test_repeats } => println!("record case {test_repeats} times"),
     }
 
     // Continued program logic goes here...
+    Ok(())
+}
+
+fn run_install_cmd(args: &InstallCommand) -> Result<()> {
+    let context = args.get_context()?;
+
+    let repo = crate::install::Repository::new_opensim_core(context.opensim_core().clone())?;
+
+    let cmake_config = CMakeCommands::default();
+
+    let commit = repo.last_commit()?;
+
+    let mut node = crate::install::CompilationNode::new(&context, repo, commit)?;
+    node.install(&context, &cmake_config)?;
+
     Ok(())
 }

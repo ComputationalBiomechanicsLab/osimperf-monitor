@@ -26,11 +26,11 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn new_opensim_core(context: &Ctxt) -> Result<Self> {
+    pub fn new_opensim_core(path: PathBuf) -> Result<Self> {
         let out = Self {
             name: "opensim-core".to_string(),
             branch: "main".to_string(),
-            path: context.opensim_core().clone(),
+            path,
             url: String::from(OPENSIM_CORE_URL),
         };
         out.verify_url()?;

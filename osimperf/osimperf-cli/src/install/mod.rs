@@ -9,7 +9,7 @@ use crate::env_vars;
 use crate::Ctxt;
 use crate::EnvVar;
 use crate::FileBackedStruct;
-use repo::{Repository, RepositoryState};
+pub use repo::{Repository, RepositoryState};
 use status::{Progress, Status};
 
 use crate::context::InstallId;
