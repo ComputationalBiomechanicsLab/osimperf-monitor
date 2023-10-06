@@ -1,31 +1,33 @@
 use regex::Regex;
 use std::io::Write;
 
+use super::status::Progress;
+use super::status::Status;
+use crate::FileBackedStruct;
+use crate::Ctxt;
+use super::CompilationNode;
 use anyhow::Context;
 use std::str;
 
-use crate::{
-    node::status::{Progress, Status},
-    CompilationNode, CompilationTarget, NodeFile,
-};
-
 #[derive(Debug)]
 pub struct CMakeProgressStreamer<'a> {
-    target: CompilationTarget,
+    task: String,
     buffer: String,
     percentage: Option<f64>,
     parent: &'a mut CompilationNode,
+    context: &'a Ctxt,
     re: Regex,
 }
 
 impl<'a> CMakeProgressStreamer<'a> {
-    pub fn new(parent: &'a mut CompilationNode, target: CompilationTarget) -> Self {
+    pub fn new(parent: &'a mut CompilationNode, context: &'a Ctxt, task: String) -> Self {
         Self {
-            target,
+            task,
             buffer: String::new(),
             percentage: None,
             parent,
             re: Regex::new(r"\[\s*(\d+)%\]").unwrap(),
+            context,
         }
     }
 
@@ -46,13 +48,12 @@ impl<'a> CMakeProgressStreamer<'a> {
                                 format!("failed to parse percentage {}", percentage_str.as_str())
                             })?);
 
-                        self.parent.state.set(
-                            self.target,
+                        self.parent.status =
                             Status::Compiling(Progress {
                                 percentage: self.percentage.unwrap_or(0.),
-                            }),
-                        );
-                        self.parent.try_write()?;
+                                task: self.task.clone(),
+                            });
+                        self.parent.try_write(self.context)?;
                     }
                 }
                 println!("{line}");

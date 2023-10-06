@@ -1,10 +1,12 @@
 mod cmake_cmds;
 mod repo;
 mod status;
+mod progress;
 
 use anyhow::anyhow;
 use anyhow::ensure;
 pub use cmake_cmds::CMakeCommands;
+use progress::CMakeProgressStreamer;
 
 use crate::env_vars;
 use crate::Ctxt;
@@ -144,15 +146,14 @@ impl CompilationNode {
             //     .with_context(|| format!("failed to erase build dir"))?;
 
             // Setup something to keep track of the progres.
-            // let mut progress = CMakeProgressStreamer::new(self, &cmd.0);
+            let mut progress = CMakeProgressStreamer::new(self, context, task.clone());
 
             // Start compilation.
             debug!("run cmake command: {:#?}", cmd);
-            let output = cmd.run_and_time()?;
+            let output = cmd
+                .run_and_stream(&mut progress)
+                .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))?;
             dt += output.duration;
-            info!("output = {:#?}", output);
-            // .run_and_stream(&mut progress);
-            // .vith_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
             // We failed to compile, so we stop.
             if !output.success() {
