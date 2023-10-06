@@ -1,10 +1,9 @@
-use crate::EnvVar;
-
-use super::{CommandExecutorTrait, CommandTrait};
+use super::{substitute_all, CommandExecutorTrait, CommandTrait};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::{path::Path, process::Stdio};
+use crate::EnvVar;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct Command {
@@ -54,18 +53,12 @@ impl Command {
 
     pub fn add_args<T: ToString>(&mut self, args: impl Iterator<Item = T>) {
         for a in args {
-            self.add_arg(a);
+            self.args.push(a.to_string());
         }
     }
 
     pub fn add_env(&mut self, env: EnvVar) {
         self.envs.get_or_insert(Vec::new()).push(env);
-    }
-
-    pub fn add_envs(&mut self, envs: impl Iterator<Item = EnvVar>) {
-        for e in envs {
-            self.add_env(e);
-        }
     }
 
     pub fn parse(string: &str) -> Self {
@@ -88,36 +81,50 @@ impl CommandTrait for Command {
     type Executor = CommandExecutor;
 
     fn create_executor(&self) -> CommandExecutor {
-        let mut cmd = if let Some(root) = self.root.as_ref() {
+        let cmd_str = then_substitute_all(&self.cmd, &self.envs);
+        let root_str = self
+            .root
+            .as_ref()
+            .map(|path| then_substitute_all(path, &self.envs));
+        let mut cmd = if let Some(root) = root_str {
             let mut cmd = std::process::Command::new("env");
             cmd.arg("-C");
             cmd.arg(root);
-            cmd.arg(&self.cmd);
+            cmd.arg(cmd_str);
             cmd
         } else {
-            std::process::Command::new(&self.cmd)
+            std::process::Command::new(cmd_str)
         };
-        cmd.args(self.args.iter());
+        cmd.args(
+            self.args
+                .iter()
+                .map(|arg| then_substitute_all(arg, &self.envs)),
+        );
         if let Some(envs) = self.envs.as_ref() {
-            for e in envs.iter() {
-                cmd.env(&e.key, &e.value);
+            for env in envs.iter() {
+                cmd.env(&env.key, &env.value);
             }
         }
         CommandExecutor { cmd }
     }
 
     fn print_command_with_delim(&self, arg_delim: &str) -> String {
-        let mut msg = String::new();
-        if let Some(envs) = self.envs.as_ref() {
-            for e in envs.iter() {
-                msg.push_str(&format!("{}={}{}", e.key, e.value, arg_delim));
-            }
-        }
-        msg.push_str(&self.cmd);
-        for arg in self.args.iter() {
+        let mut msg = then_substitute_all(&self.cmd, &self.envs);
+        for arg in self
+            .args
+            .iter()
+            .map(|arg| then_substitute_all(arg, &self.envs))
+        {
             msg.push_str(arg_delim);
             msg.push_str(&arg);
         }
         msg
     }
+}
+
+pub fn then_substitute_all(string: &str, key_value: &Option<Vec<EnvVar>>) -> String {
+    if let Some(env) = key_value {
+        return substitute_all(string, env);
+    }
+    String::from(string)
 }

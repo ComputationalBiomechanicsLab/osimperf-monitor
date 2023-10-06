@@ -6,6 +6,7 @@ pub use install_id::InstallId;
 
 use anyhow::Context;
 use anyhow::Result;
+use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Default)]
@@ -31,7 +32,7 @@ fn checked_working_dir() -> Result<PathBuf> {
 impl Ctxt {
     pub fn set_archive(&mut self, archive: Option<PathBuf>) -> Result<()> {
         if let Some(dir) = archive {
-            self.archive = Some(dir);
+            self.archive = Some(fs::canonicalize(dir)?);
         } else {
             self.archive = Some(checked_working_dir()?.join("archive"));
         }
@@ -40,7 +41,7 @@ impl Ctxt {
 
     pub fn set_build(&mut self, build: Option<PathBuf>) -> Result<()> {
         if let Some(dir) = build {
-            self.build = Some(dir);
+            self.build = Some(fs::canonicalize(dir)?);
         } else {
             self.build = Some(checked_working_dir()?.join("build"));
         }
@@ -49,9 +50,9 @@ impl Ctxt {
 
     pub fn set_opensim_core(&mut self, opensim_core: Option<PathBuf>) -> Result<()> {
         if let Some(dir) = opensim_core {
-            self.opensim_core = Some(dir);
+            self.opensim_core = Some(fs::canonicalize(dir)?);
         } else {
-            self.opensim_core = Some(checked_working_dir()?.join("opensim_core"));
+            self.opensim_core = Some(checked_working_dir()?.join("software").join("opensim-core"));
         }
         Ok(())
     }
@@ -71,6 +72,8 @@ impl Ctxt {
     }
 
     pub fn opensim_core(&self) -> &PathBuf {
-        self.opensim_core.as_ref().expect("path to opensim-core was not set")
+        self.opensim_core
+            .as_ref()
+            .expect("path to opensim-core was not set")
     }
 }

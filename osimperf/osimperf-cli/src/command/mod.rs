@@ -15,7 +15,6 @@ use std::{
     path::Path,
     time::Duration,
 };
-use crate::EnvVar;
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -190,4 +189,21 @@ pub trait CommandExecutorTrait {
     fn execute(self) -> Result<std::process::Output>;
 
     fn start_execute(self) -> Result<std::process::Child>;
+}
+
+pub(crate) fn substitute_if_present(string: &mut String, key: &str, value: &str) -> Option<()> {
+    let start = string.find(key)?;
+    let end = start + key.len();
+    let start = string.find(key)?;
+    string.replace_range(start..end, value);
+    Some(())
+}
+
+pub(crate) fn substitute_all(string: &str, envs: &[crate::EnvVar]) -> String {
+    let mut out = String::from(string);
+    for env in envs.iter() {
+        let dollar_key = format!("${}", env.key);
+        _ = substitute_if_present(&mut out, &dollar_key, &env.value);
+    }
+    out
 }
