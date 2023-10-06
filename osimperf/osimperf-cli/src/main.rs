@@ -11,34 +11,12 @@ pub use file_backed_struct::*;
 pub use install::*;
 
 use log::info;
-use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use env_logger::Env;
 
 use anyhow::Result;
-
-pub struct Context {}
-
-impl Context {
-    pub fn set_home(&mut self, home: Option<PathBuf>) -> Result<()> {
-        todo!();
-    }
-
-    pub fn set_archive(&mut self, archive: Option<PathBuf>) -> Result<()> {
-        todo!()
-    }
-
-    pub fn home(&self) -> Result<PathBuf> {
-        todo!()
-    }
-
-    pub fn archive(&self) -> Result<PathBuf> {
-        todo!()
-    }
-}
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
