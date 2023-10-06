@@ -63,6 +63,22 @@ impl Default for CMakeCommands {
 
         CMakeCommands(vec![
             (
+                String::from("Clear opensim-core build folder"),
+                Command::parse(&format!("rm -rf ${OPENSIM_BUILD_ENV_VAR}/opensim-core")),
+            ),
+            (
+                String::from("Clear dependencies build folder"),
+                Command::parse(&format!("rm -rf ${OPENSIM_BUILD_ENV_VAR}/dependencies")),
+            ),
+            (
+                String::from("Clear opensim-core install folder"),
+                Command::parse(&format!("rm -rf ${OPENSIM_INSTALL_ENV_VAR}/opensim-core")),
+            ),
+            (
+                String::from("Clear dependencies install folder"),
+                Command::parse(&format!("rm -rf ${OPENSIM_INSTALL_ENV_VAR}/dependencies")),
+            ),
+            (
                 String::from("Configure dependencies"),
                 configure_dependecies_cmd,
             ),

@@ -137,19 +137,11 @@ impl CompilationNode {
             });
             self.try_write(context)?;
 
-            // Erase the install dir.
-            // erase_folder(&install_dir)
-            //     .with_context(|| format!("failed to erase install dir: {:?}", install_dir))?;
-
-            // Erase the build dir.
-            // erase_folder(&build.path()?.join(target.to_str()))
-            //     .with_context(|| format!("failed to erase build dir"))?;
-
             // Setup something to keep track of the progres.
             let mut progress = CMakeProgressStreamer::new(self, context, task.clone());
 
             // Start compilation.
-            debug!("run cmake command: {:#?}", cmd);
+            debug!("run cmake command: {:#?}", cmd.print_command());
             let output = cmd
                 .run_and_stream(&mut progress)
                 .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))?;
