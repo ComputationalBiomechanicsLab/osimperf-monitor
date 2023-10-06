@@ -16,7 +16,7 @@ use crate::context::InstallId;
 
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
-use log::{trace, warn};
+use log::{trace, warn, info};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

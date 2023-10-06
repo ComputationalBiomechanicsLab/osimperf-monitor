@@ -10,11 +10,13 @@ pub use context::*;
 pub use file_backed_struct::*;
 pub use install::*;
 
+use log::info;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use env_logger::Env;
 
 use anyhow::Result;
 
@@ -104,10 +106,12 @@ struct InstallCommand {
     /// Path to opensim-core repo.
     #[arg(long)]
     opensim_core: Option<PathBuf>,
+    /// Path to archive directory.
     #[arg(long)]
     archive: Option<PathBuf>,
+    /// Path to build directory.
     #[arg(long)]
-    cmake_config: Option<PathBuf>,
+    build: Option<PathBuf>,
 }
 
 impl InstallCommand {
@@ -115,6 +119,7 @@ impl InstallCommand {
         let mut context = Ctxt::default();
         context.set_opensim_core(self.opensim_core.clone())?;
         context.set_archive(self.archive.clone())?;
+        context.set_build(self.build.clone())?;
         Ok(context)
     }
 }
@@ -132,6 +137,7 @@ impl Commands {
 }
 
 fn main() -> Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let args = Cli::parse();
 
     let context = args.command.get_context()?;
@@ -156,6 +162,7 @@ fn main() -> Result<()> {
 }
 
 fn run_install_cmd(args: &InstallCommand) -> Result<()> {
+    info!("Starting OSimPerf install command.");
     let context = args.get_context()?;
 
     let repo = crate::install::Repository::new_opensim_core(context.opensim_core().clone())?;
@@ -165,7 +172,12 @@ fn run_install_cmd(args: &InstallCommand) -> Result<()> {
     let commit = repo.last_commit()?;
 
     let mut node = crate::install::CompilationNode::new(&context, repo, commit)?;
-    node.install(&context, &cmake_config)?;
+    info!("Installing node {:#?}", node);
+    if node.install(&context, &cmake_config)? {
+        info!("Install complete.");
+    } else {
+        info!("Nothing to do.");
+    }
 
     Ok(())
 }
