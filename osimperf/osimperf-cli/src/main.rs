@@ -137,7 +137,7 @@ impl Commands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
     let args = Cli::parse();
 
     let context = args.command.get_context()?;
@@ -162,6 +162,7 @@ fn main() -> Result<()> {
 }
 
 fn run_install_cmd(args: &InstallCommand) -> Result<()> {
+
     info!("Starting OSimPerf install command.");
     let context = args.get_context()?;
 
@@ -173,7 +174,7 @@ fn run_install_cmd(args: &InstallCommand) -> Result<()> {
 
     let mut node = crate::install::CompilationNode::new(&context, repo, commit)?;
     info!("Installing node {:#?}", node);
-    if node.install(&context, &cmake_config)? {
+    if node.install(&context, &cmake_config, true)? {
         info!("Install complete.");
     } else {
         info!("Nothing to do.");

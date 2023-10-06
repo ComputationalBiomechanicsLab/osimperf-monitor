@@ -2,6 +2,7 @@ mod cmake_cmds;
 mod repo;
 mod status;
 
+use anyhow::anyhow;
 use anyhow::ensure;
 pub use cmake_cmds::CMakeCommands;
 
@@ -16,17 +17,19 @@ use crate::context::InstallId;
 
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
-use log::{trace, warn, info};
+use log::{debug, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::path::PathBuf;
 
-use osimperf_lib::common::collect_configs;
-use osimperf_lib::common::git::Commit;
 use crate::Command;
 use crate::CommandTrait;
+use osimperf_lib::common::collect_configs;
+use osimperf_lib::common::git::Commit;
+
+use std::time::Duration;
 
 /// Stored at: `archive/ID/.compilation-node.osimperf`
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -84,9 +87,14 @@ impl CompilationNode {
         Ok(out)
     }
 
-    pub fn install(&mut self, context: &Ctxt, cmake_cmds: &CMakeCommands) -> Result<bool> {
+    pub fn install(
+        &mut self,
+        context: &Ctxt,
+        cmake_cmds: &CMakeCommands,
+        force: bool,
+    ) -> Result<bool> {
         // Returns whether there was any compilation attempted.
-        if self.status.done() {
+        if self.status.done() && !force {
             return Ok(false);
         }
 
@@ -103,7 +111,7 @@ impl CompilationNode {
         }
 
         // If we already failed compiling, no need to try again.
-        if self.status.failed().is_some() {
+        if self.status.failed().is_some() && !force {
             return Ok(false);
         }
 
@@ -111,10 +119,15 @@ impl CompilationNode {
         let checked_out_token = self.repo.checkout(&self.commit)?;
 
         // Set environmental variables.
-        let env_vars = env_vars(context, self.id(), Some(checked_out_token.path().to_owned()));
+        let env_vars = env_vars(
+            context,
+            self.id(),
+            Some(checked_out_token.path().to_owned()),
+        );
         let cmake_cmds = cmake_cmds.with_env_vars(&env_vars);
 
-        for (task,cmd) in cmake_cmds.0.iter() {
+        let mut dt = Duration::from_secs(0);
+        for (task, cmd) in cmake_cmds.0.iter() {
             // First update the status.
             self.status = Status::Compiling(Progress {
                 percentage: 0.,
@@ -134,19 +147,27 @@ impl CompilationNode {
             // let mut progress = CMakeProgressStreamer::new(self, &cmd.0);
 
             // Start compilation.
-            let output = cmd.run_and_time();
-                // .run_and_stream(&mut progress);
-                // .vith_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
-
-            // Update the status.
-            self.status = Status::from_output(output.map(|x| x.duration));
-
-            // Update the file backing this struct.
-            self.try_write(context)?;
+            debug!("run cmake command: {:#?}", cmd);
+            let output = cmd.run_and_time()?;
+            dt += output.duration;
+            info!("output = {:#?}", output);
+            // .run_and_stream(&mut progress);
+            // .vith_context(|| format!("cmake failed: {:#?}", cmd.print_pretty()));
 
             // We failed to compile, so we stop.
-            ensure!(self.status.done(), "Failed to compile");
+            if !output.success() {
+                // Update the status.
+                self.status = Status::Error(output.stderr_str_clone());
+                // Update the file backing this struct.
+                self.try_write(context)?;
+                return Err(anyhow!("Failed to compile"));
+            }
         }
+
+        // Update the status.
+        self.status = Status::Done(dt);
+        // Update the file backing this struct.
+        self.try_write(context)?;
 
         // Return that we compiled something.
         Ok(true)
