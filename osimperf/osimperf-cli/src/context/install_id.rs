@@ -7,6 +7,6 @@ pub struct InstallId<'a> {
 
 impl<'a> InstallId<'a> {
     pub fn subfolder_name(&self) -> String {
-        format!("{}-{}-{}-{}", self.name, self.branch, self.hash, self.date)
+        format!("{}-{}-{}-{}", self.name, self.branch, self.date, self.hash)
     }
 }
