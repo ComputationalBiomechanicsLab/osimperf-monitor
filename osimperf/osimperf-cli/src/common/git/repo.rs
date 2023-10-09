@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::ensure;
+use chrono::Days;
 use log::{debug, info, trace};
 use osimperf_lib::git::Date;
 use serde::{Deserialize, Serialize};
@@ -64,7 +65,8 @@ impl Repository {
     }
 
     pub fn last_commit_at_date(&self, date: &Date) -> anyhow::Result<Option<Commit>> {
-        let mut commits = self.commits_between(Some(&date), Some(&date))?;
+        let after = date.clone() - Days::new(1);
+        let commits = self.commits_between(Some(&after), Some(&date))?;
         if commits.len() == 0 {
             return Ok(None);
         }
