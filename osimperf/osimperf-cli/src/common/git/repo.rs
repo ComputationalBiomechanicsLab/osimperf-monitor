@@ -58,10 +58,10 @@ impl Repository {
 
     fn commits_between(
         &self,
-        after_date: Option<&Date>,
-        before_date: Option<&Date>,
+        since: Option<&Date>,
+        until: Option<&Date>,
     ) -> anyhow::Result<Vec<Commit>> {
-        git::get_commits_since(&self.path, &self.branch, after_date, before_date)
+        git::get_commits_since(&self.path, &self.branch, since, until)
     }
 
     pub fn last_commit_at_date(&self, date: &Date) -> anyhow::Result<Option<Commit>> {
@@ -75,11 +75,11 @@ impl Repository {
 
     pub fn collect_monthly_commits(
         &self,
-        after_date: Option<&Date>,
-        before_date: Option<&Date>,
+        since: Option<&Date>,
+        until: Option<&Date>,
     ) -> anyhow::Result<Vec<Commit>> {
         let mut commits = Vec::<Commit>::new();
-        for c in Self::commits_between(&self, after_date, before_date)?.drain(..) {
+        for c in Self::commits_between(&self, since, until)?.drain(..) {
             if let Some(last) = commits.last() {
                 let d0 = format_date(&c.date()).split_at(7).0.to_string();
                 let d1 = format_date(&last.date()).split_at(7).0.to_string();
