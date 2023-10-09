@@ -1,7 +1,6 @@
 mod cmake_cmds;
-mod repo;
-mod status;
 mod progress;
+mod status;
 
 use anyhow::anyhow;
 use anyhow::ensure;
@@ -9,10 +8,11 @@ pub use cmake_cmds::CMakeCommands;
 use progress::CMakeProgressStreamer;
 
 use crate::env_vars;
+use crate::Commit;
 use crate::Ctxt;
 use crate::EnvVar;
 use crate::FileBackedStruct;
-pub use repo::{Repository, RepositoryState};
+pub use crate::{Repository, RepositoryState};
 use status::{Progress, Status};
 
 use crate::context::InstallId;
@@ -29,7 +29,6 @@ use std::path::PathBuf;
 use crate::Command;
 use crate::CommandTrait;
 use osimperf_lib::common::collect_configs;
-use osimperf_lib::common::git::Commit;
 
 use std::time::Duration;
 
@@ -60,11 +59,7 @@ impl CompilationNode {
     pub fn collect_archived(context: &Ctxt) -> Result<Vec<Self>> {
         let mut vec = collect_configs::<Self>(context.archive(), Self::magic_file())?;
         // vec.sort_by_key(|x| NaiveDate::parse_from_str(&x.repo.date, "%Y_%m_%d").unwrap());
-        vec.sort_by(|a, b| {
-            NaiveDate::parse_from_str(&b.commit.date, "%Y_%m_%d")
-                .unwrap()
-                .cmp(&NaiveDate::parse_from_str(&a.commit.date, "%Y_%m_%d").unwrap())
-        });
+        vec.sort_by(|a, b| b.commit.date().cmp(&a.commit.date()));
         Ok(vec)
     }
 
@@ -73,8 +68,8 @@ impl CompilationNode {
         InstallId {
             name: self.repo.name(),
             branch: self.repo.branch(),
-            hash: &self.commit.hash,
-            date: &self.commit.date,
+            hash: self.commit.hash(),
+            date: self.commit.date_str(),
         }
     }
 

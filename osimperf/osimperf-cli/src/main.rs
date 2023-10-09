@@ -68,7 +68,6 @@ enum Commands {
         installed: Option<PathBuf>,
     },
     /// Install dir.
-    #[command(arg_required_else_help = true)]
     Install(InstallCommand),
     /// Write default cmake config.
     #[command(arg_required_else_help = true)]
