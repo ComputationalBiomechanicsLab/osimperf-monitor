@@ -60,7 +60,7 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
 /// Returns date of commit.
 pub fn get_date(repo: &Path, hash: &str) -> Result<Date> {
     let path: &str = repo.to_str().unwrap();
-    let cmd = Command::parse(&format!("git -C {path} log {hash} --pretty=format:%cs"));
+    let cmd = Command::parse(&format!("git -C {path} show {hash} --pretty=format:%cs"));
     Ok(parse_date(&cmd.run_trim()?)?)
 }
 
