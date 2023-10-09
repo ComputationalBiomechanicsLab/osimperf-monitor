@@ -1,3 +1,4 @@
+mod cli;
 mod command;
 mod common;
 mod context;
@@ -9,6 +10,8 @@ pub use common::*;
 pub use context::*;
 pub use file_backed_struct::*;
 pub use install::*;
+
+use cli::InstallCommand;
 
 use log::info;
 use std::path::PathBuf;
@@ -79,29 +82,6 @@ enum Commands {
     },
 }
 
-#[derive(Debug, Args)]
-struct InstallCommand {
-    /// Path to opensim-core repo.
-    #[arg(long)]
-    opensim_core: Option<PathBuf>,
-    /// Path to archive directory.
-    #[arg(long)]
-    archive: Option<PathBuf>,
-    /// Path to build directory.
-    #[arg(long)]
-    build: Option<PathBuf>,
-}
-
-impl InstallCommand {
-    fn get_context(&self) -> Result<Ctxt> {
-        let mut context = Ctxt::default();
-        context.set_opensim_core(self.opensim_core.clone())?;
-        context.set_archive(self.archive.clone())?;
-        context.set_build(self.build.clone())?;
-        Ok(context)
-    }
-}
-
 impl Commands {
     fn get_context(&self) -> Result<Ctxt> {
         let mut context = Ctxt::default();
@@ -129,34 +109,10 @@ fn main() -> Result<()> {
             }
         }
         Commands::WriteDefaultCmakeConfig { path } => write_default_json::<CMakeCommands>(&path)?,
-        Commands::Install(args) => {
-            run_install_cmd(&args)?;
-        }
+        Commands::Install(args) => args.run()?,
         Commands::Record { test_repeats } => println!("record case {test_repeats} times"),
     }
 
     // Continued program logic goes here...
-    Ok(())
-}
-
-fn run_install_cmd(args: &InstallCommand) -> Result<()> {
-
-    info!("Starting OSimPerf install command.");
-    let context = args.get_context()?;
-
-    let repo = crate::install::Repository::new_opensim_core(context.opensim_core().clone())?;
-
-    let cmake_config = CMakeCommands::default();
-
-    let commit = repo.last_commit()?;
-
-    let mut node = crate::install::CompilationNode::new(&context, repo, commit)?;
-    info!("Installing node {:#?}", node);
-    if node.install(&context, &cmake_config, true)? {
-        info!("Install complete.");
-    } else {
-        info!("Nothing to do.");
-    }
-
     Ok(())
 }
