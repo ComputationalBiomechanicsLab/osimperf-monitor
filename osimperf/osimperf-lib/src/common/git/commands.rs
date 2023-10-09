@@ -67,6 +67,15 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
+/// Returns date of commit.
+pub fn get_date(repo: &Path, hash: &str) -> Result<String> {
+    let path: &str = repo.to_str().unwrap();
+    let cmd = Command::parse(&format!(
+        "git -C {path} log {hash} --pretty=format:%cs"
+    ));
+    cmd.run_trim()
+}
+
 /// returns Vec<(hash, date)>
 pub fn get_last_commit(repo: &Path, branch: &str) -> Result<(String, String)> {
     let path: &str = repo.to_str().unwrap();

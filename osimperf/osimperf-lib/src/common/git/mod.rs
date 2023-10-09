@@ -39,6 +39,21 @@ pub fn get_commits_since(
     )
 }
 
+/// returns Vec<(hash, date)>
+pub fn get_commit_from_hash(
+    repo: &Path,
+    branch: &str,
+    after_date: Option<&str>,
+    before_date: Option<&str>,
+) -> Result<Vec<Commit>> {
+    Ok(
+        commands::get_commits_since(repo, branch, after_date, before_date)?
+            .drain(..)
+            .map(|x| Commit::from_hash_and_date_tuple(x))
+            .collect(),
+    )
+}
+
 impl Commit {
     pub(crate) fn from_hash_and_date_tuple(hash_and_date: (String, String)) -> Self {
         Self {
@@ -51,5 +66,25 @@ impl Commit {
     pub fn date(&self) -> anyhow::Result<Date> {
         Ok(Date::parse_from_str(&self.date, "%Y_%m_%d")
             .with_context(|| format!("failed to parse date {} to NaiveDate", self.date))?)
+    }
+
+    pub fn new_last_at_date(repo: &Path, branch: &str, date: &Date) -> Result<Option<Self>> {
+        let after_date = date.to_string();
+        let before_date = date.to_string();
+        Ok(
+            commands::get_commits_since(repo, branch, Some(&after_date), Some(&before_date))?
+                .drain(..)
+                .map(|x| Commit::from_hash_and_date_tuple(x))
+                .next(),
+        )
+    }
+
+    pub fn new_last_commit(repo: &Path, branch: &str) -> Result<Self> {
+        commands::get_last_commit(repo, branch).map(|x| Commit::from_hash_and_date_tuple(x))
+    }
+
+    pub fn new_from_hash(repo: &Path, branch: &str, hash: String) -> Result<Self> {
+        let date = commands::get_date(repo, &hash)?;
+        Ok(Self::from_hash_and_date_tuple((hash, date)))
     }
 }
