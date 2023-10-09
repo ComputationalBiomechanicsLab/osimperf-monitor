@@ -1,4 +1,4 @@
-use super::{Commit, Date, parse_date, format_date};
+use super::{format_date, parse_date, Commit, Date};
 use crate::{Command, CommandTrait, PipedCommands};
 use anyhow::{ensure, Context, Result};
 use std::path::Path;
@@ -60,8 +60,9 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
 /// Returns date of commit.
 pub fn get_date(repo: &Path, hash: &str) -> Result<Date> {
     let path: &str = repo.to_str().unwrap();
-    let cmd = Command::parse(&format!("git -C {path} show {hash} --pretty=format:%cs"));
-    Ok(parse_date(&cmd.run_trim()?)?)
+    let cmd = Command::parse(&format!("git -C {path} show -s {hash} --pretty=format:%cs"));
+    Ok(parse_date(&cmd.run_trim()?)
+        .with_context(|| format!("failed to parse output of command {}", cmd.print_command()))?)
 }
 
 /// Completes hash with date.
