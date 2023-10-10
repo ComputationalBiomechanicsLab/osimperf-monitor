@@ -1,11 +1,9 @@
 use super::{BenchTestResult, BenchTestSetup};
-use crate::{
-    write_json, CommandOutput, CommandTrait, CompilationNode, Ctxt,
-    EnvVar, EnvVars,
-};
+use crate::{write_json, CommandOutput, CommandTrait, CompilationNode, Ctxt, EnvVar, EnvVars};
 use anyhow::{ensure, Context, Result};
 use log::{info, trace, warn};
 use std::hash::{Hash, Hasher};
+use std::path::Path;
 use std::{collections::hash_map::DefaultHasher, path::PathBuf};
 
 // TODO rename to TestNodeRunner
