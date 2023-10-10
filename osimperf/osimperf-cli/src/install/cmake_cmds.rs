@@ -27,7 +27,7 @@ impl Default for CMakeCommands {
         let mut build_dependecies_cmd = Command::new("cmake");
         build_dependecies_cmd.add_arg("--build");
         build_dependecies_cmd.add_arg(format!("${OPENSIM_BUILD_ENV_VAR}/dependencies"));
-        build_dependecies_cmd.add_arg("-j2");
+        build_dependecies_cmd.add_arg("-j14");
 
         let mut configure_opensim_cmd = Command::new("cmake");
         configure_opensim_cmd.add_arg("-B");
@@ -59,7 +59,7 @@ impl Default for CMakeCommands {
         build_opensim_cmd.add_arg(format!("${OPENSIM_BUILD_ENV_VAR}/opensim-core"));
         build_opensim_cmd.add_arg("--target");
         build_opensim_cmd.add_arg("install");
-        build_opensim_cmd.add_arg("j14");
+        build_opensim_cmd.add_arg("-j14");
 
         CMakeCommands(vec![
             (
