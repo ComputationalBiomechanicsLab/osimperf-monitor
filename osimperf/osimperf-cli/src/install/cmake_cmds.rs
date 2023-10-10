@@ -51,8 +51,9 @@ impl Default for CMakeCommands {
         configure_opensim_cmd.add_arg("-DOPENSIM_DOXYGEN_USE_MATHJAX=OFF");
         configure_opensim_cmd.add_arg("-DOPENSIM_WITH_CASADI=OFF");
         configure_opensim_cmd.add_arg("-DOPENSIM_WITH_TROPTER=OFF");
-        configure_opensim_cmd
-            .add_arg("-DOPENSIM_DEPENDENCIES_DIR=${OPENSIM_INSTALL_ENV_VAR}/dependencies");
+        configure_opensim_cmd.add_arg(format!(
+            "-DOPENSIM_DEPENDENCIES_DIR=${OPENSIM_INSTALL_ENV_VAR}/dependencies"
+        ));
 
         let mut build_opensim_cmd = Command::new("cmake");
         build_opensim_cmd.add_arg("--build");
@@ -90,7 +91,6 @@ impl Default for CMakeCommands {
             (String::from("Build opensim-core"), build_opensim_cmd),
         ])
     }
-
 }
 
 impl CMakeCommands {
