@@ -12,7 +12,7 @@ pub use context::*;
 pub use file_backed_struct::*;
 pub use install::*;
 
-use cli::{InstallCommand, RecordCommand, ListCommand};
+use cli::{InstallCommand, ListCommand, RecordCommand};
 
 use log::info;
 use record::ReadBenchTestSetup;
@@ -50,7 +50,7 @@ enum Commands {
 
 fn main() {
     match do_main() {
-        Err(err) => eprintln!("Main exited with error: {err}"),
+        Err(err) => eprintln!("Main exited with error: {:?}", err),
         Ok(_) => (),
     }
 }
@@ -64,7 +64,9 @@ fn do_main() -> Result<()> {
         Commands::Install(args) => args.run()?,
         Commands::Record(args) => args.run()?,
         Commands::WriteDefaultCmakeConfig { path } => write_default_json::<CMakeCommands>(&path)?,
-        Commands::WriteDefaultTestConfig { path } => write_default_json::<ReadBenchTestSetup>(&path)?,
+        Commands::WriteDefaultTestConfig { path } => {
+            write_default_json::<ReadBenchTestSetup>(&path)?
+        }
     }
 
     Ok(())
