@@ -157,9 +157,7 @@ impl CompilationNode {
         }
 
         // Update the status.
-        debug!("Install completed in {} minutes", dt.as_secs()/60);
         self.status = Status::Done(dt);
-        debug!("Writing output to {:?}", self.path_to_self(context));
         // Update the file backing this struct.
         self.try_write(context)?;
 
