@@ -1,6 +1,8 @@
+use crate::FileBackedStruct;
 use crate::{read_json, CMakeCommands, Commit, Ctxt, Date, Repository};
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use log::debug;
 use log::info;
 use std::path::PathBuf;
 
@@ -59,13 +61,30 @@ impl InstallCommand {
             commits.push(commit);
         }
 
-        info!("Preparing to install commits: {:?}", commits);
+        if commits.len() == 0 {
+            info!("No commits selected for installation, exiting.");
+            return Ok(());
+        }
+
+        info!("Preparing to install {} commits:", commits.len());
+        for commit in commits.iter() {
+            info!("    {} at {}", commit.hash(), commit.date_str());
+        }
+
+        info!("Start installation.");
         for commit in commits.drain(..) {
             let mut node = crate::install::CompilationNode::new(&context, repo.clone(), commit)?;
-            info!("Installing node {:#?}", node);
+            info!(
+                "Installing commit {:#?} at {}",
+                node.commit.hash(),
+                node.commit.date_str()
+            );
             if node.install(&context, &cmake_config, true)? {
+                debug!("Installed {:#?}", node);
+                debug!("Install output written to {:#?}", node.path_to_self(&context));
                 info!("Install complete.");
             } else {
+                debug!("Install output file: {:#?}", node.path_to_self(&context));
                 info!("Already installed: Nothing to do.");
             }
         }
