@@ -79,7 +79,7 @@ impl Ctxt {
         if let Some(dir) = models {
             self.models = Some(fs::canonicalize(dir)?);
         } else {
-            self.models = Some(checked_working_dir()?.join("models"));
+            self.models = Some(checked_working_dir()?.join("tests/models"));
         }
         Ok(())
     }
