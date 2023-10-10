@@ -5,7 +5,7 @@ set -e
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
 
-targets="osimperf-monitor osimperf-tui"
+targets="osimperf-cli"
 
 perf_home=$PWD
 
