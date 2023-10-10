@@ -25,35 +25,40 @@ pub struct EnvVars {
 impl EnvVars {
     pub fn make(self) -> Vec<EnvVar> {
         let mut vars = Vec::new();
-        if let Some(p) = self.opensim_build {
-            vars.push(EnvVar::new(
-                    OPENSIM_BUILD_ENV_VAR,
-                    &p))
-        }
-        if let Some(p) = self.opensim_source {
-            vars.push(EnvVar::new(
-                    OPENSIM_SRC_ENV_VAR,
-                    &p))
-        }
-        if let Some(p) = self.opensim_install {
-            vars.push(EnvVar::new(
-                    OPENSIM_INSTALL_ENV_VAR,
-                    &p))
-        }
         if let Some(p) = self.models {
-            vars.push(EnvVar::new(
-                    MODELS_ENV_VAR,
-                    &p))
+            vars.push(EnvVar::new(MODELS_ENV_VAR, &p))
         }
         if let Some(p) = self.test_setup {
-            vars.push(EnvVar::new(
-                    SETUP_ENV_VAR,
-                    &p))
+            vars.push(EnvVar::new(SETUP_ENV_VAR, &p))
         }
         if let Some(p) = self.test_context {
-            vars.push(EnvVar::new(
-                    CONTEXT_ENV_VAR,
-                    &p))
+            vars.push(EnvVar::new(CONTEXT_ENV_VAR, &p));
+
+            // let install = self
+            //     .opensim_install
+            //     .clone()
+            //     .unwrap()
+            //     .to_str()
+            //     .unwrap()
+            //     .to_owned();
+            // vars.push(EnvVar {
+            //     key: "PATH".to_string(),
+            //     value: format!("/bin:{}:{}/lib:{}/include", install, install, install),
+            // });
+            // vars.push(EnvVar {
+            //     key: "LD_LIBRARY_PATH".to_string(),
+            //     value: format!("/bin:{}:{}/lib:{}/include", install, install, install),
+            // });
+        }
+
+        if let Some(p) = self.opensim_build {
+            vars.push(EnvVar::new(OPENSIM_BUILD_ENV_VAR, &p))
+        }
+        if let Some(p) = self.opensim_source {
+            vars.push(EnvVar::new(OPENSIM_SRC_ENV_VAR, &p))
+        }
+        if let Some(p) = self.opensim_install {
+            vars.push(EnvVar::new(OPENSIM_INSTALL_ENV_VAR, &p))
         }
         vars
     }
@@ -66,10 +71,7 @@ pub struct EnvVar {
 }
 
 impl EnvVar {
-    fn new(
-        key: &str,
-        value: &PathBuf,
-    ) -> Self {
+    fn new(key: &str, value: &PathBuf) -> Self {
         Self {
             key: key.to_owned(),
             value: value.to_str().unwrap().to_owned(),
