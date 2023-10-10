@@ -1,4 +1,4 @@
-use super::Durations;
+use super::{durations, Durations};
 use anyhow::Result;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,17 @@ pub struct BenchTestResult {
 pub enum Status {
     Failed(String),
     Success(Durations),
+}
+
+impl Status {
+    fn add_sample(&mut self, duration: Duration) {
+        if let Self::Failed(_) = self {
+            *self = Self::Success(Durations::default());
+        }
+        if let Self::Success(durations) = self {
+            durations.add_sample(duration);
+        }
+    }
 }
 
 impl BenchTestResult {
@@ -46,6 +57,13 @@ impl BenchTestResult {
     }
 
     pub fn update_result(&mut self, cmd_output: CommandOutput) {
-        todo!()
+        if !cmd_output.success() {
+            self.status = Some(Status::Failed(format!("{:#?}", cmd_output)));
+            return;
+        }
+
+        self.status
+            .get_or_insert(Status::Success(Durations::default()))
+            .add_sample(cmd_output.duration);
     }
 }

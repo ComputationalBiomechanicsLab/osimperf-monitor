@@ -55,10 +55,17 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         }))
     }
 
+    fn run_root(&self) -> &Path {
+        self.path_to_result.parent().unwrap()
+    }
+
     pub fn pre_benchmark_setup(&self) -> Result<()> {
+        std::fs::create_dir_all(self.path_to_result.parent().unwrap())?;
+
         let mut cmds = self.config.pre_benchmark_cmds.clone();
         for c in cmds.iter_mut() {
             c.add_envs(&self.env_var);
+            c.set_run_root(self.run_root());
             c.run()?;
         }
         Ok(())
@@ -68,6 +75,7 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         let mut cmds = self.config.post_benchmark_cmds.clone();
         for c in cmds.iter_mut() {
             c.add_envs(&self.env_var);
+            c.set_run_root(self.run_root());
             c.run()?;
         }
         Ok((self.path_to_result, self.result))
@@ -76,6 +84,7 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
     pub fn run(&mut self) -> Result<&BenchTestResult> {
         let mut benchmark_cmd = self.config.benchmark_cmd.clone();
         benchmark_cmd.add_envs(&self.env_var);
+        benchmark_cmd.set_run_root(self.run_root());
 
         let output = benchmark_cmd
             .run_and_time()
