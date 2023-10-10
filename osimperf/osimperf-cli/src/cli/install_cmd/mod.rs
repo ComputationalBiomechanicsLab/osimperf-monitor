@@ -23,8 +23,6 @@ pub struct InstallCommand {
     monthly: bool,
 }
 
-// install --path PATH --hash HASH --date DATE
-
 impl InstallCommand {
     fn get_context(&self) -> Result<Ctxt> {
         let mut context = Ctxt::default();

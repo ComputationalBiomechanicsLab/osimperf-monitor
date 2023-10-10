@@ -13,6 +13,9 @@ use std::path::PathBuf;
 pub struct Ctxt {
     archive: Option<PathBuf>,
     build: Option<PathBuf>,
+    results: Option<PathBuf>,
+    tests: Option<PathBuf>,
+    models: Option<PathBuf>,
     /// Path to opensim-core repository.
     opensim_core: Option<PathBuf>,
 }
@@ -55,6 +58,51 @@ impl Ctxt {
             self.opensim_core = Some(checked_working_dir()?.join("software").join("opensim-core"));
         }
         Ok(())
+    }
+
+    pub fn set_tests(&mut self, tests: Option<PathBuf>) -> Result<()> {
+        if let Some(dir) = tests {
+            self.tests = Some(fs::canonicalize(dir)?);
+        } else {
+            self.tests = Some(checked_working_dir()?.join("tests"));
+        }
+        Ok(())
+    }
+
+    pub fn tests(&self) -> &PathBuf {
+        self.tests
+            .as_ref()
+            .expect("tests directory was not set")
+    }
+
+    pub fn set_models(&mut self, models: Option<PathBuf>) -> Result<()> {
+        if let Some(dir) = models {
+            self.models = Some(fs::canonicalize(dir)?);
+        } else {
+            self.models = Some(checked_working_dir()?.join("models"));
+        }
+        Ok(())
+    }
+
+    pub fn models(&self) -> &PathBuf {
+        self.models
+            .as_ref()
+            .expect("models directory was not set")
+    }
+
+    pub fn set_results(&mut self, results: Option<PathBuf>) -> Result<()> {
+        if let Some(dir) = results {
+            self.results = Some(fs::canonicalize(dir)?);
+        } else {
+            self.results = Some(checked_working_dir()?.join("results"));
+        }
+        Ok(())
+    }
+
+    pub fn results(&self) -> &PathBuf {
+        self.results
+            .as_ref()
+            .expect("results directory was not set")
     }
 
     pub fn archive(&self) -> &PathBuf {

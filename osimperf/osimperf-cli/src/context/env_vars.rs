@@ -8,9 +8,9 @@ use std::path::PathBuf;
 pub const OPENSIM_BUILD_ENV_VAR: &str = "OSIMPERF_OPENSIM_BUILD";
 pub const OPENSIM_SRC_ENV_VAR: &str = "OSIMPERF_OPENSIM_SRC";
 pub const OPENSIM_INSTALL_ENV_VAR: &str = "OSIMPERF_OPENSIM_INSTALL";
-
-/// OSIMPERF_RESULTS
-/// OSIMPERF_CONFIG
+pub const MODELS_ENV_VAR: &str = "OSIMPERF_MODELS";
+pub const SETUP_ENV_VAR: &str = "OSIMPERF_SETUP";
+pub const CONTEXT_ENV_VAR: &str = "OSIMPERF_CONTEXT";
 
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct EnvVar {
@@ -18,7 +18,11 @@ pub struct EnvVar {
     pub value: String,
 }
 
-pub fn env_vars<'a>(context: &Ctxt, id: InstallId<'a>, repo: Option<PathBuf>) -> Vec<EnvVar> {
+pub fn env_vars<'a>(
+    context: &Ctxt,
+    id: InstallId<'a>,
+    repo: Option<PathBuf>,
+    ) -> Vec<EnvVar> {
     let mut vars = vec![
         EnvVar::opensim_build_dir(context),
         EnvVar::opensim_install_dir(context, id),
@@ -27,6 +31,14 @@ pub fn env_vars<'a>(context: &Ctxt, id: InstallId<'a>, repo: Option<PathBuf>) ->
         vars.push(EnvVar::opensim_src_dir(&p));
     }
     vars
+}
+
+pub fn bench_env_vars(
+    mut env_vars: Vec<EnvVar>,
+    test_context_dir: PathBuf,
+    test_setup_dir: PathBuf,
+) -> Vec<EnvVar> {
+    todo!()
 }
 
 impl EnvVar {

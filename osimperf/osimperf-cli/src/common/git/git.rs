@@ -68,6 +68,7 @@ pub fn get_date(repo: &Path, hash: &str) -> Result<Date> {
 /// Completes hash with date.
 pub fn complete_commit_from_hash(repo: &Path, hash: String) -> Result<Commit> {
     let date = get_date(repo, &hash)?;
+    println!("date output = {}", date);
     Ok(Commit::new(hash, date))
 }
 

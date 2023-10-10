@@ -61,6 +61,12 @@ impl Command {
         self.envs.get_or_insert(Vec::new()).push(env);
     }
 
+    pub fn add_envs(&mut self, envs: &[EnvVar]) {
+        for env in envs {
+            self.add_env(env.clone());
+        }
+    }
+
     pub fn parse(string: &str) -> Self {
         let mut split = string.split(' ');
         let mut cmd = Self::new(split.next().unwrap());
