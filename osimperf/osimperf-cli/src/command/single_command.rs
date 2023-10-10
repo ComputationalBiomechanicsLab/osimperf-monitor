@@ -1,9 +1,9 @@
 use super::{substitute_all, CommandExecutorTrait, CommandTrait};
+use crate::EnvVar;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::{path::Path, process::Stdio};
-use crate::EnvVar;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct Command {
@@ -115,16 +115,16 @@ impl CommandTrait for Command {
     }
 
     fn print_command_with_delim(&self, arg_delim: &str) -> String {
-        let mut msg = then_substitute_all(&self.cmd, &self.envs);
-        for arg in self
-            .args
-            .iter()
-            .map(|arg| then_substitute_all(arg, &self.envs))
-        {
+        let mut msg = String::new();
+        if let Some(root) = self.root.as_ref() {
+            msg.push_str(&format!("env -C {}{}", root, arg_delim));
+        }
+        msg.push_str(&self.cmd);
+        for arg in self.args.iter() {
             msg.push_str(arg_delim);
             msg.push_str(&arg);
         }
-        msg
+        then_substitute_all(&msg, &self.envs)
     }
 }
 
