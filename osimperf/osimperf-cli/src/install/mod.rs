@@ -7,10 +7,10 @@ use anyhow::ensure;
 pub use cmake_cmds::CMakeCommands;
 use progress::CMakeProgressStreamer;
 
-use crate::env_vars;
 use crate::Commit;
 use crate::Ctxt;
 use crate::EnvVar;
+use crate::EnvVars;
 use crate::FileBackedStruct;
 pub use crate::{Repository, RepositoryState};
 use status::{Progress, Status};
@@ -116,11 +116,13 @@ impl CompilationNode {
         let checked_out_token = self.repo.checkout(&self.commit)?;
 
         // Set environmental variables.
-        let env_vars = env_vars(
-            context,
-            self.id(),
-            Some(checked_out_token.path().to_owned()),
-        );
+        let env_vars = EnvVars {
+            opensim_build: Some(context.opensim_build_dir().to_path_buf()),
+            opensim_source: Some(context.opensim_core().to_path_buf()),
+            opensim_install: Some(context.opensim_install_dir(self.id())),
+            ..Default::default()
+        }
+        .make();
         let cmake_cmds = cmake_cmds.with_env_vars(&env_vars);
 
         let mut dt = Duration::from_secs(0);

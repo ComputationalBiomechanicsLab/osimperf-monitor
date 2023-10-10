@@ -1,7 +1,7 @@
 use super::{BenchTestResult, BenchTestSetup};
 use crate::{
-    bench_env_vars, env_vars, write_json, CommandOutput, CommandTrait, CompilationNode, Ctxt,
-    EnvVar,
+    write_json, CommandOutput, CommandTrait, CompilationNode, Ctxt,
+    EnvVar, EnvVars,
 };
 use anyhow::{ensure, Context, Result};
 use log::{info, trace, warn};
@@ -25,7 +25,7 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         compiler: &'b CompilationNode,
         context: &'c Ctxt,
         path_to_result: PathBuf,
-        env_var: Vec<EnvVar>,
+        env_vars: EnvVars,
     ) -> Result<Option<Self>> {
         ensure!(
             compiler.status.done(),
@@ -42,11 +42,7 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         // TODO Check if max iterations exceeded.
 
         // Complete env vars.
-        let env_var = bench_env_vars(
-            env_var,
-            path_to_result.clone(),
-            config.test_setup_file.parent().unwrap().to_path_buf(),
-        );
+        let env_var = env_vars.make();
 
         // Run setup commands.
         Ok(Some(Self {

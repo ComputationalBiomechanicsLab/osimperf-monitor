@@ -1,5 +1,4 @@
 use crate::{
-    env_vars,
     record::{BenchTestResult, BenchTestSetup, TestNode, TEST_SETUP_FILE_NAME},
     CMakeCommands, Commit, CompilationNode, Ctxt, Date, Repository,
 };
