@@ -151,8 +151,8 @@ impl CompilationNode {
                 // Update the file backing this struct.
                 self.try_write(context)?;
                 Err(anyhow!("Failed to compile"))
-                    .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))
-                    .with_context(|| format!("cmake command output: {:#?}", cmd))?;
+                    .with_context(|| format!("command failed: {:#?}", cmd.print_command()))
+                    .with_context(|| format!("command output: {:#?}", cmd))?;
             }
         }
 
