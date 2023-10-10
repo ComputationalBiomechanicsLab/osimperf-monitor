@@ -148,7 +148,9 @@ impl CompilationNode {
                 self.status = Status::Error(output.stderr_str_clone());
                 // Update the file backing this struct.
                 self.try_write(context)?;
-                return Err(anyhow!("Failed to compile"));
+                Err(anyhow!("Failed to compile"))
+                    .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))
+                    .with_context(|| format!("cmake command output: {:#?}", cmd))?;
             }
         }
 
