@@ -1,6 +1,6 @@
 use crate::{
     record::{BenchTestResult, BenchTestSetup, TestNode},
-    CMakeCommands, Commit, Ctxt, Date, EnvVars, FileBackedStruct, Repository,
+    write_json, CMakeCommands, Commit, Ctxt, Date, EnvVars, FileBackedStruct, Repository,
 };
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -26,8 +26,12 @@ pub struct RecordCommand {
     #[arg(long)]
     models: Option<PathBuf>,
 
+    /// Use valgrind on test.
+    #[arg(long, short)]
+    grind: bool,
+
     /// Number of test iterations.
-    #[arg(long, short, default_value_t = 1)]
+    #[arg(long, short, default_value_t = 0, required_unless_present("grind"))]
     iter: usize,
 }
 
@@ -82,14 +86,17 @@ impl RecordCommand {
                 }
             }
 
-            for test in tests.iter_mut() {
-                info!("grinding = {}", test.config.name);
-                test.grind()?;
+            if self.grind {
+                for test in tests.iter_mut() {
+                    info!("grinding = {}", test.config.name);
+                    test.grind()?;
+                }
             }
 
             for test in tests.drain(..) {
                 let name: String = test.config.name.clone();
-                let result = test.post_benchmark_teardown()?;
+                let (path, result) = test.post_benchmark_teardown()?;
+                write_json(&path, &result)?;
                 info!("{} {:#?}", name, result);
             }
         }
