@@ -1,4 +1,4 @@
-use crate::{CMakeCommands, Commit, Ctxt, Date, Repository};
+use crate::{read_json, CMakeCommands, Commit, Ctxt, Date, Repository};
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use log::info;
@@ -15,6 +15,9 @@ pub struct InstallCommand {
     /// Path to build directory.
     #[arg(long)]
     build: Option<PathBuf>,
+    /// Path to cmake config file.
+    #[arg(long)]
+    cmake: Option<PathBuf>,
     /// Commit date (in %Y-%m-%d format), or hash.
     #[arg(long, default_value = "2019-08-01")]
     commit: String,
@@ -38,7 +41,11 @@ impl InstallCommand {
 
         let repo = crate::install::Repository::new_opensim_core(context.opensim_core().clone())?;
 
-        let cmake_config = CMakeCommands::default();
+        let cmake_config = self
+            .cmake
+            .as_ref()
+            .map(|path| read_json::<CMakeCommands>(path))
+            .unwrap_or(Ok(CMakeCommands::default()))?;
 
         let commit_arg = CommitArg::parse_arg(&self.commit)?;
 
