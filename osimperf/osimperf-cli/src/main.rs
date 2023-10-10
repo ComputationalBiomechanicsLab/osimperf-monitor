@@ -48,7 +48,14 @@ enum Commands {
     WriteDefaultTestConfig { path: PathBuf },
 }
 
-fn main() -> Result<()> {
+fn main() {
+    match do_main() {
+        Err(err) => eprintln!("Main exited with error: {err}"),
+        Ok(_) => (),
+    }
+}
+
+fn do_main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
     let args = Cli::parse();
 
