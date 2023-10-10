@@ -79,7 +79,7 @@ impl InstallCommand {
                 node.commit.hash(),
                 node.commit.date_str()
             );
-            if node.install(&context, &cmake_config, true)? {
+            if node.install(&context, &cmake_config)? {
                 debug!("Installed {:#?}", node);
                 debug!("Install output written to {:#?}", node.path_to_self(&context));
                 info!("Install complete.");

@@ -88,10 +88,9 @@ impl CompilationNode {
         &mut self,
         context: &Ctxt,
         cmake_cmds: &CMakeCommands,
-        force: bool,
     ) -> Result<bool> {
         // Returns whether there was any compilation attempted.
-        if self.status.done() && !force {
+        if self.status.done() {
             return Ok(false);
         }
 
@@ -108,7 +107,7 @@ impl CompilationNode {
         }
 
         // If we already failed compiling, no need to try again.
-        if self.status.failed().is_some() && !force {
+        if self.status.failed().is_some() {
             return Ok(false);
         }
 
