@@ -1,5 +1,8 @@
 use super::{BenchTestResult, BenchTestSetup};
-use crate::{write_json, CommandOutput, CommandTrait, CompilationNode, Ctxt, EnvVar, EnvVars};
+use crate::{
+    write_json, Command, CommandOutput, CommandTrait, CompilationNode, Ctxt, EnvVar, EnvVars,
+    CONTEXT_ENV_VAR,
+};
 use anyhow::{ensure, Context, Result};
 use log::{info, trace, warn};
 use std::hash::{Hash, Hasher};
@@ -91,6 +94,19 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         self.result.update_result(output);
 
         Ok(&self.result)
+    }
+
+    pub fn grind(&mut self) -> Result<()> {
+        let mut benchmark_cmd = self.config.benchmark_cmd.clone();
+        benchmark_cmd.add_envs(&self.env_var);
+        let outfile = format!("${CONTEXT_ENV_VAR}/callgrind.out");
+        let mut cmd = Command::parse(&format!("valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --cache-sim=yes --branch-sim=yes --callgrind-out-file={} {}",
+	            outfile,
+	            benchmark_cmd.print_command()));
+        cmd.add_envs(&self.env_var);
+        cmd.set_run_root(self.run_root());
+        let output = cmd.run_trim()?;
+        Ok(())
     }
 }
 

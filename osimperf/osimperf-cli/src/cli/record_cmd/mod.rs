@@ -82,6 +82,11 @@ impl RecordCommand {
                 }
             }
 
+            for test in tests.iter_mut() {
+                info!("grinding = {}", test.config.name);
+                test.grind()?;
+            }
+
             for test in tests.drain(..) {
                 let name: String = test.config.name.clone();
                 let result = test.post_benchmark_teardown()?;
