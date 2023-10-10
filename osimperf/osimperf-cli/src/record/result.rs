@@ -43,10 +43,6 @@ impl BenchTestResult {
             .join(Self::magic_file())
     }
 
-    pub fn status(&self) -> Result<Durations> {
-        todo!()
-    }
-
     fn update_hash(&mut self, hash: u64) {
         if self.hash == Some(hash) {
             return;
