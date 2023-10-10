@@ -57,7 +57,7 @@ impl RecordCommand {
                 let path_to_result =
                     BenchTestResult::default_path_to_file(&context, &id, &setup.name);
                 let env_vars = EnvVars {
-                    opensim_install: Some(node.path_to_self(&context)),
+                    opensim_install: Some(node.path_to_self(&context).parent().unwrap().to_owned()),
                     models: Some(context.models().to_owned()),
                     test_setup: Some(setup.test_setup_file.parent().unwrap().to_owned()),
                     test_context: Some(path_to_result.parent().unwrap().to_owned()),
