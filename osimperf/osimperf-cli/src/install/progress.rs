@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::io::Write;
+use log::trace;
 
 use super::status::Progress;
 use super::status::Status;
@@ -56,7 +57,7 @@ impl<'a> CMakeProgressStreamer<'a> {
                         self.parent.try_write(self.context)?;
                     }
                 }
-                println!("{line}");
+                trace!("{line}");
             }
 
             // Keep the last incomplete line in the buffer
