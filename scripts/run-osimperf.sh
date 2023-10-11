@@ -12,8 +12,12 @@ cargo install \
 	--path "osimperf/$target" \
 	--root "."
 
-./bin/osimperf-cli install --commit "2019-11-01" --monthly
+./bin/osimperf-cli install --commit "2023-09-01" --monthly
 
 ./bin/osimperf-cli record --tests "tests/Arm26" --iter 2
 
-./bin/osimperf-cli record --tests "tests/Arm26" --grind
+./bin/osimperf-cli ls --results results | ./bin/osimperf-cli plot
+
+
+
+# ./bin/osimperf-cli record --tests "tests/Arm26" --grind

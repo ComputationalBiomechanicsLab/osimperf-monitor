@@ -9,7 +9,7 @@ use rand::prelude::*;
 use std::{
     fs::File,
     io::{LineWriter, Write, self},
-    path::PathBuf,
+    path::PathBuf, str::FromStr,
 };
 
 #[derive(Debug, Args)]
@@ -26,10 +26,11 @@ pub struct PlotCommand {
 impl PlotCommand {
     pub fn run(&self) -> Result<()> {
 
-        let lines = io::stdin().lines();
-
-        for line in lines {
-            println!("got a line: {}", line.unwrap());
+        for line in io::stdin().lines() {
+            let path = PathBuf::from_str(&line?)?;
+            println!("path = {:?}", path);
+            let result = crate::read_json::<BenchTestResult>(&path)?;
+            println!("{:?}", result);
         }
 
         Ok(())
