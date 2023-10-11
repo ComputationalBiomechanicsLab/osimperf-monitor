@@ -35,19 +35,19 @@ impl ListCommand {
 
         if let Some(archive) = self.archive.as_ref() {
             for file in find_file_by_name(archive, CompilationNode::magic_file()) {
-                println!("{:?}", file);
+                println!("{}", file.to_str().unwrap());
             }
         }
 
         if let Some(tests) = self.tests.as_ref() {
             for file in find_file_by_name(tests, TEST_SETUP_FILE_NAME) {
-                println!("{:?}", file);
+                println!("{}", file.to_str().unwrap());
             }
         }
 
         if let Some(results) = self.results.as_ref() {
             for file in find_file_by_name(results, BenchTestResult::magic_file()) {
-                println!("{:?}", file);
+                println!("{}", file.to_str().unwrap());
             }
         }
         Ok(())
