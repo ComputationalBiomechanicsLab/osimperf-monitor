@@ -16,8 +16,6 @@ cargo install \
 
 ./bin/osimperf-cli record --tests "tests/Arm26" --iter 2
 
-./bin/osimperf-cli ls --results results | ./bin/osimperf-cli plot
-
-
+./bin/osimperf-cli ls --results results | ./bin/osimperf-cli plot --out "results.csv"
 
 # ./bin/osimperf-cli record --tests "tests/Arm26" --grind

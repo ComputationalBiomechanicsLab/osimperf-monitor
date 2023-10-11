@@ -8,9 +8,11 @@ use crate::{CommandOutput, Ctxt, InstallId};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct BenchTestResult {
-    status: Option<Status>,
+    pub status: Option<Status>,
     // For detecting changed config.
-    hash: Option<u64>,
+    pub hash: Option<u64>,
+
+    pub date: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -61,5 +63,12 @@ impl BenchTestResult {
         self.status
             .get_or_insert(Status::Success(Durations::default()))
             .add_sample(cmd_output.duration);
+    }
+
+    pub fn get_durations(&self) -> Option<&Durations> {
+        if let Some(Status::Success(durations)) = self.status.as_ref() {
+            return Some(&durations);
+        }
+        None
     }
 }

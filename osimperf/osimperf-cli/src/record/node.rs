@@ -34,7 +34,10 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         );
 
         // TODO Check if previous result present: load or create new.
-        let result = BenchTestResult::default();
+        let result = BenchTestResult {
+            date: compiler.commit.date_str().to_owned(),
+            ..Default::default()
+        };
 
         // TODO Check hash.
         // let hash = compute_hash(&self.test, &self.compiler);
