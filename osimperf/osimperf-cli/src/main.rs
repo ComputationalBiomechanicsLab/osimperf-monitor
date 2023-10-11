@@ -12,7 +12,7 @@ pub use context::*;
 pub use file_backed_struct::*;
 pub use install::*;
 
-use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand};
+use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand, LogCommand};
 
 use log::info;
 use record::ReadBenchTestSetup;
@@ -34,6 +34,8 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// List relevant objects.
+    Log(LogCommand),
     /// List relevant objects.
     Ls(ListCommand),
     /// Install dir.
@@ -62,6 +64,7 @@ fn do_main() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
+        Commands::Log(mut args) => args.run()?,
         Commands::Ls(mut args) => args.run()?,
         Commands::Install(args) => args.run()?,
         Commands::Record(args) => args.run()?,
