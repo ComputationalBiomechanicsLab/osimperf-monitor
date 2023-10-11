@@ -18,4 +18,6 @@ cargo install \
 
 ./bin/osimperf-cli ls --results results | ./bin/osimperf-cli plot --out "results.csv"
 
+python3 csv-plot.py "results.csv"
+
 # ./bin/osimperf-cli record --tests "tests/Arm26" --grind
