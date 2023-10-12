@@ -1,13 +1,13 @@
+use super::InstallInfo;
 use crate::{
     read_json,
     record::{BenchTestResult, Durations, ReadBenchTestSetup, TestNode},
     write_json, CMakeCommands, Command, CommandTrait, Commit, Ctxt, Date, EnvVars,
     FileBackedStruct, InstallId, Repository, INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
-use super::InstallInfo;
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use log::{debug, info };
+use log::{debug, info};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr};
@@ -85,11 +85,19 @@ impl RecordCommand {
             let dir = results_dir.join(&test.name);
             let path = dir.join(RESULT_INFO_FILE_NAME);
 
-            if let Ok(result) = read_json::<ResultInfo>(&path) {
-                if result.commit == install_info.commit {
-                    info!("{} previous result found", test.name);
-                    continue;
-                }
+            // Detect changes in test configuration.
+            let config_hash = 0;
+
+            // Read any previous results.
+            if read_json::<ResultInfo>(&path)
+                .ok()
+                .filter(|r| r.commit == install_info.commit)
+                .filter(|r| r.config_hash == config_hash)
+                .filter(|r| r.durations.len() == self.iter)
+                .is_some()
+            {
+                info!("{} previous result found", test.name);
+                continue;
             }
 
             info!("Setting up context for {}", test.name);
