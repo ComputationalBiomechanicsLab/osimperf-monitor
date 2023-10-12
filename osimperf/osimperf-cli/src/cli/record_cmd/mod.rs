@@ -27,7 +27,7 @@ pub struct RecordCommand {
     models: PathBuf,
 
     /// Number of test iterations.
-    #[arg(long, short, required_unless_present("grind"))]
+    #[arg(long, short, default_value_t = 0, required_unless_present("grind"))]
     iter: usize,
 
     /// Use valgrind on test.
@@ -47,20 +47,35 @@ struct ResultInfo {
     pub date: String,
     /// Benchmark durations.
     pub durations: Durations,
+    /// Benchmark grind result.
+    pub grind: Option<std::time::Duration>,
     /// Test config hash.
     pub config_hash: u64,
 }
 
 struct BenchTestCtxt {
+    pub dir: PathBuf,
+    pub pre_benchmark_cmds: Vec<Command>,
+    pub benchmark_cmd: Command,
+    pub grind_cmd: Command,
+    pub output: ResultInfo,
+}
+
+struct GrindTestCtxt {
     pub name: String,
     pub cmd: Command,
-    pub dt: Durations,
-    pub path: PathBuf,
 }
 
 fn absolute_path(relative_path: &PathBuf) -> Result<PathBuf> {
     std::fs::canonicalize(relative_path)
         .with_context(|| format!("failed to create absolute path to {:?}", relative_path))
+}
+
+struct RecordCommandInput {
+    install: PathBuf,
+    results: PathBuf,
+    models: PathBuf,
+    cmds: Vec<Command>,
 }
 
 impl RecordCommand {
@@ -88,22 +103,20 @@ impl RecordCommand {
             // Detect changes in test configuration.
             let config_hash = 0;
 
-            // Read any previous results.
-            if read_json::<ResultInfo>(&path)
+            // Read any previous result.
+            let result_info = read_json::<ResultInfo>(&path)
                 .ok()
                 .filter(|r| r.commit == install_info.commit)
                 .filter(|r| r.config_hash == config_hash)
-                .filter(|r| r.durations.len() == self.iter)
-                .is_some()
-            {
-                info!("{} previous result found", test.name);
-                continue;
-            }
-
-            info!("Setting up context for {}", test.name);
-
-            debug!("Create directory {}", test.name);
-            std::fs::create_dir_all(&dir)?;
+                .unwrap_or(ResultInfo {
+                    name: test.name.clone(),
+                    branch: install_info.branch.clone(),
+                    commit: install_info.commit.clone(),
+                    date: install_info.date.clone(),
+                    durations: Default::default(),
+                    grind: None,
+                    config_hash,
+                });
 
             let env_vars = EnvVars {
                 opensim_install: Some(install.clone()),
@@ -117,60 +130,108 @@ impl RecordCommand {
                 debug!("set {}={}", env.key, env.value);
             }
 
-            for cmd in parse_commands(&test.pre_benchmark_cmds)
+            let pre_benchmark_cmds = parse_commands(&test.pre_benchmark_cmds)
                 .drain(..)
                 .map(|c| c.set_envs(&env_vars).set_run_root(&dir))
-            {
-                cmd.run_trim()
-                    .context("failed to run pre-benchmark-cmd")
-                    .with_context(|| format!("failed to setup {}", test.name))?;
-            }
+                .collect::<Vec<Command>>();
 
             let benchmark_cmd = Command::parse(&test.benchmark_cmd)
                 .set_envs(&env_vars)
                 .set_run_root(&dir);
 
+            let grind_cmd_base = "valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --cache-sim=yes --branch-sim=yes";
+            let grind_cmd = Command::parse(&format!(
+                "{grind_cmd_base} --callgrind-out-file={}/callgrind.out {}",
+                dir.to_str().unwrap(),
+                test.benchmark_cmd
+            ))
+            .set_envs(&env_vars)
+            .set_run_root(&dir);
+
             tests.push(BenchTestCtxt {
-                name: test.name,
-                cmd: benchmark_cmd,
-                dt: Default::default(),
-                path,
+                dir,
+                pre_benchmark_cmds,
+                benchmark_cmd,
+                grind_cmd,
+                output: result_info,
             });
         }
 
-        if tests.len() > 0 {
-            let mut msg = format!("Prepare to run benchmarks ({}X):\n", self.iter);
+        if self.grind {
+            tests.retain(|t| t.output.grind.is_none());
+
+            if tests.len() == 0 {
+                info!("Nothing to grind");
+                return Ok(());
+            }
+
+            run_all_pre_benchmark_commands(&tests)?;
+
+            let mut msg = String::from("Prepare to grind benchmarks:\n");
             tests.iter().for_each(|t| {
-                msg.push_str(&t.cmd.print_command());
+                msg.push_str(&t.grind_cmd.print_command());
                 msg.push_str("\n")
             });
             info!("{msg}");
 
-            // Prepare to run tests.
-            let mut rng = rand::thread_rng();
+            for test in tests.iter_mut() {
+                let output = test.grind_cmd.run_and_time()?;
+                test.output.grind = Some(output.duration);
 
+                // Store results.
+                write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+                info!("{} {:#?}", test.output.name, test.output.durations);
+            }
+
+            return Ok(());
+        }
+
+        if self.iter > 0 {
+            // Filter tests that are complete.
+            tests.retain(|t| t.output.durations.len() != self.iter);
+
+            if tests.len() == 0 {
+                info!("Nothing to test");
+                return Ok(());
+            }
+
+            // Setup test context.
+            run_all_pre_benchmark_commands(&tests)?;
+
+            // Print list of tests that will be ran.
+            let mut msg = format!("Prepare to run benchmarks ({}X):\n", self.iter);
+            tests.iter().for_each(|t| {
+                msg.push_str(&t.benchmark_cmd.print_command());
+                msg.push_str("\n")
+            });
+            info!("{msg}");
+
+            // Reset any previous measurements.
+            for test in tests.iter_mut() {
+                test.output.durations = Default::default();
+            }
+
+            // Run tests repeatedly.
+            let mut rng = rand::thread_rng();
             for _ in 0..self.iter {
+                // Randomize test order.
                 tests.shuffle(&mut rng);
                 for test in tests.iter_mut() {
-                    let output = test.cmd.run_and_time()?;
-                    test.dt.add_sample(output.duration);
+                    let output = test.benchmark_cmd.run_and_time()?;
+                    test.output.durations.add_sample(output.duration);
                 }
             }
 
             // Store results.
             for test in tests.drain(..) {
-                let result = ResultInfo {
-                    name: test.name.clone(),
-                    branch: install_info.branch.clone(),
-                    commit: install_info.commit.clone(),
-                    date: install_info.date.clone(),
-                    durations: test.dt,
-                    config_hash: 0,
-                };
-                write_json(&test.path, &result)?;
-                info!("{} {:#?}", result.name, result.durations);
+                write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+                info!("{} {:#?}", test.output.name, test.output.durations);
             }
+
+            return Ok(());
         }
+
+        info!("Nothing to do.");
 
         Ok(())
     }
@@ -182,4 +243,22 @@ fn parse_commands(cmds: &Option<Vec<String>>) -> Vec<Command> {
     } else {
         Vec::new()
     }
+}
+
+fn run_all_pre_benchmark_commands(tests: &[BenchTestCtxt]) -> Result<()> {
+    for test in tests {
+        run_pre_benchmark_commands(&test.dir, &test.pre_benchmark_cmds)
+            .context("failed to run pre-benchmark-cmd")
+            .with_context(|| format!("failed to setup {}", test.output.name))?;
+    }
+    Ok(())
+}
+
+fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
+    debug!("Create directory {:?}", path);
+    std::fs::create_dir_all(path)?;
+    for cmd in cmds {
+        cmd.run_trim()?;
+    }
+    Ok(())
 }
