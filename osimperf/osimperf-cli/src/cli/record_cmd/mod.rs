@@ -10,6 +10,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use log::{debug, info};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Debug, Args)]
@@ -33,6 +35,10 @@ pub struct RecordCommand {
     /// Use valgrind on test.
     #[arg(long, short)]
     grind: bool,
+
+    /// Force retesting.
+    #[arg(long, short)]
+    force: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -101,7 +107,9 @@ impl RecordCommand {
             let path = dir.join(RESULT_INFO_FILE_NAME);
 
             // Detect changes in test configuration.
-            let config_hash = 0;
+            let mut hasher = DefaultHasher::new();
+            test.hash(&mut hasher);
+            let config_hash = hasher.finish();
 
             // Read any previous result.
             let result_info = read_json::<ResultInfo>(&path)
@@ -167,28 +175,36 @@ impl RecordCommand {
 
             run_all_pre_benchmark_commands(&tests)?;
 
-            let mut msg = String::from("Prepare to grind benchmarks:\n");
+            let mut msg = String::from("Prepare to grind benchmarks:");
             tests.iter().for_each(|t| {
-                msg.push_str(&t.grind_cmd.print_command());
-                msg.push_str("\n")
+                msg.push_str("\n");
+                msg.push_str(&t.grind_cmd.print_command())
             });
             info!("{msg}");
 
             for test in tests.iter_mut() {
                 let output = test.grind_cmd.run_and_time()?;
-                test.output.grind = Some(output.duration);
+                let dt = *test.output.grind.insert(output.duration);
 
                 // Store results.
                 write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
-                info!("{} {:#?}", test.output.name, test.output.durations);
+                info!(
+                    "Completed grinding {} in {}",
+                    test.output.name,
+                    dt.as_secs()
+                );
             }
+
+            info!("Grind complete: exiting.");
 
             return Ok(());
         }
 
         if self.iter > 0 {
             // Filter tests that are complete.
-            tests.retain(|t| t.output.durations.len() != self.iter);
+            if !self.force {
+                tests.retain(|t| t.output.durations.len() != self.iter);
+            }
 
             if tests.len() == 0 {
                 info!("Nothing to test");
@@ -199,10 +215,10 @@ impl RecordCommand {
             run_all_pre_benchmark_commands(&tests)?;
 
             // Print list of tests that will be ran.
-            let mut msg = format!("Prepare to run benchmarks ({}X):\n", self.iter);
+            let mut msg = format!("Prepare to run benchmarks ({}X):", self.iter);
             tests.iter().for_each(|t| {
-                msg.push_str(&t.benchmark_cmd.print_command());
-                msg.push_str("\n")
+                msg.push_str("\n");
+                msg.push_str(&t.benchmark_cmd.print_command())
             });
             info!("{msg}");
 
@@ -224,9 +240,16 @@ impl RecordCommand {
 
             // Store results.
             for test in tests.drain(..) {
+                info!(
+                    "Benchmark result {}: {} ({})",
+                    test.output.name,
+                    test.output.durations.get_mean().unwrap_or(f64::NAN),
+                    test.output.durations.get_stddev().unwrap_or(f64::NAN)
+                );
                 write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
-                info!("{} {:#?}", test.output.name, test.output.durations);
             }
+
+            info!("Benchmark complete: exiting.");
 
             return Ok(());
         }
