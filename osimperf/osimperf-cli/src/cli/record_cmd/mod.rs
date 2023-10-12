@@ -4,6 +4,7 @@ use crate::{
     write_json, CMakeCommands, Command, CommandTrait, Commit, Ctxt, Date, EnvVars,
     FileBackedStruct, InstallId, Repository, INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
+use super::InstallInfo;
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use log::{debug, info };
@@ -48,14 +49,6 @@ struct ResultInfo {
     pub durations: Durations,
     /// Test config hash.
     pub config_hash: u64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct InstallInfo {
-    pub branch: String,
-    pub commit: String,
-    pub date: String,
-    pub duration: u64,
 }
 
 struct BenchTestCtxt {

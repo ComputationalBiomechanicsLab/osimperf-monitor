@@ -37,14 +37,6 @@ pub struct InstallCommand {
     cmake: Option<PathBuf>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct InstallInfo {
-    pub commit: String,
-    pub branch: String,
-    pub date: String,
-    pub duration: u64,
-}
-
 impl InstallCommand {
     pub fn run(&self) -> Result<()> {
         let source = std::fs::canonicalize(&self.opensim)
@@ -141,4 +133,12 @@ impl InstallCommand {
 
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InstallInfo {
+    pub branch: String,
+    pub commit: String,
+    pub date: String,
+    pub duration: u64,
 }
