@@ -1,7 +1,7 @@
 mod commands;
 
 pub use commands::{
-    checkout_commit, pull, read_current_commit, read_repo_url, was_commit_merged_to_branch,
+    checkout_commit, pull, read_current_commit, read_repo_url, was_commit_merged_to_branch, verify_repository, get_date
 };
 
 use anyhow::{Context, Result};

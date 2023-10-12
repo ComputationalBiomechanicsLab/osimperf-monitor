@@ -1,4 +1,4 @@
-use crate::Command;
+use crate::{Command, read_json};
 use osimperf_lib::common::{find_file_by_name, read_config};
 
 use anyhow::Result;
@@ -11,13 +11,13 @@ pub static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ReadBenchTestSetup {
-    name: String,
+    pub name: String,
     /// Will be run before executing the benchmark.
-    pre_benchmark_cmds: Option<Vec<String>>,
+    pub pre_benchmark_cmds: Option<Vec<String>>,
     /// The benchmark test command.
-    benchmark_cmd: String,
+    pub benchmark_cmd: String,
     /// Will be run after executing the benchmark.
-    post_benchmark_cmds: Option<Vec<String>>,
+    pub post_benchmark_cmds: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Hash)]

@@ -45,7 +45,6 @@ impl PlotCommand {
             let first_date = first_date.get_or_insert_with(|| date.clone());
 
             let days = (date - *first_date).num_days();
-            // info!("{} - {} = {} days", date, first_date, days);
             if let Some(durations) = result.get_durations() {
                 for duration in durations.get().iter() {
                     file.write_all(format!("{days},").as_bytes())

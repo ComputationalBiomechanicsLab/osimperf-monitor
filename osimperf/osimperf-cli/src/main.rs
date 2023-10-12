@@ -21,12 +21,16 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 use env_logger::Env;
 
-use anyhow::Result;
+use anyhow::{Result, Context};
+
+pub static INSTALL_INFO_FILE_NAME: &'static str = "osimperf-install-info.json";
+pub static RESULT_INFO_FILE_NAME: &'static str = "osimperf-result-info.json";
+pub static TEST_CONFIG_FILE_NAME: &'static str = "osimperf-test.config";
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
-#[command(name = "git")]
-#[command(about = "A fictional versioning CLI", long_about = None)]
+#[command(name = "osimperf-cli")]
+#[command(about = "OpenSim performance collector CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -40,7 +44,9 @@ enum Commands {
     Ls(ListCommand),
     /// Install dir.
     Install(InstallCommand),
-    /// Record
+    /// Record test result.
+    ///
+    /// Description: Reads path to test config from stdin.
     Record(RecordCommand),
     /// Plot
     Plot(PlotCommand),
@@ -52,11 +58,9 @@ enum Commands {
     WriteDefaultTestConfig { path: PathBuf },
 }
 
-fn main() {
-    match do_main() {
-        Err(err) => eprintln!("Main exited with error: {:?}", err),
-        Ok(_) => (),
-    }
+fn main() -> Result<()> {
+    do_main().context("main exited with error")?;
+    Ok(())
 }
 
 fn do_main() -> Result<()> {

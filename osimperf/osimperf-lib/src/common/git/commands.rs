@@ -2,6 +2,7 @@ use crate::{Command, CommandTrait, PipedCommands};
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
+use std::io::Lines;
 use std::path::Path;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Hash)]
@@ -70,10 +71,9 @@ pub fn switch_branch(repo: &Path, branch: &str) -> Result<()> {
 /// Returns date of commit.
 pub fn get_date(repo: &Path, hash: &str) -> Result<String> {
     let path: &str = repo.to_str().unwrap();
-    let cmd = Command::parse(&format!(
-        "git -C {path} log {hash} --pretty=format:%cs"
-    ));
-    cmd.run_trim()
+    let cmd = Command::parse(&format!("git -C {path} log {hash} --pretty=format:%cs"));
+    let output = cmd.run()?;
+    Ok(output.lines().next().unwrap().to_string())
 }
 
 /// returns Vec<(hash, date)>

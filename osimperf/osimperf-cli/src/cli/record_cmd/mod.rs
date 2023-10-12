@@ -1,105 +1,184 @@
 use crate::{
-    record::{BenchTestResult, BenchTestSetup, TestNode},
-    write_json, CMakeCommands, Commit, Ctxt, Date, EnvVars, FileBackedStruct, Repository,
+    read_json,
+    record::{BenchTestResult, Durations, ReadBenchTestSetup, TestNode},
+    write_json, CMakeCommands, Command, CommandTrait, Commit, Ctxt, Date, EnvVars,
+    FileBackedStruct, InstallId, Repository, INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use log::info;
+use log::{debug, info };
 use rand::prelude::*;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Debug, Args)]
 pub struct RecordCommand {
-    /// Path to archive directory.
+    /// Path to install directory (looks for osimperf-install-info.data).
     #[arg(long)]
-    archive: Option<PathBuf>,
+    install: PathBuf,
 
     /// Path to results directory.
     #[arg(long)]
-    results: Option<PathBuf>,
-
-    /// Path to test cases directory.
-    #[arg(long)]
-    tests: Option<PathBuf>,
+    results: PathBuf,
 
     /// Path to models directory.
     #[arg(long)]
-    models: Option<PathBuf>,
+    models: PathBuf,
+
+    /// Number of test iterations.
+    #[arg(long, short, required_unless_present("grind"))]
+    iter: usize,
 
     /// Use valgrind on test.
     #[arg(long, short)]
     grind: bool,
+}
 
-    /// Number of test iterations.
-    #[arg(long, short, default_value_t = 0, required_unless_present("grind"))]
-    iter: usize,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ResultInfo {
+    /// Test case name.
+    pub name: String,
+    /// Opensim-core branch name.
+    pub branch: String,
+    /// Opensim-core commit hash.
+    pub commit: String,
+    /// Opensim-core commit date.
+    pub date: String,
+    /// Benchmark durations.
+    pub durations: Durations,
+    /// Test config hash.
+    pub config_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct InstallInfo {
+    pub branch: String,
+    pub commit: String,
+    pub date: String,
+    pub duration: u64,
+}
+
+struct BenchTestCtxt {
+    pub name: String,
+    pub cmd: Command,
+    pub dt: Durations,
+    pub path: PathBuf,
+}
+
+fn absolute_path(relative_path: &PathBuf) -> Result<PathBuf> {
+    std::fs::canonicalize(relative_path)
+        .with_context(|| format!("failed to create absolute path to {:?}", relative_path))
 }
 
 impl RecordCommand {
-    fn get_context(&self) -> Result<Ctxt> {
-        let mut context = Ctxt::default();
-        context.set_archive(self.archive.clone())?;
-        context.set_results(self.results.clone())?;
-        context.set_tests(self.tests.clone())?;
-        context.set_models(self.models.clone())?;
-        Ok(context)
-    }
-
     pub fn run(&self) -> Result<()> {
-        info!("Starting OSimPerf record command.");
-        let context = self.get_context()?;
+        let install = absolute_path(&self.install)?;
+        let results_dir = absolute_path(&self.results)?;
+        let models = absolute_path(&self.models)?;
 
-        let opensim_installs = crate::install::CompilationNode::collect_archived(&context)?;
-        let test_setups = BenchTestSetup::find_all(context.tests())?;
+        let install_info = read_json::<InstallInfo>(&install.join(INSTALL_INFO_FILE_NAME))
+            .context("failed to find opensim installation")
+            .with_context(|| format!("failed to locate {INSTALL_INFO_FILE_NAME}"))?;
 
-        let mut rng = rand::thread_rng();
-        for node in opensim_installs.iter() {
-            let mut tests = Vec::new();
-            for setup in test_setups.iter() {
-                // Creating the test node also sets up the context.
-                let id = node.id();
-                let path_to_result =
-                    BenchTestResult::default_path_to_file(&context, &id, &setup.name);
-                let env_vars = EnvVars {
-                    opensim_install: Some(node.path_to_self(&context).parent().unwrap().to_owned()),
-                    models: Some(context.models().to_owned()),
-                    test_setup: Some(setup.test_setup_file.parent().unwrap().to_owned()),
-                    test_context: Some(path_to_result.parent().unwrap().to_owned()),
-                    ..Default::default()
-                };
-                if let Some(test) =
-                    TestNode::new(&setup, &node, &context, path_to_result, env_vars.clone())?
-                {
-                    tests.push(test);
+        let mut tests = Vec::new();
+
+        for line in std::io::stdin().lines() {
+            let config_path = absolute_path(&PathBuf::from_str(&line?)?)?;
+
+            // Read test case setup file.
+            let test = read_json::<ReadBenchTestSetup>(&config_path)?;
+
+            // Check if previous result exists.
+            let dir = results_dir.join(&test.name);
+            let path = dir.join(RESULT_INFO_FILE_NAME);
+
+            if let Ok(result) = read_json::<ResultInfo>(&path) {
+                if result.commit == install_info.commit {
+                    info!("{} previous result found", test.name);
+                    continue;
                 }
             }
 
-            for test in tests.iter_mut() {
-                test.pre_benchmark_setup()?;
+            info!("Setting up context for {}", test.name);
+
+            debug!("Create directory {}", test.name);
+            std::fs::create_dir_all(&dir)?;
+
+            let env_vars = EnvVars {
+                opensim_install: Some(install.clone()),
+                models: Some(models.clone()),
+                test_setup: Some(config_path.parent().unwrap().to_path_buf()),
+                test_context: Some(dir.clone()),
+                ..Default::default()
             }
+            .make();
+            for env in env_vars.iter() {
+                debug!("set {}={}", env.key, env.value);
+            }
+
+            for cmd in parse_commands(&test.pre_benchmark_cmds)
+                .drain(..)
+                .map(|c| c.set_envs(&env_vars).set_run_root(&dir))
+            {
+                cmd.run_trim()
+                    .context("failed to run pre-benchmark-cmd")
+                    .with_context(|| format!("failed to setup {}", test.name))?;
+            }
+
+            let benchmark_cmd = Command::parse(&test.benchmark_cmd)
+                .set_envs(&env_vars)
+                .set_run_root(&dir);
+
+            tests.push(BenchTestCtxt {
+                name: test.name,
+                cmd: benchmark_cmd,
+                dt: Default::default(),
+                path,
+            });
+        }
+
+        if tests.len() > 0 {
+            let mut msg = format!("Prepare to run benchmarks ({}X):\n", self.iter);
+            tests.iter().for_each(|t| {
+                msg.push_str(&t.cmd.print_command());
+                msg.push_str("\n")
+            });
+            info!("{msg}");
+
+            // Prepare to run tests.
+            let mut rng = rand::thread_rng();
 
             for _ in 0..self.iter {
                 tests.shuffle(&mut rng);
                 for test in tests.iter_mut() {
-                    info!("running = {}", test.config.name);
-                    test.run()?;
+                    let output = test.cmd.run_and_time()?;
+                    test.dt.add_sample(output.duration);
                 }
             }
 
-            if self.grind {
-                for test in tests.iter_mut() {
-                    info!("grinding = {}", test.config.name);
-                    test.grind()?;
-                }
-            }
-
+            // Store results.
             for test in tests.drain(..) {
-                let name: String = test.config.name.clone();
-                let (path, result) = test.post_benchmark_teardown()?;
-                write_json(&path, &result)?;
-                info!("{} {:#?}", name, result);
+                let result = ResultInfo {
+                    name: test.name.clone(),
+                    branch: install_info.branch.clone(),
+                    commit: install_info.commit.clone(),
+                    date: install_info.date.clone(),
+                    durations: test.dt,
+                    config_hash: 0,
+                };
+                write_json(&test.path, &result)?;
+                info!("{} {:#?}", result.name, result.durations);
             }
         }
+
         Ok(())
+    }
+}
+
+fn parse_commands(cmds: &Option<Vec<String>>) -> Vec<Command> {
+    if let Some(c) = cmds {
+        c.iter().map(|cmd| Command::parse(cmd)).collect()
+    } else {
+        Vec::new()
     }
 }

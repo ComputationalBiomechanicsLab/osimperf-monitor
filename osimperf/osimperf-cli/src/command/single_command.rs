@@ -67,6 +67,11 @@ impl Command {
         }
     }
 
+    pub fn set_envs(mut self, envs: &[EnvVar]) -> Self {
+        self.add_envs(envs);
+        self
+    }
+
     pub fn parse(string: &str) -> Self {
         let mut split = string.split(' ');
         let mut cmd = Self::new(split.next().unwrap());
@@ -78,8 +83,9 @@ impl Command {
         cmd
     }
 
-    pub fn set_run_root(&mut self, root: &Path) {
+    pub fn set_run_root(mut self, root: &Path) -> Self {
         self.root = Some(String::from(root.to_str().unwrap()));
+        self
     }
 }
 

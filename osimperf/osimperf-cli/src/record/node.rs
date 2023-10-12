@@ -67,30 +67,31 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
         std::fs::create_dir_all(self.path_to_result.parent().unwrap())?;
 
         let mut cmds = self.config.pre_benchmark_cmds.clone();
-        for c in cmds.iter_mut() {
-            c.add_envs(&self.env_var);
-            c.set_run_root(self.run_root());
-            c.run()?;
+        for cmd in cmds
+            .drain(..)
+            .map(|c| c.set_envs(&self.env_var).set_run_root(self.run_root()))
+        {
+            cmd.run()?;
         }
         Ok(())
     }
 
     pub fn post_benchmark_teardown(self) -> Result<(PathBuf, BenchTestResult)> {
         let mut cmds = self.config.post_benchmark_cmds.clone();
-        for c in cmds.iter_mut() {
-            c.add_envs(&self.env_var);
-            c.set_run_root(self.run_root());
-            c.run()?;
+        for cmd in cmds
+            .drain(..)
+            .map(|c| c.set_envs(&self.env_var).set_run_root(self.run_root()))
+        {
+            cmd.run()?;
         }
         Ok((self.path_to_result, self.result))
     }
 
     pub fn run(&mut self) -> Result<&BenchTestResult> {
         let mut benchmark_cmd = self.config.benchmark_cmd.clone();
-        benchmark_cmd.add_envs(&self.env_var);
-        benchmark_cmd.set_run_root(self.run_root());
-
         let output = benchmark_cmd
+            .set_envs(&self.env_var)
+            .set_run_root(self.run_root())
             .run_and_time()
             .context("failed to run benchmark command")?;
 
@@ -107,8 +108,7 @@ impl<'a, 'b, 'c> TestNode<'a, 'b, 'c> {
 	            outfile,
 	            benchmark_cmd.print_command()));
         cmd.add_envs(&self.env_var);
-        cmd.set_run_root(self.run_root());
-        let output = cmd.run_trim()?;
+        let output = cmd.set_run_root(self.run_root()).run_trim()?;
         Ok(())
     }
 }

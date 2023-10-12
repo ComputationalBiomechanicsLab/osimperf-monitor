@@ -118,17 +118,11 @@ pub fn get_commits_since(
 
 pub fn read_repo_url(repo: &Path) -> Result<String> {
     ensure!(repo.exists(), "repo does not exist: path = {:?}", repo);
-
-    let mut git_remote_v = Command::new("git");
-    git_remote_v.add_arg("-C");
-    git_remote_v.add_arg(repo.to_str().unwrap());
-    git_remote_v.add_arg("remote");
-    git_remote_v.add_arg("-v");
-
-    let mut grep = Command::new("grep");
-    grep.add_arg("fetch");
-
-    PipedCommands::new(vec![git_remote_v, grep]).run_trim()
+    Command::parse(&format!(
+        "git -C {} config --get remote.origin.url",
+        repo.to_str().unwrap()
+    ))
+    .run_trim()
 }
 
 pub fn verify_repository(repo: &Path, expected_url: &str) -> Result<()> {

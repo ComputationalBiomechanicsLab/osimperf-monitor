@@ -12,11 +12,17 @@ cargo install \
 	--path "osimperf/$target" \
 	--root "."
 
-./bin/osimperf-cli install --commit "2023-09-01" --monthly
+opensim="software/opensim-core"
+branch="main"
+LOG_LEVEL="debug"
 
-./bin/osimperf-cli record --tests "tests/Arm26" --iter 2
+for month in {1..2}; do
+	date="2023-0$month-01"
+	commit=$(./bin/osimperf-cli log --date $date --path $opensim --branch $branch)
 
-./bin/osimperf-cli ls --results results | ./bin/osimperf-cli plot --out "results.csv"
+	# Start installing opensim version.
+	install="archive/opensim-$commit"
+	mkdir -p $install
 
 python3 csv-plot.py "results.csv"
 

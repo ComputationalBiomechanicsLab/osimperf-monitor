@@ -1,125 +1,144 @@
 use crate::FileBackedStruct;
-use crate::{read_json, CMakeCommands, Commit, Ctxt, Date, Repository};
+use crate::{INSTALL_INFO_FILE_NAME,
+    read_json, write_json, CMakeCommands, CommandTrait, Commit, Ctxt, Date, Repository};
+
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use log::debug;
-use log::info;
+use log::{debug, info, log_enabled, trace};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Args)]
 pub struct InstallCommand {
     /// Path to opensim-core repo.
     #[arg(long)]
-    opensim_core: Option<PathBuf>,
-    /// Path to archive directory.
+    opensim: PathBuf,
+    /// Path to install directory.
     #[arg(long)]
-    archive: Option<PathBuf>,
+    install: PathBuf,
     /// Path to build directory.
     #[arg(long)]
-    build: Option<PathBuf>,
+    build: PathBuf,
+    /// Branch.
+    #[arg(long, default_value = "main")]
+    branch: String,
+    /// Url.
+    #[arg(
+        long,
+        default_value = "https://github.com/opensim-org/opensim-core.git"
+    )]
+    url: String,
+    /// Commit.
+    #[arg(long)]
+    commit: String,
     /// Path to cmake config file.
     #[arg(long)]
     cmake: Option<PathBuf>,
-    /// Commit date (in %Y-%m-%d format), or hash.
-    #[arg(long, default_value = "2019-08-01")]
-    commit: String,
-    /// Compile last commits of the month since specified commit.
-    #[arg(long)]
-    monthly: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct InstallInfo {
+    pub commit: String,
+    pub branch: String,
+    pub date: String,
+    pub duration: u64,
 }
 
 impl InstallCommand {
-    fn get_context(&self) -> Result<Ctxt> {
-        let mut context = Ctxt::default();
-        context.set_opensim_core(self.opensim_core.clone())?;
-        context.set_archive(self.archive.clone())?;
-        context.set_build(self.build.clone())?;
-        Ok(context)
-    }
-
     pub fn run(&self) -> Result<()> {
-        info!("Starting OSimPerf install command.");
-        let context = self.get_context()?;
+        let source = std::fs::canonicalize(&self.opensim)
+            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
+        let install = std::fs::canonicalize(&self.install)
+            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
+        let build = std::fs::canonicalize(&self.build)
+            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
 
-        let repo = crate::install::Repository::new_opensim_core(context.opensim_core().clone())?;
-
-        let cmake_config = self
-            .cmake
-            .as_ref()
-            .map(|path| read_json::<CMakeCommands>(path))
-            .unwrap_or(Ok(CMakeCommands::default()))?;
-
-        let commit_arg = CommitArg::parse_arg(&self.commit)?;
-
-        let mut commits = if self.monthly {
-            repo.collect_monthly_commits(Some(&commit_arg.to_date(&repo)?), None)?
-        } else {
-            Vec::new()
-        };
-
-        if let Some(commit) = commit_arg.to_commit(&repo)? {
-            commits.push(commit);
-        }
-
-        if commits.len() == 0 {
-            info!("No commits selected for installation, exiting.");
-            return Ok(());
-        }
-
-        info!("Preparing to install {} commits:", commits.len());
-        for commit in commits.iter() {
-            info!("    {} at {}", commit.hash(), commit.date_str());
-        }
-
-        info!("Start installation.");
-        for commit in commits.drain(..) {
-            let mut node = crate::install::CompilationNode::new(&context, repo.clone(), commit)?;
-            info!(
-                "Installing commit {:#?} at {}",
-                node.commit.hash(),
-                node.commit.date_str()
-            );
-            if node.install(&context, &cmake_config)? {
-                debug!("Installed {:#?}", node);
-                debug!("Install output written to {:#?}", node.path_to_self(&context));
-                info!("Install complete.");
-            } else {
-                debug!("Install output file: {:#?}", node.path_to_self(&context));
-                info!("Already installed: Nothing to do.");
+        // Check if already installed.
+        let info_path = install.join(INSTALL_INFO_FILE_NAME);
+        if let Ok(info) = read_json::<InstallInfo>(&info_path) {
+            if info.commit == self.commit {
+                info!("Found installed commit {} ({}).", info.commit, info.date,);
+                return Ok(());
             }
         }
 
+        // Find date of commit.
+        let date = osimperf_lib::git::get_date(&source, &self.commit)?;
+
+        info!("Start installing commit {} ({}).", self.commit, date,);
+
+        // Verify url.
+        debug!("Verify repository URL.");
+        crate::common::verify_repository(&source, &self.url)?;
+
+        // Verify commit part of branch.
+        debug!("Verify branch.");
+        ensure!(
+            osimperf_lib::git::was_commit_merged_to_branch(&source, &self.branch, &self.commit)?,
+            format!(
+                "commit {} not part of branch {}",
+                &self.commit, &self.branch
+            )
+        );
+
+        // Checkout commit.
+        info!("Checkout {:?} to {}", source, self.commit);
+        osimperf_lib::git::checkout_commit(&source, &self.commit)?;
+
+        // Set environmental variables.
+        let env_vars = crate::EnvVars {
+            opensim_build: Some(build),
+            opensim_source: Some(source.clone()),
+            opensim_install: Some(install),
+            ..Default::default()
+        }
+        .make();
+        trace!("{:#?}", env_vars);
+
+        let cmake_cmds = self
+            .cmake
+            .as_ref()
+            .map(|path| read_json::<CMakeCommands>(path))
+            .unwrap_or(Ok(CMakeCommands::default()))?
+            .with_env_vars(&env_vars);
+
+        let mut dt = Duration::from_secs(0);
+        for (task, cmd) in cmake_cmds.0.iter() {
+            debug!("run cmake command: {:#?}", cmd.print_command());
+            let output = if log_enabled!(log::Level::Trace) {
+                cmd.run_and_stream(&mut std::io::stdout())
+            } else {
+                cmd.run_and_time()
+            }
+            .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))?;
+            dt += output.duration;
+
+            // We failed to compile, so we stop.
+            if !output.success() {
+                Err(anyhow!("Failed to compile"))
+                    .with_context(|| format!("command failed: {:#?}", cmd.print_command()))
+                    .with_context(|| format!("command output: {:#?}", cmd))?;
+            }
+        }
+
+        let install_info = InstallInfo {
+            commit: self.commit.clone(),
+            date: date.clone(),
+            duration: dt.as_secs(),
+            branch: self.branch.clone(),
+        };
+        crate::write_json(&info_path, &install_info)?;
+
+        info!(
+            "Finished installing {} ({}) in {} minutes.",
+            self.commit,
+            date,
+            dt.as_secs() / 60
+        );
+
+        info!("Installation info written to {:?}", info_path);
+
         Ok(())
-    }
-}
-
-#[derive(Debug)]
-enum CommitArg<'a> {
-    Hash(&'a str),
-    Date(Date),
-}
-
-impl<'a> CommitArg<'a> {
-    fn parse_arg(str_arg: &'a str) -> Result<Self> {
-        Ok(if str_arg.chars().count() == 40 {
-            // TODO check if valid.
-            Self::Hash(str_arg)
-        } else {
-            Self::Date(Date::parse_from_str(str_arg, "%Y-%m-%d")?)
-        })
-    }
-
-    fn to_date(&self, repo: &Repository) -> Result<Date> {
-        Ok(match self {
-            Self::Hash(hash) => repo.read_commit_from_hash(hash)?.date(),
-            Self::Date(date) => date.clone(),
-        })
-    }
-
-    fn to_commit(&self, repo: &Repository) -> Result<Option<Commit>> {
-        Ok(match self {
-            Self::Hash(hash) => Some(repo.read_commit_from_hash(hash)?),
-            Self::Date(date) => repo.last_commit_at_date(date)?,
-        })
     }
 }
