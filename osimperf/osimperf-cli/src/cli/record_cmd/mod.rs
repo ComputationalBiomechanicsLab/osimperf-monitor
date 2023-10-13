@@ -48,6 +48,10 @@ pub struct RecordCommand {
     /// Force retesting.
     #[arg(long, short)]
     force: bool,
+
+    /// Print the benchmark command.
+    #[arg(long, short)]
+    print: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -266,6 +270,14 @@ impl RecordCommand {
             info!("Benchmark complete");
 
             return Ok(());
+        } else {
+            // Setup test context.
+            run_all_pre_benchmark_commands(&tests)?;
+
+            for test in tests.iter() {
+                println!("{}", test.benchmark_cmd.print_command());
+            }
+            return Ok(());
         }
 
         info!("Record command complete: exiting.");
@@ -284,9 +296,11 @@ fn parse_commands(cmds: &Option<Vec<String>>) -> Vec<Command> {
 
 fn run_all_pre_benchmark_commands(tests: &[BenchTestCtxt]) -> Result<()> {
     for test in tests {
+        info!("Setup context for {}", test.output.name);
         run_pre_benchmark_commands(&test.dir, &test.pre_benchmark_cmds)
             .context("failed to run pre-benchmark-cmd")
             .with_context(|| format!("failed to setup {}", test.output.name))?;
+        info!("Setup complete");
     }
     Ok(())
 }
