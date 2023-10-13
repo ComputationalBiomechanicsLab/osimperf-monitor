@@ -251,7 +251,11 @@ impl RecordCommand {
                 // Randomize test order.
                 tests.shuffle(&mut rng);
                 for test in tests.iter_mut() {
-                    let output = test.benchmark_cmd.run_and_time()?;
+                    let output = if log_enabled!(log::Level::Trace) {
+                        test.benchmark_cmd.run_and_stream(&mut std::io::stdout())?
+                    } else {
+                        test.benchmark_cmd.run_and_time()?
+                    };
                     test.output.durations.add_sample(output.duration);
                 }
             }
