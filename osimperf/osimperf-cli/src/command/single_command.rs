@@ -122,6 +122,11 @@ impl CommandTrait for Command {
 
     fn print_command_with_delim(&self, arg_delim: &str) -> String {
         let mut msg = String::new();
+        if let Some(envs) = self.envs.as_ref() {
+            for env in envs.iter() {
+                msg.push_str(&format!("{}={} ", env.key, env.value));
+            }
+        }
         if let Some(root) = self.root.as_ref() {
             msg.push_str(&format!("env -C {}{}", root, arg_delim));
         }
