@@ -1,6 +1,6 @@
 use super::absolute_path;
-use super::InstallInfo;
 use super::arg_or_env_var;
+use super::InstallInfo;
 
 use crate::context::MODELS_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
@@ -52,6 +52,10 @@ pub struct RecordCommand {
     /// Print the benchmark command.
     #[arg(long, short)]
     print: bool,
+
+    /// Run visualization command (if present).
+    #[arg(long, short)]
+    visualize: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -72,11 +76,13 @@ struct ResultInfo {
     pub config_hash: u64,
 }
 
+#[derive(Debug)]
 struct BenchTestCtxt {
     pub dir: PathBuf,
     pub pre_benchmark_cmds: Vec<Command>,
     pub benchmark_cmd: Command,
     pub grind_cmd: Command,
+    pub visualize_cmd: Option<Command>,
     pub output: ResultInfo,
 }
 
@@ -176,12 +182,18 @@ impl RecordCommand {
             .set_envs(&env_vars)
             .set_run_root(&dir);
 
+            let visualize_cmd = test
+                .visualize_cmd
+                .as_ref()
+                .map(|s| Command::parse(s).set_envs(&env_vars).set_run_root(&dir));
+
             tests.push(BenchTestCtxt {
-                dir,
                 pre_benchmark_cmds,
                 benchmark_cmd,
                 grind_cmd,
+                visualize_cmd,
                 output: result_info,
+                dir,
             });
         }
 
@@ -271,11 +283,17 @@ impl RecordCommand {
 
             return Ok(());
         } else {
-            // Setup test context.
-            run_all_pre_benchmark_commands(&tests)?;
+            if self.visualize {
+                tests.retain(|t| t.visualize_cmd.is_some());
+            }
 
+            // Setup test context.
             for test in tests.iter() {
-                println!("{}", test.benchmark_cmd.print_command());
+                if self.visualize {
+                    println!("{}", test.benchmark_cmd.print_command());
+                } else {
+                    println!("{}", test.visualize_cmd.as_ref().unwrap().print_command());
+                }
             }
             return Ok(());
         }
