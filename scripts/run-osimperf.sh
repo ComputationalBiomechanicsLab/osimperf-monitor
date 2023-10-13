@@ -14,21 +14,23 @@ cargo install \
 
 opensim="software/opensim-core"
 branch="main"
-LOG_LEVEL="debug"
 
-for month in {1..12}; do
-	date="2023-0$month-01"
+export RUST_LOG="trace"
+
+for month in {1..3}; do
+	# Start installing opensim version.
+
+	date="2023-$month-01"
 	commit=$(./bin/osimperf-cli log --date $date --path $opensim --branch $branch)
 
-	# Start installing opensim version.
 	install="archive/opensim-$commit"
 	mkdir -p $install
 
-	RUST_LOG=$LOG_LEVEL ./bin/osimperf-cli install \
-		--opensim $opensim \
-		--install $install \
-		--build "build" \
-		--commit $commit
+	export OSIMPERF_OPENSIM_SRC=$opensim
+	export OSIMPERF_OPENSIM_INSTALL=$install
+	export OSIMPERF_OPENSIM_BUILD="build"
+
+	./bin/osimperf-cli install --commit $commit
 
 	# Start running the benchmarks for each version of opensim.
 
@@ -36,10 +38,10 @@ for month in {1..12}; do
 	results="results/opensim-$commit"
 	mkdir -p "$results"
 
-	./bin/osimperf-cli ls --tests "tests/Arm26" | RUST_LOG=$LOG_LEVEL ./bin/osimperf-cli record \
-		--install $install \
-		--results $results \
-		--models "tests/opensim-models" \
+	export OSIMPERF_RESULTS=$results
+	export OSIMPERF_MODELS="tests/opensim-models"
+
+	./bin/osimperf-cli ls --tests "tests/BasicMillard" | ./bin/osimperf-cli record \
 		--iter 10 \
 		--grind
 
