@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 // Go over subfolders of tests/ to find "osimperf-test.conf"
 pub static TEST_SETUP_FILE_NAME: &str = "osimperf-test.conf";
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct ReadBenchTestSetup {
     pub name: String,
     /// Will be run before executing the benchmark.
