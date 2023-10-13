@@ -37,7 +37,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// List relevant objects.
+    /// Helper for git log commands.
     Log(LogCommand),
     /// List relevant objects.
     Ls(ListCommand),
