@@ -40,6 +40,8 @@ impl Default for ReadBenchTestSetup {
                 format!("ls ${}", crate::context::CONTEXT_ENV_VAR),
             pre_benchmark_cmds: Some(vec![
                 format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR),
+                format!("ls ${}", crate::context::OPENSIM_BUILD_ENV_VAR),
+                format!("ls ${}", crate::context::OPENSIM_SRC_ENV_VAR),
                 format!("ls ${}", crate::context::MODELS_ENV_VAR),
                 format!("ls ${}", crate::context::SETUP_ENV_VAR),
             ]),
