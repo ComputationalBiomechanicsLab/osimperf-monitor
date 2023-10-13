@@ -106,7 +106,12 @@ impl InstallCommand {
             ..Default::default()
         }
         .make();
-        debug!("{:#?}", env_vars);
+        let mut msg = String::from("Using env vars:");
+        for EnvVar { key, value } in env_vars.iter() {
+            msg.push_str("\n");
+            msg.push_str(&format!("{key}={value}"));
+        }
+        info!("{:#}", msg);
 
         let cmake_cmds = self
             .cmake
