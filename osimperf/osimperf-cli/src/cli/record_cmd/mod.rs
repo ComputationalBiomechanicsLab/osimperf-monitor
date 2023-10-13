@@ -195,9 +195,7 @@ impl RecordCommand {
                 );
             }
 
-            info!("Grind complete: exiting.");
-
-            return Ok(());
+            info!("Grind complete.");
         }
 
         if self.iter > 0 {
@@ -249,12 +247,12 @@ impl RecordCommand {
                 write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
             }
 
-            info!("Benchmark complete: exiting.");
+            info!("Benchmark complete");
 
             return Ok(());
         }
 
-        info!("Nothing to do.");
+        info!("Record command complete: exiting.");
 
         Ok(())
     }
