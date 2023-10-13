@@ -1,5 +1,10 @@
 use super::absolute_path;
 use super::InstallInfo;
+use super::arg_or_env_var;
+
+use crate::context::MODELS_ENV_VAR;
+use crate::context::OPENSIM_INSTALL_ENV_VAR;
+
 use crate::{
     read_json,
     record::{BenchTestResult, Durations, TestNode},
@@ -15,22 +20,24 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::{path::PathBuf, str::FromStr};
 
+static RESULTS_ENV_VAR: &str = "OSIMPERF_RESULTS";
+
 #[derive(Debug, Args)]
 pub struct RecordCommand {
-    /// Path to install directory (looks for osimperf-install-info.data).
-    #[arg(long)]
-    install: PathBuf,
+    /// Path to install directory (or set OSIMPERF_OPENSIM_INSTALL env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_INSTALL_ENV_VAR).is_none()))]
+    install: Option<PathBuf>,
 
-    /// Path to results directory.
-    #[arg(long)]
-    results: PathBuf,
+    /// Path to results directory (or set OSIMPERF_RESULTS env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == RESULTS_ENV_VAR).is_none()))]
+    results: Option<PathBuf>,
 
-    /// Path to models directory.
-    #[arg(long)]
-    models: PathBuf,
+    /// Path to models directory (or set OSIMPERF_MODELS env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == MODELS_ENV_VAR).is_none()))]
+    models: Option<PathBuf>,
 
     /// Number of test iterations.
-    #[arg(long, short, default_value_t = 0, required_unless_present("grind"))]
+    #[arg(long, short, default_value_t = 0)]
     iter: usize,
 
     /// Use valgrind on test.
@@ -82,9 +89,21 @@ struct RecordCommandInput {
 
 impl RecordCommand {
     pub fn run(&self) -> Result<()> {
-        let install = absolute_path(&self.install)?;
-        let results_dir = absolute_path(&self.results)?;
-        let models = absolute_path(&self.models)?;
+        let install = arg_or_env_var(
+            self.install.clone(),
+            OPENSIM_INSTALL_ENV_VAR,
+        )?
+        .unwrap();
+        let results_dir = arg_or_env_var(
+            self.results.clone(),
+            RESULTS_ENV_VAR,
+        )?
+        .unwrap();
+        let models = arg_or_env_var(
+            self.models.clone(),
+            MODELS_ENV_VAR,
+        )?
+        .unwrap();
 
         let install_info = read_json::<InstallInfo>(&install.join(INSTALL_INFO_FILE_NAME))
             .context("failed to find opensim installation")
