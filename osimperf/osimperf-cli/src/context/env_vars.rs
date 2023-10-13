@@ -34,21 +34,21 @@ impl EnvVars {
         if let Some(p) = self.test_context {
             vars.push(EnvVar::new(CONTEXT_ENV_VAR, &p));
 
-            // let install = self
-            //     .opensim_install
-            //     .clone()
-            //     .unwrap()
-            //     .to_str()
-            //     .unwrap()
-            //     .to_owned();
+            let install = self
+                .opensim_install
+                .clone()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
             // vars.push(EnvVar {
             //     key: "PATH".to_string(),
             //     value: format!("/bin:{}:{}/lib:{}/include", install, install, install),
             // });
-            // vars.push(EnvVar {
-            //     key: "LD_LIBRARY_PATH".to_string(),
-            //     value: format!("/bin:{}:{}/lib:{}/include", install, install, install),
-            // });
+            vars.push(EnvVar {
+                key: "LD_LIBRARY_PATH".to_string(),
+                value: format!("{}/opensim-core/lib", install),
+            });
         }
 
         if let Some(p) = self.opensim_build {
