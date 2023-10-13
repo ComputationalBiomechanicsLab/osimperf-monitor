@@ -100,21 +100,9 @@ struct RecordCommandInput {
 
 impl RecordCommand {
     pub fn run(&self) -> Result<()> {
-        let install = arg_or_env_var(
-            self.install.clone(),
-            OPENSIM_INSTALL_ENV_VAR,
-        )?
-        .unwrap();
-        let results_dir = arg_or_env_var(
-            self.results.clone(),
-            RESULTS_ENV_VAR,
-        )?
-        .unwrap();
-        let models = arg_or_env_var(
-            self.models.clone(),
-            MODELS_ENV_VAR,
-        )?
-        .unwrap();
+        let install = arg_or_env_var(self.install.clone(), OPENSIM_INSTALL_ENV_VAR)?.unwrap();
+        let results_dir = arg_or_env_var(self.results.clone(), RESULTS_ENV_VAR)?.unwrap();
+        let models = arg_or_env_var(self.models.clone(), MODELS_ENV_VAR)?.unwrap();
 
         let install_info = read_json::<InstallInfo>(&install.join(INSTALL_INFO_FILE_NAME))
             .context("failed to find opensim installation")
