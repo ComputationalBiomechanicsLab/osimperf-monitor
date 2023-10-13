@@ -42,9 +42,9 @@ impl InstallCommand {
         let source = std::fs::canonicalize(&self.opensim)
             .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
         let install = std::fs::canonicalize(&self.install)
-            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
+            .with_context(|| format!("failed to setup path to {:?}", self.install))?;
         let build = std::fs::canonicalize(&self.build)
-            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
+            .with_context(|| format!("failed to setup path to {:?}", self.build))?;
 
         // Check if already installed.
         let info_path = install.join(INSTALL_INFO_FILE_NAME);
