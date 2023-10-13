@@ -1,7 +1,8 @@
+use super::absolute_path;
 use super::InstallInfo;
 use crate::{
     read_json,
-    record::{BenchTestResult, Durations, ReadBenchTestSetup, TestNode},
+    record::{BenchTestResult, Durations, TestNode},
     write_json, CMakeCommands, Command, CommandTrait, Commit, Ctxt, Date, EnvVars,
     FileBackedStruct, InstallId, Repository, INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
@@ -70,11 +71,6 @@ struct BenchTestCtxt {
 struct GrindTestCtxt {
     pub name: String,
     pub cmd: Command,
-}
-
-fn absolute_path(relative_path: &PathBuf) -> Result<PathBuf> {
-    std::fs::canonicalize(relative_path)
-        .with_context(|| format!("failed to create absolute path to {:?}", relative_path))
 }
 
 struct RecordCommandInput {

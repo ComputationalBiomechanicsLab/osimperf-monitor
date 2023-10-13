@@ -1,6 +1,12 @@
 use crate::FileBackedStruct;
-use crate::{INSTALL_INFO_FILE_NAME,
-    read_json, write_json, CMakeCommands, CommandTrait, Commit, Ctxt, Date, Repository};
+use crate::{
+    read_json, write_json, CMakeCommands, CommandTrait, Commit, Ctxt, Date, Repository,
+    INSTALL_INFO_FILE_NAME,
+};
+
+use crate::context::OPENSIM_BUILD_ENV_VAR;
+use crate::context::OPENSIM_INSTALL_ENV_VAR;
+use crate::context::OPENSIM_SRC_ENV_VAR;
 
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -11,15 +17,15 @@ use std::time::Duration;
 
 #[derive(Debug, Args)]
 pub struct InstallCommand {
-    /// Path to opensim-core repo.
-    #[arg(long)]
-    opensim: PathBuf,
-    /// Path to install directory.
-    #[arg(long)]
-    install: PathBuf,
-    /// Path to build directory.
-    #[arg(long)]
-    build: PathBuf,
+    /// Path to opensim-core repo (or set OSIMPERF_OPENSIM_SRC env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_SRC_ENV_VAR).is_none()))]
+    opensim: Option<PathBuf>,
+    /// Path to install directory (or set OSIMPERF_OPENSIM_INSTALL env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_INSTALL_ENV_VAR).is_none()))]
+    install: Option<PathBuf>,
+    /// Path to build directory (or set OSIMPERF_OPENSIM_BUILD env variable).
+    #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_BUILD_ENV_VAR).is_none()))]
+    build: Option<PathBuf>,
     /// Branch.
     #[arg(long, default_value = "main")]
     branch: String,
@@ -37,14 +43,28 @@ pub struct InstallCommand {
     cmake: Option<PathBuf>,
 }
 
+/// Returns the absolute path of the arg or checks the environmental variables.
+fn arg_or_env_var(arg: Option<PathBuf>, key: &str) -> Result<Option<PathBuf>> {
+    arg.or_else(|| {
+        std::env::vars()
+            .find(|(k, _)| k == key)
+            .map(|(_, value)| PathBuf::from(value))
+    })
+    .map(|relative| super::absolute_path(&relative))
+    .transpose()
+}
+
 impl InstallCommand {
     pub fn run(&self) -> Result<()> {
-        let source = std::fs::canonicalize(&self.opensim)
-            .with_context(|| format!("failed to setup path to {:?}", self.opensim))?;
-        let install = std::fs::canonicalize(&self.install)
-            .with_context(|| format!("failed to setup path to {:?}", self.install))?;
-        let build = std::fs::canonicalize(&self.build)
-            .with_context(|| format!("failed to setup path to {:?}", self.build))?;
+        let source =
+            arg_or_env_var(self.opensim.clone(), crate::context::OPENSIM_SRC_ENV_VAR)?.unwrap();
+        let install = arg_or_env_var(
+            self.install.clone(),
+            crate::context::OPENSIM_INSTALL_ENV_VAR,
+        )?
+        .unwrap();
+        let build =
+            arg_or_env_var(self.build.clone(), crate::context::OPENSIM_BUILD_ENV_VAR)?.unwrap();
 
         // Check if already installed.
         let info_path = install.join(INSTALL_INFO_FILE_NAME);
@@ -86,7 +106,7 @@ impl InstallCommand {
             ..Default::default()
         }
         .make();
-        trace!("{:#?}", env_vars);
+        debug!("{:#?}", env_vars);
 
         let cmake_cmds = self
             .cmake
