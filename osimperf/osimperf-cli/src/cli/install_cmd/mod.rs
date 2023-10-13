@@ -35,9 +35,9 @@ pub struct InstallCommand {
         default_value = "https://github.com/opensim-org/opensim-core.git"
     )]
     url: String,
-    /// Commit.
+    /// Commit hash (defaults to currently checked out).
     #[arg(long)]
-    commit: String,
+    commit: Option<String>,
     /// Path to cmake config file.
     #[arg(long)]
     cmake: Option<PathBuf>,
@@ -66,19 +66,25 @@ impl InstallCommand {
         let build =
             arg_or_env_var(self.build.clone(), crate::context::OPENSIM_BUILD_ENV_VAR)?.unwrap();
 
+        let commit = if let Some(c) = self.commit.clone() {
+            c
+        } else {
+            osimperf_lib::git::read_current_commit(&source)?
+        };
+
         // Check if already installed.
         let info_path = install.join(INSTALL_INFO_FILE_NAME);
         if let Ok(info) = read_json::<InstallInfo>(&info_path) {
-            if info.commit == self.commit {
+            if info.commit == commit {
                 info!("Found installed commit {} ({}).", info.commit, info.date,);
                 return Ok(());
             }
         }
 
         // Find date of commit.
-        let date = osimperf_lib::git::get_date(&source, &self.commit)?;
+        let date = osimperf_lib::git::get_date(&source, &commit)?;
 
-        info!("Start installing commit {} ({}).", self.commit, date,);
+        info!("Start installing commit {} ({}).", commit, date,);
 
         // Verify url.
         debug!("Verify repository URL.");
@@ -87,16 +93,13 @@ impl InstallCommand {
         // Verify commit part of branch.
         debug!("Verify branch.");
         ensure!(
-            osimperf_lib::git::was_commit_merged_to_branch(&source, &self.branch, &self.commit)?,
-            format!(
-                "commit {} not part of branch {}",
-                &self.commit, &self.branch
-            )
+            osimperf_lib::git::was_commit_merged_to_branch(&source, &self.branch, &commit)?,
+            format!("commit {} not part of branch {}", &commit, &self.branch)
         );
 
         // Checkout commit.
-        info!("Checkout {:?} to {}", source, self.commit);
-        osimperf_lib::git::checkout_commit(&source, &self.commit)?;
+        info!("Checkout {:?} to {}", source, commit);
+        osimperf_lib::git::checkout_commit(&source, &commit)?;
 
         // Set environmental variables.
         let env_vars = crate::EnvVars {
@@ -135,7 +138,7 @@ impl InstallCommand {
         }
 
         let install_info = InstallInfo {
-            commit: self.commit.clone(),
+            commit: commit.clone(),
             date: date.clone(),
             duration: dt.as_secs(),
             branch: self.branch.clone(),
@@ -144,7 +147,7 @@ impl InstallCommand {
 
         info!(
             "Finished installing {} ({}) in {} minutes.",
-            self.commit,
+            commit,
             date,
             dt.as_secs() / 60
         );
