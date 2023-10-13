@@ -1,8 +1,8 @@
-use crate::FileBackedStruct;
 use crate::{
     read_json, write_json, CMakeCommands, CommandTrait, Commit, Ctxt, Date, Repository,
     INSTALL_INFO_FILE_NAME,
 };
+use crate::{EnvVar, FileBackedStruct};
 
 use crate::context::OPENSIM_BUILD_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
@@ -15,43 +15,40 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use super::arg_or_env_var;
+
 #[derive(Debug, Args)]
 pub struct InstallCommand {
     /// Path to opensim-core repo (or set OSIMPERF_OPENSIM_SRC env variable).
     #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_SRC_ENV_VAR).is_none()))]
     opensim: Option<PathBuf>,
+
     /// Path to install directory (or set OSIMPERF_OPENSIM_INSTALL env variable).
     #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_INSTALL_ENV_VAR).is_none()))]
     install: Option<PathBuf>,
+
     /// Path to build directory (or set OSIMPERF_OPENSIM_BUILD env variable).
     #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_BUILD_ENV_VAR).is_none()))]
     build: Option<PathBuf>,
+
     /// Branch.
     #[arg(long, default_value = "main")]
     branch: String,
+
     /// Url.
     #[arg(
         long,
         default_value = "https://github.com/opensim-org/opensim-core.git"
     )]
     url: String,
+
     /// Commit hash (defaults to currently checked out).
     #[arg(long)]
     commit: Option<String>,
+
     /// Path to cmake config file.
     #[arg(long)]
     cmake: Option<PathBuf>,
-}
-
-/// Returns the absolute path of the arg or checks the environmental variables.
-fn arg_or_env_var(arg: Option<PathBuf>, key: &str) -> Result<Option<PathBuf>> {
-    arg.or_else(|| {
-        std::env::vars()
-            .find(|(k, _)| k == key)
-            .map(|(_, value)| PathBuf::from(value))
-    })
-    .map(|relative| super::absolute_path(&relative))
-    .transpose()
 }
 
 impl InstallCommand {
