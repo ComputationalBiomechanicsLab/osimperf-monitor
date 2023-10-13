@@ -8,7 +8,9 @@ pub use install_cmd::{InstallCommand, InstallInfo};
 pub use list_cmd::ListCommand;
 pub use log_cmd::LogCommand;
 pub use plot_cmd::PlotCommand;
-pub use record_cmd::RecordCommand;
+pub use record_cmd::{
+    ReadBenchTestSetup,
+    RecordCommand};
 
 use std::path::PathBuf;
 use anyhow::{Context, Result};

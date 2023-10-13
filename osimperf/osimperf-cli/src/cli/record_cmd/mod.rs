@@ -298,3 +298,38 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
     }
     Ok(())
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
+pub struct ReadBenchTestSetup {
+    pub name: String,
+    /// Will be run before executing the benchmark.
+    pub pre_benchmark_cmds: Option<Vec<String>>,
+    /// The benchmark test command.
+    pub benchmark_cmd: String,
+    /// Will be run after executing the benchmark.
+    pub post_benchmark_cmds: Option<Vec<String>>,
+    /// Optional visualization cmd.
+    pub visualize_cmd: Option<String>,
+}
+
+impl Default for ReadBenchTestSetup {
+    fn default() -> ReadBenchTestSetup {
+        ReadBenchTestSetup {
+            name: "foobar".to_owned(),
+            benchmark_cmd: format!("ls ${}", crate::context::CONTEXT_ENV_VAR),
+            pre_benchmark_cmds: Some(vec![
+                format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR),
+                format!("ls ${}", crate::context::OPENSIM_BUILD_ENV_VAR),
+                format!("ls ${}", crate::context::OPENSIM_SRC_ENV_VAR),
+                format!("ls ${}", crate::context::MODELS_ENV_VAR),
+                format!("ls ${}", crate::context::SETUP_ENV_VAR),
+            ]),
+            post_benchmark_cmds: Some(vec![
+                format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR),
+                format!("ls ${}", crate::context::MODELS_ENV_VAR),
+                format!("ls ${}", crate::context::SETUP_ENV_VAR),
+            ]),
+            visualize_cmd: Some(format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR)),
+        }
+    }
+}

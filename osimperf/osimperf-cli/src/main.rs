@@ -12,10 +12,9 @@ pub use context::*;
 pub use file_backed_struct::*;
 pub use install::*;
 
-use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand, LogCommand};
+use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand, LogCommand, ReadBenchTestSetup};
 
 use log::info;
-use record::ReadBenchTestSetup;
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
