@@ -13,6 +13,7 @@ use crate::{
 };
 use anyhow::{anyhow, ensure, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use log::log_enabled;
 use log::{debug, info};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -294,7 +295,12 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
     debug!("Create directory {:?}", path);
     std::fs::create_dir_all(path)?;
     for cmd in cmds {
-        cmd.run_trim()?;
+        info!("Run cmd: {}", cmd.print_command());
+        if log_enabled!(log::Level::Trace) {
+            cmd.run_and_stream(&mut std::io::stdout())?;
+        } else {
+            cmd.run_trim()?;
+        }
     }
     Ok(())
 }
