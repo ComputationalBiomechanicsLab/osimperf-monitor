@@ -203,10 +203,11 @@ pub trait CommandExecutorTrait {
 }
 
 pub(crate) fn substitute_if_present(string: &mut String, key: &str, value: &str) -> Option<()> {
-    let start = string.find(key)?;
-    let end = start + key.len();
-    let start = string.find(key)?;
-    string.replace_range(start..end, value);
+    while let Some(start) = string.find(key) {
+        let end = start + key.len();
+        let start = string.find(key)?;
+        string.replace_range(start..end, value);
+    }
     Some(())
 }
 
