@@ -228,7 +228,7 @@ impl RecordCommand {
             let mut msg = String::from("Prepare to grind benchmarks:");
             tests.iter().for_each(|t| {
                 msg.push_str("\n");
-                msg.push_str(&t.grind_cmd.print_command())
+                msg.push_str(&t.output.name);
             });
             info!("{msg}");
 
@@ -266,7 +266,7 @@ impl RecordCommand {
             let mut msg = format!("Prepare to run benchmarks ({}X):", self.iter);
             tests.iter().for_each(|t| {
                 msg.push_str("\n");
-                msg.push_str(&t.benchmark_cmd.print_command())
+                msg.push_str(&t.output.name);
             });
             info!("{msg}");
 
@@ -351,7 +351,8 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
     for cmd in cmds {
         info!("Run cmd: {}", cmd.print_command());
         if log_enabled!(log::Level::Trace) {
-            cmd.run_and_stream(&mut std::io::stdout())?.into_duration()?;
+            cmd.run_and_stream(&mut std::io::stdout())?
+                .into_duration()?;
         } else {
             cmd.run_trim()?;
         }
