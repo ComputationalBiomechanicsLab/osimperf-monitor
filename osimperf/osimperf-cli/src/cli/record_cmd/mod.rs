@@ -306,9 +306,9 @@ impl RecordCommand {
             // Setup test context.
             for test in tests.iter() {
                 if self.visualize {
-                    println!("{}", test.benchmark_cmd.print_command());
-                } else {
                     println!("{}", test.visualize_cmd.as_ref().unwrap().print_command());
+                } else {
+                    println!("{}", test.benchmark_cmd.print_command());
                 }
             }
             return Ok(());
