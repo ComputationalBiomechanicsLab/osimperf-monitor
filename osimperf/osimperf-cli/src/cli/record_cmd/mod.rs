@@ -63,7 +63,7 @@ pub struct RecordCommand {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct ResultInfo {
+pub struct ResultInfo {
     /// Test case name.
     pub name: String,
     /// Opensim-core branch name.
@@ -78,6 +78,12 @@ struct ResultInfo {
     pub grind: Option<std::time::Duration>,
     /// Test config hash.
     pub config_hash: u64,
+}
+
+impl ResultInfo {
+    pub fn filename() -> &'static str {
+        RESULT_INFO_FILE_NAME
+    }
 }
 
 #[derive(Debug)]

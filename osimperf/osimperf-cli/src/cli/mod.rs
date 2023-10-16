@@ -10,6 +10,7 @@ pub use log_cmd::LogCommand;
 pub use plot_cmd::PlotCommand;
 pub use record_cmd::{
     ReadBenchTestSetup,
+    ResultInfo,
     RecordCommand};
 
 use std::path::PathBuf;

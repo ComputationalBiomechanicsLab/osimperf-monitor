@@ -89,7 +89,7 @@ impl ListCommand {
         }
 
         if let Some(results) = self.results.as_ref() {
-            for file in find_file_by_name(results, BenchTestResult::magic_file()) {
+            for file in find_file_by_name(results, super::ResultInfo::filename()) {
                 println!("{}", file.to_str().unwrap());
             }
         }
