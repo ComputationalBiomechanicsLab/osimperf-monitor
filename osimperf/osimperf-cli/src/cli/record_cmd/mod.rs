@@ -41,6 +41,10 @@ pub struct RecordCommand {
     #[arg(long, short, default_value_t = 0)]
     iter: usize,
 
+    /// Path to test (`osimperf-test.conf` file).
+    #[arg(long, short)]
+    test: Option<PathBuf>,
+
     /// Use valgrind on test.
     #[arg(long, short)]
     grind: bool,
@@ -110,8 +114,24 @@ impl RecordCommand {
 
         let mut tests = Vec::new();
 
-        for line in std::io::stdin().lines() {
-            let config_path = absolute_path(&PathBuf::from_str(&line?)?)?;
+        // Read test paths from stdin if no --test arg was given.
+        let mut lines_opt = None;
+
+        loop {
+            // Get path to test config file.
+            let config_path = if let Some(test) = self.test.as_ref() {
+                // Use path given as argument.
+                absolute_path(test)
+            } else {
+                let lines = lines_opt.get_or_insert_with(|| std::io::stdin().lines());
+                // Otherwise read paths from stdin.
+                if let Some(l) = lines.next() {
+                    let s = l?;
+                    absolute_path(&PathBuf::from_str(&s)?)
+                } else {
+                    break;
+                }
+            }?;
 
             // Read test case setup file.
             let test = read_json::<ReadBenchTestSetup>(&config_path)?;
@@ -183,6 +203,10 @@ impl RecordCommand {
                 output: result_info,
                 dir,
             });
+
+            if self.test.is_some() {
+                break;
+            }
         }
 
         if self.grind {
