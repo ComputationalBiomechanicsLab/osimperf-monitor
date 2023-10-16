@@ -4,8 +4,8 @@ mod single_command;
 pub use piped_command::{PipedCommands, PipedCommandsExecutor};
 pub use single_command::{Command, CommandExecutor};
 
+use anyhow::{anyhow, Context, Result};
 use osimperf_lib::common::duration_since_boot;
-use anyhow::{Context, Result};
 use std::io::BufReader;
 use std::thread;
 use std::{
@@ -29,7 +29,7 @@ impl CommandOutput {
     }
 
     pub fn stderr_str_clone(&self) -> String {
-        String::from_utf8(self.output.stdout.clone()).unwrap()
+        String::from_utf8(self.output.stderr.clone()).unwrap()
     }
 
     pub fn success(&self) -> bool {
@@ -71,6 +71,17 @@ impl CommandOutput {
         buffer.write_all(&self.output.stdout)?;
         buffer.write_all(format!("{:#?}", self.output.status).as_bytes())?;
         Ok(())
+    }
+
+    pub fn into_duration(self) -> Result<Duration> {
+        if self.success() {
+            Ok(self.duration)
+        } else {
+            Err(anyhow!("command returned errors"))
+                .with_context(|| format!("{}", self.stdout_str_clone()))
+                .with_context(|| format!("{}", self.stderr_str_clone()))
+                .with_context(|| format!("{:?}", self.output.status))?
+        }
     }
 }
 

@@ -345,7 +345,7 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
     for cmd in cmds {
         info!("Run cmd: {}", cmd.print_command());
         if log_enabled!(log::Level::Trace) {
-            cmd.run_and_stream(&mut std::io::stdout())?;
+            cmd.run_and_stream(&mut std::io::stdout())?.into_duration()?;
         } else {
             cmd.run_trim()?;
         }
