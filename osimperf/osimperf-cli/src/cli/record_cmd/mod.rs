@@ -72,6 +72,8 @@ pub struct ResultInfo {
     pub commit: String,
     /// Opensim-core commit date.
     pub date: String,
+    /// Already ran the pre_benchmark_cmds.
+    pub setup: bool,
     /// Benchmark durations.
     pub durations: Durations,
     /// Benchmark grind result.
@@ -164,6 +166,7 @@ impl RecordCommand {
                     durations: Default::default(),
                     grind: None,
                     config_hash,
+                    setup: false,
                 });
 
             let env_vars = EnvVars {
@@ -215,6 +218,56 @@ impl RecordCommand {
             }
         }
 
+        // Setup test context.
+        run_all_pre_benchmark_commands(
+            tests.iter().filter(|test| !test.output.setup | self.force),
+        )?;
+        for test in tests.iter_mut() {
+            test.output.setup = true;
+            write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+        }
+
+        // Print command.
+        if self.print {
+            for test in tests.iter() {
+                let cmd = if self.visualize {
+                    test.visualize_cmd
+                        .as_ref()
+                        .expect("no visualize command found")
+                } else if self.grind {
+                    &test.grind_cmd
+                } else {
+                    &test.benchmark_cmd
+                };
+                println!("{}", cmd.print_command());
+            }
+            return Ok(());
+        }
+
+        // Visualize command.
+        if self.visualize {
+            if tests.len() == 0 {
+                info!("Nothing to show.");
+                return Ok(());
+            }
+
+            let mut msg = String::from("Prepare to visualize benchmarks:");
+            tests.iter().for_each(|t| {
+                msg.push_str("\n");
+                msg.push_str(&t.output.name);
+            });
+            info!("{msg}");
+
+            for test in tests.iter() {
+                let cmd = test
+                    .visualize_cmd
+                    .as_ref()
+                    .expect("no visualize command found");
+
+                cmd.run_trim()?;
+            }
+        }
+
         if self.grind {
             tests.retain(|t| t.output.grind.is_none());
 
@@ -222,8 +275,6 @@ impl RecordCommand {
                 info!("Nothing to grind");
                 return Ok(());
             }
-
-            run_all_pre_benchmark_commands(&tests)?;
 
             let mut msg = String::from("Prepare to grind benchmarks:");
             tests.iter().for_each(|t| {
@@ -258,9 +309,6 @@ impl RecordCommand {
                 info!("Nothing to test");
                 return Ok(());
             }
-
-            // Setup test context.
-            run_all_pre_benchmark_commands(&tests)?;
 
             // Print list of tests that will be ran.
             let mut msg = format!("Prepare to run benchmarks ({}X):", self.iter);
@@ -304,20 +352,6 @@ impl RecordCommand {
             info!("Benchmark complete");
 
             return Ok(());
-        } else {
-            if self.visualize {
-                tests.retain(|t| t.visualize_cmd.is_some());
-            }
-
-            // Setup test context.
-            for test in tests.iter() {
-                if self.visualize {
-                    println!("{}", test.visualize_cmd.as_ref().unwrap().print_command());
-                } else {
-                    println!("{}", test.benchmark_cmd.print_command());
-                }
-            }
-            return Ok(());
         }
 
         info!("Record command complete: exiting.");
@@ -334,7 +368,9 @@ fn parse_commands(cmds: &Option<Vec<String>>) -> Vec<Command> {
     }
 }
 
-fn run_all_pre_benchmark_commands(tests: &[BenchTestCtxt]) -> Result<()> {
+fn run_all_pre_benchmark_commands<'a>(
+    tests: impl Iterator<Item = &'a BenchTestCtxt>,
+) -> Result<()> {
     for test in tests {
         info!("Setup context for {}", test.output.name);
         run_pre_benchmark_commands(&test.dir, &test.pre_benchmark_cmds)
