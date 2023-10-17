@@ -76,6 +76,7 @@ fn print_table(path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<(
         line.push_str(col);
         line.push_str("|");
     }
+    line.push_str("\n");
     buf.write_all(line.as_bytes())?;
 
     line.clear();
@@ -83,6 +84,7 @@ fn print_table(path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<(
     for _ in 0..cols.len() {
         line.push_str("---|");
     }
+    line.push_str("\n");
     buf.write_all(line.as_bytes())?;
 
     for row in rows.iter() {
@@ -104,6 +106,7 @@ fn print_table(path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<(
                 line.push_str(" |");
             }
         }
+        line.push_str("\n");
         buf.write_all(line.as_bytes())?;
     }
 
