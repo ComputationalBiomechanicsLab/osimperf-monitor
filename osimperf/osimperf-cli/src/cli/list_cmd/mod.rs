@@ -83,13 +83,17 @@ impl ListCommand {
         }
 
         if let Some(tests) = self.tests.as_ref() {
-            for file in find_file_by_name(tests, TEST_SETUP_FILE_NAME) {
+            let mut arr = find_file_by_name(tests, TEST_SETUP_FILE_NAME);
+            arr.sort_by(|a, b| a.to_str().unwrap().cmp(b.to_str().unwrap()));
+            for file in arr.iter() {
                 println!("{}", file.to_str().unwrap());
             }
         }
 
         if let Some(results) = self.results.as_ref() {
-            for file in find_file_by_name(results, super::ResultInfo::filename()) {
+            let mut arr = find_file_by_name(results, super::ResultInfo::filename());
+            arr.sort_by(|a, b| a.to_str().unwrap().cmp(b.to_str().unwrap()));
+            for file in arr.iter() {
                 println!("{}", file.to_str().unwrap());
             }
         }
