@@ -1,12 +1,11 @@
 #include <Actuators/Millard2012EquilibriumMuscle.h>
-#include <OpenSim/ExampleComponents/RegisterTypes_osimExampleComponents.h>
 #include <OpenSim/OpenSim.h>
 
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 
-int set_fiber_damping(std::string& model_filename, double fiber_damping) {
+int set_millard(std::string& model_filename, double fiber_damping) {
     std::cout << "Reading model from: " << model_filename << "\n";
     OpenSim::Model model = OpenSim::Model(model_filename);
 
@@ -36,7 +35,6 @@ int check_fiber_damping(std::string& model_filename, double fiber_damping) {
 }
 
 int do_main(int argc, char *argv[]) {
-    RegisterTypes_osimExampleComponents();
     std::vector<std::string> args(argv + 1, argv + argc);
     std::string model_filename = args[0];
     double fiber_damping = std::stod(args[1]);
