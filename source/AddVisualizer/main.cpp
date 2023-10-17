@@ -1,13 +1,15 @@
 #include <OpenSim/OpenSim.h>
+#include <OpenSim/ExampleComponents/RegisterTypes_osimExampleComponents.h>
 
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 
 int do_main(int argc, char *argv[]) {
+    RegisterTypes_osimExampleComponents();
     std::vector<std::string> args(argv + 1, argv + argc);
-    std::string model_filename = args[0];
-    std::string tool_filename = args[1];
+    std::string tool_filename = args[0];
+    std::string model_filename = args[1];
 
     std::cout << "Reading model from: " << model_filename << "\n";
     OpenSim::Model model = OpenSim::Model(model_filename);
