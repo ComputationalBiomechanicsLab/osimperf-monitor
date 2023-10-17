@@ -14,6 +14,9 @@ packages="build-essential cmake autotools-dev autoconf pkg-config automake libop
 # Other useful packages.
 packages+=" opensssh-server vim curl tmux"
 
+# For viewing markdown
+packages+=" okular okular-extra-backends retext"
+
 sudo apt-get update && sudo apt-get install --yes "$packages"
 
 # Enable ssh.
