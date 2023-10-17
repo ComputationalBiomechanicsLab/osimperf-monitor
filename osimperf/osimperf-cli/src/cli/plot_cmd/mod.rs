@@ -34,79 +34,96 @@ pub struct PlotCommand {
     out: Option<PathBuf>,
 }
 
-impl PlotCommand {
-    pub fn run(&self) -> Result<()> {
-        // let mut file = self.out.as_ref().map(|path| {
-        //     LineWriter::new(File::create(path).expect(&format!(
-        //         "failed to open file for writing stdout logs at path = {:?}",
-        //         &self.out
-        //     )))
-        // });
+fn print_table(path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<()> {
+    let mut results = Vec::new();
+    let mut rows = Vec::new();
+    let mut cols = Vec::new();
+    for path in ArgOrStdinIter::new(path) {
+        let result = crate::read_json::<ResultInfo>(&path)?;
 
-        let mut results = Vec::new();
-        let mut rows = Vec::new();
-        let mut cols = Vec::new();
-        for path in ArgOrStdinIter::new(&self.results) {
-            let result = crate::read_json::<ResultInfo>(&path)?;
+        let row = Row {
+            name: format!(
+                "{} {} {}",
+                result.branch,
+                result.date,
+                result.commit.as_str().split_at(6).0
+            ),
+            date: parse_date(&result.date)?,
+        };
 
-            let row = Row {
-                name: format!("{} {} {}", result.branch, result.date, result.commit.as_str().split_at(6).0),
-                date: parse_date(&result.date)?,
-            };
-
-            if rows.iter().find(|&r| r == &row).is_none() {
-                rows.push(row.clone());
-            }
-
-            if cols.iter().find(|&c| c == &result.name).is_none() {
-                cols.push(result.name.clone());
-            }
-
-            results.push(TableCell {
-                col: result.name,
-                row,
-                value: result.durations,
-            });
+        if rows.iter().find(|&r| r == &row).is_none() {
+            rows.push(row.clone());
         }
 
-        rows.sort_by(|a,b| a.date.cmp(&b.date));
-        rows.reverse();
-        cols.sort_by(|a,b| a.cmp(b));
-
-        let mut line = String::new();
-        line.push_str("| |");
-        for col in cols.iter() {
-            line.push_str(col);
-            line.push_str("|");
+        if cols.iter().find(|&c| c == &result.name).is_none() {
+            cols.push(result.name.clone());
         }
-        println!("{line}");
 
+        results.push(TableCell {
+            col: result.name,
+            row,
+            value: result.durations,
+        });
+    }
+
+    rows.sort_by(|a, b| a.date.cmp(&b.date));
+    rows.reverse();
+    cols.sort_by(|a, b| a.cmp(b));
+
+    let mut line = String::new();
+    line.push_str("| |");
+    for col in cols.iter() {
+        line.push_str(col);
+        line.push_str("|");
+    }
+    buf.write_all(line.as_bytes())?;
+
+    line.clear();
+    line.push_str("|---|");
+    for _ in 0..cols.len() {
+        line.push_str("---|");
+    }
+    buf.write_all(line.as_bytes())?;
+
+    for row in rows.iter() {
         line.clear();
-        line.push_str("|---|");
-        for _ in 0..cols.len() {
-            line.push_str("---|");
-        }
-        println!("{line}");
-
-        for row in rows.iter() {
-            line.clear();
-            line.push_str("|");
-            line.push_str(&row.name);
-            line.push_str("|");
-            for col in cols.iter() {
-                if let Some(cell) = results
-                    .iter()
-                    .find(|result| &result.row == row && &result.col == col)
-                {
-                    line.push_str(&format!(" {:.3} ({:.3}) |",
+        line.push_str("|");
+        line.push_str(&row.name);
+        line.push_str("|");
+        for col in cols.iter() {
+            if let Some(cell) = results
+                .iter()
+                .find(|result| &result.row == row && &result.col == col)
+            {
+                line.push_str(&format!(
+                    " {:.3} ({:.3}) |",
                     cell.value.get_mean().unwrap_or(f64::NAN),
                     cell.value.get_stddev().unwrap_or(f64::NAN),
-                    ));
-                } else {
-                    line.push_str(" |");
-                }
+                ));
+            } else {
+                line.push_str(" |");
             }
-            println!("{line}");
+        }
+        buf.write_all(line.as_bytes())?;
+    }
+
+    Ok(())
+}
+
+impl PlotCommand {
+    pub fn run(&self) -> Result<()> {
+        if let Some(path) = self.out.as_ref() {
+            let mut file = File::create(path).with_context(|| {
+                format!(
+                    "failed to open file for writing stdout logs at path = {:?}",
+                    &self.out
+                )
+            })?;
+            print_table(&self.results, &mut file)?;
+            file.flush()
+                .with_context(|| format!("Failed to flush {:?}", self.out))?;
+        } else {
+            print_table(&self.results, std::io::stdout())?;
         }
 
         Ok(())
