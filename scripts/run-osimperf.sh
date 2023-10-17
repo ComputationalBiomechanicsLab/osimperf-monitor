@@ -41,11 +41,12 @@ for month in {1..3}; do
 	export OSIMPERF_RESULTS=$results
 	export OSIMPERF_MODELS="tests/opensim-models"
 
-	./bin/osimperf-cli ls --tests "tests/BasicMillard" | ./bin/osimperf-cli record \
-		--iter 10 \
-		--grind
+	./bin/osimperf-cli ls --tests "tests" | ./bin/osimperf-cli record \
+		--iter 50 --grind
 
 done
+
+# ./bin/osimperf-cli ls --results "results" | ./bin/osimperf-cli plot
 
 # python3 csv-plot.py "results.csv"
 
