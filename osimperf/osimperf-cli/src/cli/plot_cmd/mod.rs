@@ -34,11 +34,11 @@ pub struct PlotCommand {
     out: Option<PathBuf>,
 }
 
-fn print_table(path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<()> {
+fn print_table(arg_path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<()> {
     let mut results = Vec::new();
     let mut rows = Vec::new();
     let mut cols = Vec::new();
-    for path in ArgOrStdinIter::new(path) {
+    for path in ArgOrStdinIter::new(arg_path) {
         let result = crate::read_json::<ResultInfo>(&path)?;
 
         let row = Row {
