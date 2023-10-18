@@ -6,9 +6,7 @@ use crate::context::MODELS_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
 
 use crate::{
-    read_json,
-    record::Durations,
-    write_json, Command, CommandTrait, EnvVars,
+    read_json, record::Durations, write_json, Command, CommandTrait, EnvVars,
     INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
 use anyhow::{Context, Result};
@@ -66,6 +64,8 @@ pub struct RecordCommand {
 pub struct ResultInfo {
     /// Test case name.
     pub name: String,
+    /// Cell name.
+    pub cell_name: Option<String>,
     /// Opensim-core branch name.
     pub branch: String,
     /// Opensim-core commit hash.
@@ -167,6 +167,7 @@ impl RecordCommand {
                     grind: None,
                     config_hash,
                     setup: false,
+                    cell_name: test.cell_name.clone(),
                 });
 
             let env_vars = EnvVars {
@@ -401,6 +402,7 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
 #[derive(Deserialize, Serialize, Debug, Clone, Hash)]
 pub struct ReadBenchTestSetup {
     pub name: String,
+    pub cell_name: Option<String>,
     /// Will be run before executing the benchmark.
     pub pre_benchmark_cmds: Option<Vec<String>>,
     /// The benchmark test command.
@@ -429,6 +431,7 @@ impl Default for ReadBenchTestSetup {
                 format!("ls ${}", crate::context::SETUP_ENV_VAR),
             ]),
             visualize_cmd: Some(format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR)),
+            cell_name: None,
         }
     }
 }

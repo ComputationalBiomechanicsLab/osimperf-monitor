@@ -51,16 +51,18 @@ fn print_table(arg_path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Resu
             date: parse_date(&result.date)?,
         };
 
+        let name = result.cell_name.clone().unwrap_or(result.name.clone());
+
         if rows.iter().find(|&r| r == &row).is_none() {
             rows.push(row.clone());
         }
 
-        if cols.iter().find(|&c| c == &result.name).is_none() {
-            cols.push(result.name.clone());
+        if cols.iter().find(|&c| c == &name).is_none() {
+            cols.push(name.clone());
         }
 
         results.push(TableCell {
-            col: result.name,
+            col: name,
             row,
             value: result.durations,
         });
@@ -71,43 +73,89 @@ fn print_table(arg_path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Resu
     cols.sort_by(|a, b| a.cmp(b));
 
     let mut line = String::new();
-    line.push_str("| |");
-    for col in cols.iter() {
-        line.push_str(col);
-        line.push_str("|");
-    }
-    line.push_str("\n");
-    buf.write_all(line.as_bytes())?;
 
-    line.clear();
-    line.push_str("|---|");
-    for _ in 0..cols.len() {
-        line.push_str("---|");
-    }
-    line.push_str("\n");
-    buf.write_all(line.as_bytes())?;
-
-    for row in rows.iter() {
-        line.clear();
-        line.push_str("|");
-        line.push_str(&row.name);
-        line.push_str("|");
+    if rows.len() > 1 {
+        line.push_str("| |");
         for col in cols.iter() {
-            if let Some(cell) = results
-                .iter()
-                .find(|result| &result.row == row && &result.col == col)
-            {
-                line.push_str(&format!(
-                    " {:.3} ({:.3}) |",
-                    cell.value.get_mean().unwrap_or(f64::NAN),
-                    cell.value.get_stddev().unwrap_or(f64::NAN),
-                ));
-            } else {
-                line.push_str(" |");
-            }
+            line.push_str(col);
+            line.push_str("|");
         }
         line.push_str("\n");
         buf.write_all(line.as_bytes())?;
+
+        line.clear();
+        line.push_str("|---|");
+        for _ in 0..cols.len() {
+            line.push_str("---|");
+        }
+        line.push_str("\n");
+        buf.write_all(line.as_bytes())?;
+
+        for row in rows.iter() {
+            line.clear();
+            line.push_str("|");
+            line.push_str(&row.name);
+            line.push_str("|");
+            for col in cols.iter() {
+                if let Some(cell) = results
+                    .iter()
+                    .find(|result| &result.row == row && &result.col == col)
+                {
+                    line.push_str(&format!(
+                        " {:.3} ({:.3}) |",
+                        cell.value.get_mean().unwrap_or(f64::NAN),
+                        cell.value.get_stddev().unwrap_or(f64::NAN),
+                    ));
+                } else {
+                    line.push_str(" |");
+                }
+            }
+            line.push_str("\n");
+            buf.write_all(line.as_bytes())?;
+        }
+    } else {
+        let tmp = cols.clone();
+        let cols = rows.clone();
+        let rows = tmp.clone();
+
+        line.push_str("| |");
+        for col in cols.iter() {
+            line.push_str(&col.name);
+            line.push_str("|");
+        }
+        line.push_str("\n");
+        buf.write_all(line.as_bytes())?;
+
+        line.clear();
+        line.push_str("|---|");
+        for _ in 0..cols.len() {
+            line.push_str("---|");
+        }
+        line.push_str("\n");
+        buf.write_all(line.as_bytes())?;
+
+        for row in rows.iter() {
+            line.clear();
+            line.push_str("|");
+            line.push_str(&row);
+            line.push_str("|");
+            for col in cols.iter() {
+                if let Some(cell) = results
+                    .iter()
+                    .find(|result| &result.col == row && &result.row == col)
+                {
+                    line.push_str(&format!(
+                        " {:.3} ({:.3}) |",
+                        cell.value.get_mean().unwrap_or(f64::NAN),
+                        cell.value.get_stddev().unwrap_or(f64::NAN),
+                    ));
+                } else {
+                    line.push_str(" |");
+                }
+            }
+            line.push_str("\n");
+            buf.write_all(line.as_bytes())?;
+        }
     }
 
     Ok(())
