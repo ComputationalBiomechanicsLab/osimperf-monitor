@@ -12,7 +12,7 @@ cargo install \
 	--path "osimperf/$target" \
 	--root "."
 
-git -C $OSIMPERF_OPENSIM_SRC switch main
+opensim="software/opensim-core"
 
 results="latest"
 install="latest"
@@ -22,10 +22,12 @@ mkdir -p $install
 mkdir -p $results
 mkdir -p $build
 
-export RUST_LOG="trace"
+git -C $opensim switch main
+
+export RUST_LOG="debug"
 
 ./bin/osimperf-cli install \
-	--opensim "software/opensim-core" \
+	--opensim $opensim \
 	--install $install \
 	--build $build
 
