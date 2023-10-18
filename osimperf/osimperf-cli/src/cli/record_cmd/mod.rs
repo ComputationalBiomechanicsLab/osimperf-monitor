@@ -379,7 +379,6 @@ fn run_all_pre_benchmark_commands<'a>(
         run_pre_benchmark_commands(&test.dir, &test.pre_benchmark_cmds)
             .context("failed to run pre-benchmark-cmd")
             .with_context(|| format!("failed to setup {}", test.output.name))?;
-        info!("Setup complete");
     }
     Ok(())
 }
@@ -388,7 +387,7 @@ fn run_pre_benchmark_commands(path: &PathBuf, cmds: &[Command]) -> Result<()> {
     debug!("Create directory {:?}", path);
     std::fs::create_dir_all(path)?;
     for cmd in cmds {
-        info!("Run cmd: {}", cmd.print_command());
+        debug!("Run cmd: {}", cmd.print_command());
         if log_enabled!(log::Level::Trace) {
             cmd.run_and_stream(&mut std::io::stdout())?
                 .into_duration()?;
