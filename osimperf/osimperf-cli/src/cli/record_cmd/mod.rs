@@ -239,6 +239,7 @@ impl RecordCommand {
                 } else {
                     &test.benchmark_cmd
                 };
+                debug!("{} command:", test.output.name);
                 println!("{}", cmd.print_command());
             }
             return Ok(());
