@@ -32,14 +32,13 @@
 *.app
 
 # Aritfacts.
-archive/**
+install-main/**
 results/**
 build/**
 bin/**
 
-!archive/.osimperf-archive
-!build/.osimperf-build
-!results/.osimperf-results
+!install-main/opensim-install.sh
+!install-main/tools-install.sh
 
 # Rubbish
 *.log

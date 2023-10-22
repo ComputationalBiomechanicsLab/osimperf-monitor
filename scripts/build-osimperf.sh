@@ -15,8 +15,8 @@ for target in $targets; do
 		--path "osimperf/$target" \
 		--root "."
 
-	cd "osimperf/$target/package"
-	OSIMPERF_HOME=$perf_home ./configure.sh
-	cd -
+	# cd "osimperf/$target/package"
+	# OSIMPERF_HOME=$perf_home ./configure.sh
+	# cd -
 
 done
