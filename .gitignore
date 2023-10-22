@@ -32,18 +32,6 @@
 *.app
 
 # Aritfacts.
-install-main/**
-results/**
-build/**
-bin/**
-
-!install-main/opensim-install.sh
-!install-main/tools-install.sh
 
 # Rubbish
-*.log
 **/compile_commands.json
-*.data
-.crates.toml
-.crates2.json
-**/.cache
