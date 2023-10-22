@@ -4,6 +4,7 @@
 set -e
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
+shopt -s extglob
 
 # Inputs:
 opensim="software/opensim-core"
@@ -13,7 +14,8 @@ opensim_installer="$archive/opensim-install.sh"
 tools_installer="$archive/tools-install.sh"
 benchmarks="results"
 
-cp -r benchmarks/* $benchmarks
+mkdir -p $benchmarks
+cp -r tests/!(opensim-models) $benchmarks
 
 # Install osimperf-cli binary.
 target="osimperf-cli"
