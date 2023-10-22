@@ -6,7 +6,7 @@ use crate::context::MODELS_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
 
 use crate::{
-    read_json, record::Durations, write_json, Command, CommandTrait, EnvVars,
+    read_json, Durations, write_json, Command, CommandTrait, EnvVars,
     INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
 use anyhow::anyhow;

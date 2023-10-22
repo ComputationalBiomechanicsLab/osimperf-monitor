@@ -4,15 +4,10 @@ mod cli;
 mod command;
 mod common;
 mod context;
-mod file_backed_struct;
-mod install;
-mod record;
 
 pub use command::*;
 pub use common::*;
 pub use context::*;
-pub use file_backed_struct::*;
-pub use install::*;
 
 use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand, LogCommand, ReadBenchTestSetup};
 
@@ -51,9 +46,6 @@ enum Commands {
     Record(RecordCommand),
     /// Plot
     Plot(PlotCommand),
-    /// Write default cmake config file.
-    #[command(arg_required_else_help = true)]
-    WriteDefaultCmakeConfig { path: PathBuf },
     /// Write default test config file.
     #[command(arg_required_else_help = true)]
     WriteDefaultTestConfig { path: PathBuf },
@@ -74,7 +66,6 @@ fn do_main() -> Result<()> {
         Commands::Install(args) => args.run()?,
         Commands::Record(args) => args.run()?,
         Commands::Plot(args) => args.run()?,
-        Commands::WriteDefaultCmakeConfig { path } => write_default_json::<CMakeCommands>(&path)?,
         Commands::WriteDefaultTestConfig { path } => {
             write_default_json::<ReadBenchTestSetup>(&path)?
         }

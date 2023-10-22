@@ -1,5 +1,4 @@
-use crate::{read_json, Command, CommandTrait, INSTALL_INFO_FILE_NAME};
-
+use crate::*;
 use anyhow::{ensure, Context, Result};
 use clap::Args;
 use log::{debug, info, log_enabled, trace, warn};
@@ -78,7 +77,7 @@ impl InstallCommand {
         // If prefix path is set, get version from PATH.
         let prefix_install_info = self.prefix_path.as_ref().map(|prefix| {
             super::prefix_path(&["PATH", "LD_LIBRARY_PATH"], prefix)
-            .expect("Failed to prefix path");
+                .expect("Failed to prefix path");
             super::find_install_info_on_path()
                 .expect("Failed to find InstallInfo on prefixed path.")
         });

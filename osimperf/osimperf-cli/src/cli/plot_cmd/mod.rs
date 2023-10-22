@@ -1,27 +1,11 @@
 use super::absolute_path;
 use super::ResultInfo;
-use crate::{
-    common::format_date,
-    common::parse_date,
-    record::{BenchTestResult, BenchTestSetup, Durations, TestNode},
-    write_json, CMakeCommands, Commit, Ctxt, Date, EnvVars, FileBackedStruct, Repository,
-};
-use anyhow::{anyhow, ensure, Context, Result};
-use clap::{Args, Parser, Subcommand, ValueEnum};
-use log::debug;
-use log::info;
-use rand::prelude::*;
+use crate::*;
+use anyhow::{Context, Result};
+use clap::Args;
 use std::io::Lines;
 use std::io::StdinLock;
-use std::{
-    fs::File,
-    io::{self, LineWriter, Write},
-    path::PathBuf,
-    str::FromStr,
-};
-
-// osimperf-cli results --table => | | test | ...
-// osimperf-cli results --table
+use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
 
 #[derive(Debug, Args)]
 pub struct PlotCommand {

@@ -1,13 +1,7 @@
-use crate::{
-    read_json,
-    record::{BenchTestResult, BenchTestSetup, TestNode, TEST_SETUP_FILE_NAME},
-    CMakeCommands, Commit, CompilationNode, Ctxt, Date, Repository,
-};
-use anyhow::{anyhow, ensure, Context, Result};
-use clap::{Args, Parser, Subcommand, ValueEnum};
-use log::info;
+use crate::*;
+use anyhow::Result;
+use clap::Args;
 use osimperf_lib::common::find_file_by_name;
-use rand::prelude::*;
 use std::path::{absolute, Path, PathBuf};
 
 use super::{InstallInfo, ResultInfo};
@@ -100,7 +94,7 @@ impl ListCommand {
         }
 
         if let Some(tests) = self.tests.as_ref() {
-            let mut arr = find_file_by_name(tests, TEST_SETUP_FILE_NAME);
+            let mut arr = find_file_by_name(tests, "osimperf-test.conf");
             arr.sort_by(|a, b| a.to_str().unwrap().cmp(b.to_str().unwrap()));
             for file in arr.iter() {
                 println!("{}", file.to_str().unwrap());
