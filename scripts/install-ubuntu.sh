@@ -28,6 +28,7 @@ git submodule update --init --recursive
 # Install rust.
 echo 1 | $("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh")
 
+
 # Setup vim: install vimplug
 curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
