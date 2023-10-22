@@ -9,39 +9,36 @@ use crate::{
     read_json, record::Durations, write_json, Command, CommandTrait, EnvVars,
     INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
 };
+use anyhow::anyhow;
 use anyhow::{Context, Result};
 use clap::Args;
 use log::log_enabled;
+use log::warn;
 use log::{debug, info};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
+use std::env::current_dir;
 use std::hash::{Hash, Hasher};
+use std::path::absolute;
 use std::{path::PathBuf, str::FromStr};
 
 static RESULTS_ENV_VAR: &str = "OSIMPERF_RESULTS";
 
+/// OSimPerf record command for running benchmark tests.
+///
+/// Takes path to benchmark configuration file.
+/// Runs specified commands from that directory and creates `osimperf-result-ID/osimperf-result-info.json`
+/// Uses PATH to find `osimperf-install-info`, which must match `opensim-cmd --version`
 #[derive(Debug, Args)]
 pub struct RecordCommand {
-    /// Path to install directory (or set OSIMPERF_OPENSIM_INSTALL env variable).
-    #[arg(long, required(std::env::vars().find(|(key,_)| key == OPENSIM_INSTALL_ENV_VAR).is_none()))]
-    install: Option<PathBuf>,
-
-    /// Path to results directory (or set OSIMPERF_RESULTS env variable).
-    #[arg(long, required(std::env::vars().find(|(key,_)| key == RESULTS_ENV_VAR).is_none()))]
-    results: Option<PathBuf>,
-
-    /// Path to models directory (or set OSIMPERF_MODELS env variable).
-    #[arg(long, required(std::env::vars().find(|(key,_)| key == MODELS_ENV_VAR).is_none()))]
-    models: Option<PathBuf>,
-
     /// Number of test iterations.
     #[arg(long, short, default_value_t = 0)]
     iter: usize,
 
-    /// Path to test (`osimperf-test.conf` file).
+    /// Path to benchmark config file, or directory.
     #[arg(long, short)]
-    test: Option<PathBuf>,
+    config: Option<PathBuf>,
 
     /// Use valgrind on test.
     #[arg(long, short)]
@@ -58,6 +55,10 @@ pub struct RecordCommand {
     /// Run visualization command (if present).
     #[arg(long, short)]
     visualize: bool,
+
+    /// Prefix PATH env var.
+    #[arg(long, short)]
+    prefix_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -90,7 +91,7 @@ impl ResultInfo {
 
 #[derive(Debug)]
 struct BenchTestCtxt {
-    pub dir: PathBuf,
+    pub result_dir: PathBuf,
     pub pre_benchmark_cmds: Vec<Command>,
     pub benchmark_cmd: Command,
     pub grind_cmd: Command,
@@ -112,13 +113,15 @@ struct RecordCommandInput {
 
 impl RecordCommand {
     pub fn run(&self) -> Result<()> {
-        let install = arg_or_env_var(self.install.clone(), OPENSIM_INSTALL_ENV_VAR)?.unwrap();
-        let results_dir = arg_or_env_var(self.results.clone(), RESULTS_ENV_VAR)?.unwrap();
-        let models = arg_or_env_var(self.models.clone(), MODELS_ENV_VAR)?.unwrap();
+        info!("Start OSimPerf record command");
 
-        let install_info = read_json::<InstallInfo>(&install.join(INSTALL_INFO_FILE_NAME))
-            .context("failed to find opensim installation")
-            .with_context(|| format!("failed to locate {INSTALL_INFO_FILE_NAME}"))?;
+        // If prefix path is set, get version from PATH.
+        if let Some(prefix_path) = self.prefix_path.as_ref() {
+            super::prefix_path(&["PATH", "LD_LIBRARY_PATH"], prefix_path)?;
+        }
+        let install_info =
+            super::find_install_info_on_path().context("failed to find install-info")?;
+        debug!("{:?}", install_info);
 
         let mut tests = Vec::new();
 
@@ -127,9 +130,9 @@ impl RecordCommand {
 
         loop {
             // Get path to test config file.
-            let config_path = if let Some(test) = self.test.as_ref() {
+            let config_path = if let Some(path) = self.config.as_ref() {
                 // Use path given as argument.
-                absolute_path(test)
+                absolute_path(path)
             } else {
                 let lines = lines_opt.get_or_insert_with(|| std::io::stdin().lines());
                 // Otherwise read paths from stdin.
@@ -142,24 +145,32 @@ impl RecordCommand {
             }?;
 
             // Read test case setup file.
-            let test = read_json::<ReadBenchTestSetup>(&config_path)?;
+            let config = read_json::<ReadBenchTestSetup>(&config_path)?;
 
-            // Check if previous result exists.
-            let dir = results_dir.join(&test.name);
-            let path = dir.join(RESULT_INFO_FILE_NAME);
+            // Directory containing the config is used as root for running the benchmark.
+            let root_dir = config_path.parent().unwrap();
+
+            // Create subdirectory for placing results from this record.
+            let result_dir = root_dir.join(&format!(
+                "osimperf-results_{}_{}_{}",
+                config.name, install_info.date, install_info.commit
+            ));
+
+            // Path to result-info file, placed in results subdirectory.
+            let result_info_path = result_dir.join(RESULT_INFO_FILE_NAME);
 
             // Detect changes in test configuration.
             let mut hasher = DefaultHasher::new();
-            test.hash(&mut hasher);
+            config.hash(&mut hasher);
             let config_hash = hasher.finish();
 
-            // Read any previous result.
-            let result_info = read_json::<ResultInfo>(&path)
+            // Read any previous result, if it exists.
+            let result_info = read_json::<ResultInfo>(&result_info_path)
                 .ok()
                 .filter(|r| r.commit == install_info.commit)
                 .filter(|r| r.config_hash == config_hash)
                 .unwrap_or(ResultInfo {
-                    name: test.name.clone(),
+                    name: config.name.clone(),
                     branch: install_info.branch.clone(),
                     commit: install_info.commit.clone(),
                     date: install_info.date.clone(),
@@ -167,68 +178,58 @@ impl RecordCommand {
                     grind: None,
                     config_hash,
                     setup: false,
-                    cell_name: test.cell_name.clone(),
+                    cell_name: config.cell_name.clone(),
                 });
 
-            let env_vars = EnvVars {
-                opensim_install: Some(install.clone()),
-                models: Some(models.clone()),
-                test_setup: Some(config_path.parent().unwrap().to_path_buf()),
-                test_context: Some(dir.clone()),
-                ..Default::default()
-            }
-            .make();
-            for env in env_vars.iter() {
-                debug!("set {}={}", env.key, env.value);
-            }
+            // Setup pre-benchmark, benchmark, grind, and visualize commands for this benchmark.
 
-            let pre_benchmark_cmds = parse_commands(&test.pre_benchmark_cmds)
+            let pre_benchmark_cmds = parse_commands(&config.pre_benchmark_cmds)
                 .drain(..)
-                .map(|c| c.set_envs(&env_vars).set_run_root(&dir))
+                .map(|c| c.set_run_root(&root_dir))
                 .collect::<Vec<Command>>();
 
-            let benchmark_cmd = Command::parse(&test.benchmark_cmd)
-                .set_envs(&env_vars)
-                .set_run_root(&dir);
+            let benchmark_cmd = Command::parse(&config.benchmark_cmd).set_run_root(&root_dir);
 
             let grind_cmd_base = "valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --cache-sim=yes --branch-sim=yes";
             let grind_cmd = Command::parse(&format!(
                 "{grind_cmd_base} --callgrind-out-file={}/callgrind.out {}",
-                dir.to_str().unwrap(),
-                test.benchmark_cmd
+                result_dir.to_str().unwrap(),
+                config.benchmark_cmd
             ))
-            .set_envs(&env_vars)
-            .set_run_root(&dir);
+            .set_run_root(&root_dir);
 
-            let visualize_cmd = test
+            let visualize_cmd = config
                 .visualize_cmd
                 .as_ref()
-                .map(|s| Command::parse(s).set_envs(&env_vars).set_run_root(&dir));
+                .map(|s| Command::parse(s).set_run_root(&root_dir));
 
+            // Collext benchmark info.
             tests.push(BenchTestCtxt {
                 pre_benchmark_cmds,
                 benchmark_cmd,
                 grind_cmd,
                 visualize_cmd,
                 output: result_info,
-                dir,
+                result_dir,
             });
 
-            if self.test.is_some() {
+            // Break if --test argument was used, otherwise continue reading from stdin.
+            if self.config.is_some() {
                 break;
             }
         }
 
-        // Setup test context.
+        // Setup test context using pre-benchmark commands.
         run_all_pre_benchmark_commands(
             tests.iter().filter(|test| !test.output.setup | self.force),
         )?;
+        // Update ResultInfo file such that setup is done once.
         for test in tests.iter_mut() {
             test.output.setup = true;
-            write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+            write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
         }
 
-        // Print command.
+        // If --print argument was set: Print relevant command to stdout.
         if self.print {
             for test in tests.iter() {
                 let cmd = if self.visualize {
@@ -241,12 +242,15 @@ impl RecordCommand {
                     &test.benchmark_cmd
                 };
                 debug!("{} command:", test.output.name);
-                println!("{}", cmd.print_command());
+                println!("PATH={} LD_LIBRARY_PATH={} {}",
+                    std::env::var("PATH")?,
+                    std::env::var("LD_LIBRARY_PATH")?,
+                    cmd.print_command());
             }
             return Ok(());
         }
 
-        // Visualize command.
+        // If --visualize argument was set: Run visualization.
         if self.visualize {
             if tests.len() == 0 {
                 info!("Nothing to show.");
@@ -290,7 +294,7 @@ impl RecordCommand {
                 let dt = *test.output.grind.insert(output.duration);
 
                 // Store results.
-                write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+                write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
                 info!(
                     "Completed grinding {} in {}",
                     test.output.name,
@@ -349,7 +353,12 @@ impl RecordCommand {
                     test.output.durations.get_mean().unwrap_or(f64::NAN),
                     test.output.durations.get_stddev().unwrap_or(f64::NAN)
                 );
-                write_json(&test.dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+                let min_dt = 0.1;
+                if test.output.durations.get_mean().unwrap_or(0.) > min_dt {
+                    write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
+                } else {
+                    warn!("{} executed in less than {} secs, it probably failed...", test.output.name, min_dt);
+                }
             }
 
             info!("Benchmark complete");
@@ -376,7 +385,7 @@ fn run_all_pre_benchmark_commands<'a>(
 ) -> Result<()> {
     for test in tests {
         info!("Setup context for {}", test.output.name);
-        run_pre_benchmark_commands(&test.dir, &test.pre_benchmark_cmds)
+        run_pre_benchmark_commands(&test.result_dir, &test.pre_benchmark_cmds)
             .context("failed to run pre-benchmark-cmd")
             .with_context(|| format!("failed to setup {}", test.output.name))?;
     }
