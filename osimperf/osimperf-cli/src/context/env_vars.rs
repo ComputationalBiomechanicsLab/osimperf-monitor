@@ -8,6 +8,8 @@ use std::path::PathBuf;
 pub const OPENSIM_BUILD_ENV_VAR: &str = "OSIMPERF_OPENSIM_BUILD";
 pub const OPENSIM_SRC_ENV_VAR: &str = "OSIMPERF_OPENSIM_SRC";
 pub const OPENSIM_INSTALL_ENV_VAR: &str = "OSIMPERF_OPENSIM_INSTALL";
+
+pub const INSTALL_ENV_VAR: &str = "OSIMPERF_INSTALL";
 pub const MODELS_ENV_VAR: &str = "OSIMPERF_MODELS";
 pub const SETUP_ENV_VAR: &str = "OSIMPERF_SETUP";
 pub const CONTEXT_ENV_VAR: &str = "OSIMPERF_CONTEXT";
@@ -17,6 +19,7 @@ pub struct EnvVars {
     pub opensim_build: Option<PathBuf>,
     pub opensim_source: Option<PathBuf>,
     pub opensim_install: Option<PathBuf>,
+    pub install: Option<PathBuf>,
     pub models: Option<PathBuf>,
     pub test_setup: Option<PathBuf>,
     pub test_context: Option<PathBuf>,
@@ -59,6 +62,9 @@ impl EnvVars {
         }
         if let Some(p) = self.opensim_install {
             vars.push(EnvVar::new(OPENSIM_INSTALL_ENV_VAR, &p))
+        }
+        if let Some(p) = self.install {
+            vars.push(EnvVar::new(INSTALL_ENV_VAR, &p))
         }
         vars
     }
