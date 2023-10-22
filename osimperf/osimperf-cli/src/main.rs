@@ -1,3 +1,5 @@
+#![feature(absolute_path)]
+
 mod cli;
 mod command;
 mod common;
