@@ -20,6 +20,8 @@ cargo install \
 export PATH="$PWD/bin:$PATH"
 export RUST_LOG="trace"
 
+export OSIMPERF_TOOLS_SRC="../../source"
+
 # Checkout main.
 git -C $opensim switch main
 

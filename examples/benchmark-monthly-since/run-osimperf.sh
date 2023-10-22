@@ -8,24 +8,36 @@ set -o pipefail
 shopt -s extglob
 
 # Inputs:
-opensim="software/opensim-core"
+opensim="opensim-core"
 branch="main"
-archive="install-main"
-opensim_installer="$archive/opensim-install.sh"
-tools_installer="$archive/tools-install.sh"
-benchmarks="run-benchmarks"
+archive="install"
 
+mkdir -p $archive
+cp "../../scripts/opensim-install.sh" "install/opensim-install.sh"
+cp "../../scripts/tools-install.sh" "install/tools-install.sh"
+
+opensim_installer="install/opensim-install.sh"
+tools_installer="install/tools-install.sh"
+
+benchmarks="run-benchmarks"
+benchmarks_config="../../tests"
 mkdir -p $benchmarks
-cp -r tests/!(opensim-models) $benchmarks
+cp -r $benchmarks_config/!(opensim-models) $benchmarks
+
+export OSIMPERF_TOOLS_SRC="../../source"
+
+# Clone opensim-core
+# git clone "https://github.com/opensim-org/opensim-core.git" $opensim
+# git -C $opensim submodule update --init --recursive
 
 # Install osimperf-cli binary.
 target="osimperf-cli"
 cargo install \
 	--bin $target\
-	--path "osimperf/$target" \
+	--path "../../osimperf/$target" \
 	--root "."
 export PATH="$PWD/bin:$PATH"
-export RUST_LOG="info"
+export RUST_LOG="trace"
 
 for month in {8..12}; do
 	# Grab opensim-core version.
