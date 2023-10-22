@@ -137,8 +137,8 @@ impl InstallCommand {
         );
 
         // Checkout commit.
-        info!("Checkout {:?} to {}", source, commit);
-        crate::common::git::checkout_commit(&source, &commit)?;
+        warn!("Checkout {:?} to {}", source, commit);
+        Command::parse(&format!("git -C {} checkout {commit}", source.to_str().unwrap())).run_and_stream(&mut std::io::stdout())?;
 
         // Set environmental variables.
         let env_vars = crate::EnvVars {
