@@ -5,7 +5,6 @@ pub use piped_command::{PipedCommands, PipedCommandsExecutor};
 pub use single_command::{Command, CommandExecutor};
 
 use anyhow::{anyhow, Context, Result};
-use osimperf_lib::common::duration_since_boot;
 use std::io::BufReader;
 use std::thread;
 use std::{
@@ -15,6 +14,8 @@ use std::{
     path::Path,
     time::Duration,
 };
+
+use crate::duration_since_boot;
 
 #[derive(Debug)]
 pub struct CommandOutput {

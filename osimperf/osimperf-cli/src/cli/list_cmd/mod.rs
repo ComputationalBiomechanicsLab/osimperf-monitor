@@ -1,7 +1,6 @@
 use crate::*;
 use anyhow::Result;
 use clap::Args;
-use osimperf_lib::common::find_file_by_name;
 use std::path::{absolute, Path, PathBuf};
 
 use super::{InstallInfo, ResultInfo};

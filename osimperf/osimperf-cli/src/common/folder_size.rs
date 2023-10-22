@@ -1,8 +1,8 @@
 use std::path::Path;
 use anyhow::Result;
 use anyhow::Context;
-use osimperf_lib::Command;
-use osimperf_lib::CommandTrait;
+use crate::Command;
+use crate::CommandTrait;
 
 pub fn folder_size(dir: &Path) -> Result<usize> {
     let cmd = Command::parse(&format!("du -sm {}", dir.to_str().unwrap()));

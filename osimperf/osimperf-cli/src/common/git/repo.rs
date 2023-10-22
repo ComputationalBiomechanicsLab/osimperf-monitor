@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::ensure;
 use chrono::Days;
 use log::{debug, info, trace};
-use osimperf_lib::git::Date;
+use super::Date;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 

@@ -4,7 +4,7 @@ mod repo;
 
 pub use commit::Commit;
 pub use repo::{Repository, RepositoryState};
-pub use git::verify_repository;
+pub use git::*;
 
 use anyhow::{Context, Result};
 

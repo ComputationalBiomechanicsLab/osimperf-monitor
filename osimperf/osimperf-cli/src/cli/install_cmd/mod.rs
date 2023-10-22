@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{git::format_date, *};
 use anyhow::{ensure, Context, Result};
 use clap::Args;
 use log::{debug, info, log_enabled, trace, warn};
@@ -86,7 +86,7 @@ impl InstallCommand {
         // Get version from either prefix-path, commit argument, or both:
         let commit = match (commit, self.commit.as_ref()) {
             // Read currently checked out commit.
-            (None, None) => osimperf_lib::git::read_current_commit(&source)?,
+            (None, None) => crate::common::git::read_current_commit(&source)?,
             // Use commit obtained from PATH.
             (Some(a), None) => a.to_owned(),
             // Use commit from argument --commit.
@@ -99,7 +99,7 @@ impl InstallCommand {
         };
 
         // Find date of commit.
-        let date = osimperf_lib::git::get_date(&source, &commit)?;
+        let date = format_date(&crate::common::git::get_date(&source, &commit)?);
 
         // Setup install folder.
         let install = PathBuf::from(format!(
@@ -127,18 +127,18 @@ impl InstallCommand {
 
         // Verify url.
         debug!("Verify repository URL.");
-        crate::common::verify_repository(&source, &self.url)?;
+        crate::common::git::verify_repository(&source, &self.url)?;
 
         // Verify commit part of branch.
         debug!("Verify branch.");
         ensure!(
-            osimperf_lib::git::was_commit_merged_to_branch(&source, &self.branch, &commit)?,
+            crate::common::git::was_commit_merged_to_branch(&source, &self.branch, &commit)?,
             format!("commit {} not part of branch {}", &commit, &self.branch)
         );
 
         // Checkout commit.
         info!("Checkout {:?} to {}", source, commit);
-        osimperf_lib::git::checkout_commit(&source, &commit)?;
+        crate::common::git::checkout_commit(&source, &commit)?;
 
         // Set environmental variables.
         let env_vars = crate::EnvVars {
