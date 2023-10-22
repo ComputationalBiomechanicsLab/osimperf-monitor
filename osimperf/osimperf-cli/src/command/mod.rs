@@ -78,9 +78,10 @@ impl CommandOutput {
             Ok(self.duration)
         } else {
             Err(anyhow!("command returned errors"))
-                .with_context(|| format!("{}", self.stdout_str_clone()))
-                .with_context(|| format!("{}", self.stderr_str_clone()))
-                .with_context(|| format!("{:?}", self.output.status))?
+                .with_context(|| format!("command:\n{}", self.cmd_str))
+                .with_context(|| format!("status:\n{:?}", self.output.status))
+                .with_context(|| format!("stderr:\n{}", self.stderr_str_clone()))
+                .with_context(|| format!("stdout:\n{}", self.stdout_str_clone()))?
         }
     }
 }
