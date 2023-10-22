@@ -5,52 +5,82 @@ set -e
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
 
-target="osimperf-cli"
+# Inputs:
+opensim="software/opensim-core"
+branch="main"
+archive="install-main"
+opensim_installer="$archive/opensim-install.sh"
+tools_installer="$archive/tools-install.sh"
+benchmarks="results"
 
+cp -r benchmarks/* $benchmarks
+
+# Install osimperf-cli binary.
+target="osimperf-cli"
 cargo install \
 	--bin $target\
 	--path "osimperf/$target" \
 	--root "."
+export PATH="$PWD/bin:$PATH"
+export RUST_LOG="info"
 
-opensim="software/opensim-core"
-branch="main"
-
-export RUST_LOG="trace"
-
-for month in {1..3}; do
-	# Start installing opensim version.
-
+for month in {8..12}; do
+	# Grab opensim-core version.
 	date="2023-$month-01"
-	commit=$(./bin/osimperf-cli log --date $date --path $opensim --branch $branch)
+	commit=$(osimperf-cli log --date $date --path $opensim --branch $branch)
 
-	install="archive/opensim-$commit"
-	mkdir -p $install
+	# Run installer for opensim-core.
+	osimperf-cli install \
+		--commit $commit \
+		--opensim $opensim \
+		--installer $opensim_installer
 
-	export OSIMPERF_OPENSIM_SRC=$opensim
-	export OSIMPERF_OPENSIM_INSTALL=$install
-	export OSIMPERF_OPENSIM_BUILD="build"
+	prefix_path=$(./bin/osimperf-cli ls --install $archive --commit $commit)
 
-	./bin/osimperf-cli install --commit $commit
+	# Run installer for custom tools.
+	osimperf-cli install \
+		--prefix-path $prefix_path \
+		--commit $commit \
+		--installer $tools_installer \
+		--name "tools"
 
-	# Start running the benchmarks for each version of opensim.
+	# Run all benchmarks.
+	osimperf-cli ls --tests $benchmarks | osimperf-cli record \
+		--prefix-path $prefix_path \
+		--iter 3
 
-	# Create a directory for collecting the results.
-	results="results/opensim-$commit"
-	mkdir -p "$results"
+	osimperf-cli ls --tests $benchmarks | osimperf-cli record \
+		--prefix-path $prefix_path \
+		--grind
 
-	export OSIMPERF_RESULTS=$results
-	export OSIMPERF_MODELS="tests/opensim-models"
+	# Create executables for rerunning commands.
+	for bench in $(osimperf-cli ls --tests $benchmarks); do
+		bench_dir="$(dirname "${bench}")"
+		result=$(osimperf-cli ls --results $bench_dir --commit $commit)
+		result_dir="$(dirname "${result}")"
 
-	./bin/osimperf-cli ls --tests "tests" | ./bin/osimperf-cli record \
-		--iter 1
+		# Create benchmark_cmd.sh for running the benchmark.
+		benchmark_cmd=$(osimperf-cli record --config $bench --prefix-path $prefix_path --print)
+		benchmark_cmd_file="$result_dir/benchmark_cmd.sh"
+		echo "#!/bin/bash" > $benchmark_cmd_file
+		echo "$benchmark_cmd" >> $benchmark_cmd_file
+		chmod +x $benchmark_cmd_file
 
+		# Create visualize_cmd.sh for running the visualizer of the benchmark.
+		visualize_cmd=$(osimperf-cli record --config $bench --prefix-path $prefix_path --print --visualize)
+		visualize_cmd_file="$result_dir/visualize_cmd.sh"
+		echo "#!/bin/bash" > $visualize_cmd_file
+		echo "$visualize_cmd" >> $visualize_cmd_file
+		chmod +x $visualize_cmd_file
+	done
+
+	# List all results.
+	osimperf-cli ls --results $benchmarks | osimperf-cli plot
 done
 
 table_file="osimperf-results-table.md"
-./bin/osimperf-cli ls --results "results" | ./bin/osimperf-cli plot --out $table_file
-
+osimperf-cli ls --results $benchmarks | osimperf-cli plot --out $table_file
+cat $table_file
 grip $table_file -b
 
 # python3 csv-plot.py "results.csv"
-
-# ./bin/osimperf-cli record --tests "tests/Arm26" --grind
