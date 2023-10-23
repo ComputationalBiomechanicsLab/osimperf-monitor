@@ -9,7 +9,7 @@ echo
 echo "Start ToyLanding pre-benchmark script."
 echo "    Opensim version = $(opensim-cmd --version)"
 
-models="../../tests/opensim-models"
+models="../opensim-models"
 
 cp -r $models/Geometry .
 cp $models/Models/ToyLanding/* .

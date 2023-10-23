@@ -13,6 +13,8 @@ echo "    Opensim version = $(opensim-cmd --version)"
 echo "Completed FooBar pre-benchmark."
 echo
 
-cp -r ../../tests/opensim-models/Geometry .
-cp -r ../../tests/opensim-models/Models/RajagopalModel/Geometry .
-cp -r ../../tests/opensim-models/Models/RajagopalModel/Rajagopal2015.osim .
+models="../opensim-models"
+
+cp -r $models/Geometry .
+cp -r $models/Models/RajagopalModel/Geometry .
+cp -r $models/Models/RajagopalModel/Rajagopal2015.osim .

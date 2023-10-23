@@ -8,9 +8,14 @@ set -o pipefail
 shopt -s extglob
 
 # Inputs:
-opensim="opensim-core"
-branch="main"
-archive="install"
+opensim="opensim-core" # we will clone the opensim-core repo here.
+benchmarks_config="../../tests" # Where to find the config files of the benchmark tests.
+opensim_models="benchmarks/opensim-models" # We will clone the opensim-models repo because the tests need it.
+branch="main" # the branch we will follow.
+
+# Output directories:
+archive="install" # Folder to store the different installed versions of opensim.
+benchmarks="benchmarks" # Folder in which the benchmarks will be ran.
 
 mkdir -p $archive
 cp "../../scripts/opensim-install.sh" "install/opensim-install.sh"
@@ -19,16 +24,21 @@ cp "../../scripts/tools-install.sh" "install/tools-install.sh"
 opensim_installer="install/opensim-install.sh"
 tools_installer="install/tools-install.sh"
 
-benchmarks="run-benchmarks"
-benchmarks_config="../../tests"
 mkdir -p $benchmarks
 cp -r $benchmarks_config/!(opensim-models) $benchmarks
 
-export OSIMPERF_TOOLS_SRC="../../source"
+export OSIMPERF_TOOLS_SRC="$PWD/../../source"
+export OSIMPERF_MODELS="$PWD/../../tests/opensim-models"
 
 # Clone opensim-core
-# git clone "https://github.com/opensim-org/opensim-core.git" $opensim
-# git -C $opensim submodule update --init --recursive
+if [ ! -d $opensim ]; then
+	echo "Clone or pull the opensim repository"
+	git clone "https://github.com/opensim-org/opensim-core.git" $opensim
+fi
+if [ ! -d $opensim_models ]; then
+	echo "Clone or pull the opensim-models repository"
+	git clone "https://github.com/opensim-org/opensim-models.git" $opensim_models
+fi
 
 # Install osimperf-cli binary.
 target="osimperf-cli"

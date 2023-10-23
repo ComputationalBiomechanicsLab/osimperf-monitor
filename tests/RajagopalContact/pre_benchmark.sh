@@ -9,5 +9,7 @@ echo
 echo "Start RajagopalContact pre-benchmark script."
 echo "    Opensim version = $(opensim-cmd --version)"
 
-cp -r ../../tests/opensim-models/Geometry .
-cp -r ../../tests/opensim-models/Models/RajagopalModel/Geometry .
+models="../opensim-models"
+
+cp -r $models/Geometry .
+cp -r $models/Models/RajagopalModel/Geometry .
