@@ -18,11 +18,11 @@ archive="install" # Folder to store the different installed versions of opensim.
 benchmarks="benchmarks" # Folder in which the benchmarks will be ran.
 
 mkdir -p $archive
-cp "../../scripts/opensim-install.sh" "install/opensim-install.sh"
-cp "../../scripts/tools-install.sh" "install/tools-install.sh"
+opensim_installer="$archive/opensim-install.sh"
+tools_installer="$archive/tools-install.sh"
 
-opensim_installer="install/opensim-install.sh"
-tools_installer="install/tools-install.sh"
+cp "../../scripts/opensim-install.sh" "$opensim_installer"
+cp "../../scripts/tools-install.sh" "$tools_installer"
 
 mkdir -p $benchmarks
 cp -r $benchmarks_config/!(opensim-models) $benchmarks
@@ -47,7 +47,6 @@ cargo install \
 	--path "../../osimperf/$target" \
 	--root "."
 export PATH="$PWD/bin:$PATH"
-export RUST_LOG="trace"
 
 for month in {8..12}; do
 	# Grab opensim-core version.
@@ -55,6 +54,7 @@ for month in {8..12}; do
 	commit=$(osimperf-cli log --date $date --path $opensim --branch $branch)
 
 	# Run installer for opensim-core.
+	export RUST_LOG="trace"
 	osimperf-cli install \
 		--commit $commit \
 		--opensim $opensim \
@@ -66,13 +66,15 @@ for month in {8..12}; do
 	osimperf-cli install \
 		--prefix-path $prefix_path \
 		--commit $commit \
+		--opensim $opensim \
 		--installer $tools_installer \
 		--name "tools"
 
 	# Run all benchmarks.
+	export RUST_LOG="info"
 	osimperf-cli ls --tests $benchmarks | osimperf-cli record \
 		--prefix-path $prefix_path \
-		--iter 3
+		--iter 10
 
 	osimperf-cli ls --tests $benchmarks | osimperf-cli record \
 		--prefix-path $prefix_path \
