@@ -15,4 +15,4 @@ cp -r $models/Models/RajagopalModel/Geometry .
 cp ../RajagopalContact/Rajagopal2015.osim .
 cp ../RajagopalContact/Rajagopal_setup_forward_tool.xml .
 
-SetFiberDamping Rajagopal2015.osim 0.1
+sed -i -e s/'fiber_damping>0.01<\/fiber_damping'/'fiber_damping>0.1<\/fiber_damping'/g Rajagopal2015.osim
