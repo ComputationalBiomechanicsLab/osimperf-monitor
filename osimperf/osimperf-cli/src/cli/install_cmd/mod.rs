@@ -21,8 +21,8 @@ pub struct InstallCommand {
     installer: PathBuf,
 
     /// Path to opensim-core repo.
-    #[arg(long, short, required_unless_present("prefix_path"))]
-    opensim: Option<PathBuf>,
+    #[arg(long, short)]
+    opensim: PathBuf,
 
     /// Commit hash (defaults to currently checked out) of opensim-core if set.
     #[arg(long, short)]
@@ -70,8 +70,7 @@ impl InstallCommand {
         trace!("Installer filename = {:?}", installer_filename);
 
         // Get path to opensim-core source from argument or environmental variable.
-        let source = arg_or_env_var(self.opensim.clone(), crate::context::OPENSIM_SRC_ENV_VAR)?
-            .context("failed to setup source dir")?;
+        let source = absolute(self.opensim.clone())?;
         trace!("Path to OpenSim-core source = {:?}", source);
 
         // If prefix path is set, get version from PATH.
