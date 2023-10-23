@@ -6,8 +6,7 @@ set -e
 set -o pipefail
 
 echo
-echo "Start RajagopalContact pre-benchmark script."
-echo "    Opensim version = $(opensim-cmd --version)"
+echo "Start RajagopalContact (Opensim version = $(opensim-cmd --version))."
 
 models="../opensim-models"
 

@@ -6,12 +6,7 @@ set -e
 set -o pipefail
 
 echo
-echo "Start FooBar pre-benchmark."
-echo "    PATH=$PATH"
-echo "    LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-echo "    Opensim version = $(opensim-cmd --version)"
-echo "Completed FooBar pre-benchmark."
-echo
+echo "Start RajagopalFreeFall (Opensim version = $(opensim-cmd --version))."
 
 models="../opensim-models"
 
