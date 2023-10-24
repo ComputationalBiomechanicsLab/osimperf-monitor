@@ -3,7 +3,10 @@ use anyhow::{ensure, Context, Result};
 use clap::Args;
 use log::{debug, info, log_enabled, trace, warn};
 use serde::{Deserialize, Serialize};
-use std::path::{absolute, PathBuf};
+use std::{
+    fs::File,
+    path::{absolute, PathBuf, Path}, io::Write,
+};
 
 use super::arg_or_env_var;
 
@@ -115,7 +118,8 @@ impl InstallCommand {
         {
             if !self.force {
                 info!("Found installed commit {} ({}).", info.commit, info.date,);
-                print_include_dir(&install);
+                info.install(info_path.parent().unwrap()).context("failed to install info")?;
+                print_prefix_path(info_path.parent().unwrap());
                 return Ok(());
             }
             warn!(
@@ -137,7 +141,11 @@ impl InstallCommand {
 
         // Checkout commit.
         warn!("Checkout {:?} to {}", source, commit);
-        Command::parse(&format!("git -C {} checkout {commit}", source.to_str().unwrap())).run_and_stream(&mut std::io::stdout())?;
+        Command::parse(&format!(
+            "git -C {} checkout {commit}",
+            source.to_str().unwrap()
+        ))
+        .run_and_stream(&mut std::io::stdout())?;
 
         // Set environmental variables.
         let env_vars = crate::EnvVars {
@@ -172,6 +180,8 @@ impl InstallCommand {
         debug!("Writing installer info to {:?}", info_path);
         crate::write_json(&info_path, &install_info)?;
 
+        install_info.install(&info_path)?;
+
         info!(
             "Finished installing {} ({}) in {} minutes.",
             commit,
@@ -181,7 +191,7 @@ impl InstallCommand {
 
         debug!("Installation info written to {:?}", info_path);
 
-        print_include_dir(&install);
+        print_prefix_path(info_path.parent().unwrap());
 
         Ok(())
     }
@@ -196,7 +206,56 @@ pub struct InstallInfo {
     pub duration: u64,
 }
 
-fn print_include_dir(path: &PathBuf) {
+fn print_prefix_path(path: &Path) {
     let dir = path.to_str().unwrap();
-    println!("Include path using:\nexport PATH={dir}:{dir}/bin:{dir}/include:$PATH; export LD_LIBRARY_PATH={dir}:{dir}:{dir}");
+    println!("Don't forget to prefix the path:\n{dir}/bin:{dir}/include:$PATH");
+}
+
+impl InstallInfo {
+    pub fn install(&self, path: &Path) -> Result<()> {
+
+        let install_path = path.join("bin").join("osimperf-install-info");
+        println!("install_path = {:?}", install_path);
+
+        let mut line = Vec::<String>::new();
+
+        line.push("#!/bin/bash".to_owned());
+        // line.push("set -eo".to_owned());
+
+        let dt_str = format!("{}",self.duration);
+
+        let mut line_opt_a = Vec::<String>::new();
+        let mut line_opt_b = Vec::<String>::new();
+
+        line_opt_a.push(r#"if [ "$#" -eq 1 ] ; then"#.to_owned());
+        for (key, value) in [
+            ("name", &self.name),
+            ("branch", &self.branch),
+            ("commit", &self.commit),
+            ("date", &self.date),
+            ("path", &path.to_str().unwrap().to_owned()),
+        ] {
+            line_opt_a.push(format!("  if [ $1 == \"{}\" ] ; then", key));
+            line_opt_a.push(format!("    echo {}", value));
+            line_opt_a.push("    exit 0".to_owned());
+            line_opt_a.push("  fi".to_owned());
+            line_opt_b.push(format!("echo \"{},{}\"", key, value));
+        }
+        line_opt_a.push(r#"  echo "Unknown key passed.""#.to_owned());
+        line_opt_a.push("  exit 1".to_owned());
+        line_opt_a.push("fi".to_owned());
+
+        line.extend(line_opt_a.drain(..));
+        line.extend(line_opt_b.drain(..));
+
+        let mut file = File::create(&install_path)?;
+        for l in line.iter() {
+            file.write_all(l.as_bytes())?;
+            file.write_all("\n".as_bytes())?;
+        }
+
+        Command::parse(&format!("chmod +x {}", install_path.to_str().unwrap())).run_trim()?;
+
+        Ok(())
+    }
 }
