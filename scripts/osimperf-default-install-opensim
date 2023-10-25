@@ -9,6 +9,10 @@ echo
 echo "Starting install script for opensim-core"
 
 OSPC_BUILD_DIR=${OSPC_BUILD_DIR:="/tmp/osimperf-opensim-build"}
+OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="YES"}
+OSPC_OPENSIM_RM_BUILD_DIR=${OSPC_OPENSIM_RM_BUILD_DIR:="YES"}
+OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="4"}
+
 INSTALL_DIR=$PWD
 
 echo "Path to opensim-core source: $OSPC_OPENSIM_SRC"
@@ -39,7 +43,7 @@ cmake \
 
 cmake \
 	--build "$OSPC_BUILD_DIR/dependencies" \
-	-j8
+	"-j$OSPC_NUM_JOBS"
 
 echo "Completed installing dependencies."
 
@@ -51,25 +55,37 @@ cmake \
 	-B "$OSPC_BUILD_DIR/opensim-core" \
 	-S $OSPC_OPENSIM_SRC \
 	-DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
-    -DCMAKE_PREFIX_PATH=$INSTALL_DEPENDENCIES \
-    -DOPENSIM_DEPENDENCIES_DIR=$INSTALL_DEPENDENCIES \
+	-DCMAKE_PREFIX_PATH=$INSTALL_DEPENDENCIES \
+	-DOPENSIM_DEPENDENCIES_DIR=$INSTALL_DEPENDENCIES \
 	-DCMAKE_BUILD_TYPE=$BUILD_TYPE\
 	-DOPENSIM_WITH_CASADI=$CASADI\
 	-DOPENSIM_WITH_TROPTER=$TROPTER \
-    -DOPENSIM_BUILD_INDIVIDUAL_APPS="ON" \
-    -DOPENSIM_INSTALL_UNIX_FHS="ON" \
-    -DBUILD_API_EXAMPLES="ON" \
-    -DBUILD_JAVA_WRAPPING="OFF" \
-    -DBUILD_PYTHON_WRAPPING="OFF" \
-    -DBUILD_API_ONLY="OFF" \
-    -DBUILD_TESTING="OFF" \
-    -DOPENSIM_DOXYGEN_USE_MATHJAX="OFF"
+	-DOPENSIM_BUILD_INDIVIDUAL_APPS="ON" \
+	-DOPENSIM_INSTALL_UNIX_FHS="ON" \
+	-DBUILD_API_EXAMPLES="ON" \
+	-DBUILD_JAVA_WRAPPING="OFF" \
+	-DBUILD_PYTHON_WRAPPING="OFF" \
+	-DBUILD_API_ONLY="OFF" \
+	-DBUILD_TESTING="OFF" \
+	-DOPENSIM_DOXYGEN_USE_MATHJAX="OFF" \
+	-DOPENSIM_BUILD_TESTING="ON"\
+	-DCMAKE_VERBOSE_MAKEFILE=1\
+	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON"
 
 cmake \
 	--build "$OSPC_BUILD_DIR/opensim-core" \
 	--target "install" \
-	-j4
+	"-j$OSPC_NUM_JOBS" \
+	-v
 
 echo "Completed installing opensim-core."
 
-rm -rf $OSPC_BUILD_DIR
+if [ "$OSPC_OPENSIM_RUN_TESTS" == "YES" ]; then
+	echo "Run opensim-core unit-tests:"
+	env -C "$OSPC_BUILD_DIR/opensim-core-prefix/src/opensim-core-build" ctest --parallel $OSPC_NUM_JOBS --output-on-failure
+fi
+
+if [ "$OSPC_OPENSIM_RM_BUILD_DIR" == "YES" ]; then
+	echo "Remove build dir: $OSPC_BUILD_DIR"
+	rm -rf $OSPC_BUILD_DIR
+fi
