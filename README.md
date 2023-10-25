@@ -26,22 +26,17 @@ To use a custom install script:
 
 By default a unique subdirectory is created in the current directory using the commit hash.
 To customize the install root directory use:
-`osimperf-cli install --path "my_custom_path/custom_dir-%b-%H-%y_%m_%d"`
+`osimperf-cli install --root "path_to_install_root/custom_dir-%H-%y_%m_%d"`
 
 The default install script uses the build directory `/tmp/osimperf-build-opensim-core`.
 This can be changed by setting `OSPC_BUILD_DIR`, or by running:
 `osimperf-cli install --build BUILD_DIR`
 
-The branch name is used to create more human readable install-info.
-The `install` command will not switch branches, but does verify that the checked out commit is part of the given branch.
-By default the branch is set to `main`, but can be changed:
-`osimperf-cli install --branch "my_branch_name"`
-
 ## Install Info Command
 
 To make sure that the benchmark tests, and other scripts can find the installed version, make sure to prefix the path.
 This can be done by:
-`for path in $(osimperf-cli --install .); do; export PATH="path:$PATH"; ...`
+`for path in $(osimperf-cli ls --install .); do; export PATH="path:$PATH"; ...`
 
 To verify that the path variable is set, run `osimperf-install-info`.
 
