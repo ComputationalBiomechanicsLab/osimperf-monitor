@@ -77,7 +77,7 @@ pub struct EnvVar {
 }
 
 impl EnvVar {
-    fn new(key: &str, value: &PathBuf) -> Self {
+    pub fn new(key: &str, value: &PathBuf) -> Self {
         Self {
             key: key.to_owned(),
             value: value.to_str().unwrap().to_owned(),

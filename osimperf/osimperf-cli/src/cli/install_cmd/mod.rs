@@ -4,8 +4,10 @@ use clap::Args;
 use log::{debug, info, log_enabled, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
-    path::{absolute, PathBuf, Path}, io::Write,
+    env::current_dir,
+    fs::{create_dir_all, File},
+    io::Write,
+    path::{absolute, Path, PathBuf},
 };
 
 use super::arg_or_env_var;
@@ -21,31 +23,19 @@ pub struct InstallCommand {
 
     /// Path to install script.
     #[arg(long, short)]
-    installer: PathBuf,
+    installer: Option<PathBuf>,
 
     /// Path to opensim-core repo.
     #[arg(long, short)]
-    opensim: PathBuf,
+    opensim: Option<PathBuf>,
 
-    /// Commit hash (defaults to currently checked out) of opensim-core if set.
+    /// Path to install, defaults to current directory.
     #[arg(long, short)]
-    commit: Option<String>,
+    root: Option<PathBuf>,
 
-    /// Prefix path for finding previously installed (osimperf) software.
+    /// Path to build dir.
     #[arg(long, short)]
-    prefix_path: Option<String>,
-
-    /// Branch of opensim-core.
-    #[arg(long, short, default_value = "main")]
-    branch: String,
-
-    /// Url to opensim-core remote repository.
-    #[arg(
-        long,
-        short,
-        default_value = "https://github.com/opensim-org/opensim-core.git"
-    )]
-    url: String,
+    build: Option<PathBuf>,
 
     /// Force reinstalling.
     #[arg(long, short)]
@@ -56,108 +46,58 @@ impl InstallCommand {
     pub fn run(&self) -> Result<()> {
         info!("Start OSimPerf install command");
 
-        // Get path to config file.
-        let config = absolute(&self.installer).context("failed to setup config dir")?;
-        debug!("Read install script from {:?}", config);
-
-        // Use directory of config file as root for installer.
-        let installer_root = config
-            .parent()
-            .context("failed to get installer parent dir")?;
-        trace!("Installer root = {:?}", installer_root);
-
-        // Get installer filename for abbreviated commands.
-        let installer_filename = config
-            .file_name()
-            .context("failed to get installer filename")?;
-        trace!("Installer filename = {:?}", installer_filename);
-
         // Get path to opensim-core source from argument or environmental variable.
-        let source = absolute(self.opensim.clone())?;
+        let source = arg_or_env_var(self.opensim.clone(), "OSPC_OPENSIM_SRC")?
+            .context("failed to get path to opensim-source")?;
         trace!("Path to OpenSim-core source = {:?}", source);
 
-        // If prefix path is set, get version from PATH.
-        let prefix_install_info = self.prefix_path.as_ref().map(|prefix| {
-            super::prefix_path(&["PATH", "LD_LIBRARY_PATH"], prefix)
-                .expect("Failed to prefix path");
-            super::find_install_info_on_path()
-                .expect("Failed to find InstallInfo on prefixed path.")
-        });
-        let commit = prefix_install_info.as_ref().map(|info| &info.commit);
-
-        // Get version from either prefix-path, commit argument, or both:
-        let commit = match (commit, self.commit.as_ref()) {
-            // Read currently checked out commit.
-            (None, None) => crate::common::git::read_current_commit(&source)?,
-            // Use commit obtained from PATH.
-            (Some(a), None) => a.to_owned(),
-            // Use commit from argument --commit.
-            (None, Some(b)) => b.to_owned(),
-            // Verify that commit from PATH and argument matches, and use it.
-            (Some(a), Some(b)) => Some(a.clone())
-                .filter(|a| a == b)
-                .context("Failed to match opensim version on PATH")
-                .with_context(|| format!("Got version {a}\nExpected version {b}"))?,
-        };
-
-        // Find date of commit.
+        let commit = crate::common::git::read_current_commit(&source)?;
         let date = format_date(&crate::common::git::get_date(&source, &commit)?);
 
-        // Setup install folder.
-        let install = PathBuf::from(format!(
-            "osimperf-install_{}_{}_{}",
-            self.name, date, commit
-        ));
+        // Use directory of config file as root for installer.
+        let install_root = if let Some(root) = self.root.clone() {
+            root
+        } else {
+            current_dir()?.join(format!("install_{}_{}_{}", self.name, date, commit))
+        };
+
+        trace!("Installer root = {:?}", install_root);
 
         // Check if already installed.
-        let info_path = installer_root.join(install.join(INSTALL_INFO_FILE_NAME));
-        if let Some(info) = read_json::<InstallInfo>(&info_path)
-            .ok()
-            .filter(|info| info.name == self.name)
-            .filter(|info| info.commit == commit)
+        if let Ok(prev_version) = Command::parse(&format!(
+            "{}/bin/osimperf-install-info commit",
+            install_root.to_str().unwrap()
+        ))
+        .run_trim()
         {
-            if !self.force {
-                info!("Found installed commit {} ({}).", info.commit, info.date,);
-                info.install(info_path.parent().unwrap()).context("failed to install info")?;
-                print_prefix_path(info_path.parent().unwrap());
+            if !self.force && commit == prev_version {
+                info!("Found installed commit {} ({}).", commit, date);
+                print_prefix_path(&install_root);
                 return Ok(());
             }
             warn!(
                 "Overwriting previously installed commit {} ({}).",
-                info.commit, info.date,
+                prev_version, date
             );
         }
 
-        // Verify url.
-        debug!("Verify repository URL.");
-        crate::common::git::verify_repository(&source, &self.url)?;
-
-        // Verify commit part of branch.
-        debug!("Verify branch.");
-        ensure!(
-            crate::common::git::was_commit_merged_to_branch(&source, &self.branch, &commit)?,
-            format!("commit {} not part of branch {}", &commit, &self.branch)
-        );
-
-        // Checkout commit.
-        warn!("Checkout {:?} to {}", source, commit);
-        Command::parse(&format!(
-            "git -C {} checkout {commit}",
-            source.to_str().unwrap()
-        ))
-        .run_and_stream(&mut std::io::stdout())?;
-
         // Set environmental variables.
-        let env_vars = crate::EnvVars {
-            opensim_source: Some(source.clone()),
-            install: Some(install.clone()),
-            ..Default::default()
+        let mut env_vars = vec![EnvVar::new("OSPC_OPENSIM_SRC", &source)];
+        if let Some(build) = self.build.as_ref() {
+            env_vars.push(EnvVar::new("OSPC_BUILD_DIR", build));
         }
-        .make();
 
-        let cmd = Command::new(config.to_str().unwrap())
+        create_dir_all(&install_root)?;
+        debug!("Created install directory {:?}", install_root);
+
+        let installer = self
+            .installer
+            .as_ref()
+            .and_then(|p| p.to_str())
+            .unwrap_or("osimperf-default-install-opensim");
+        let cmd = Command::new(installer)
             .set_envs(&env_vars)
-            .set_run_root(&installer_root);
+            .set_run_root(&install_root);
         debug!("Run installer:\n{}", cmd.print_command());
 
         let duration = if log_enabled!(log::Level::Trace) {
@@ -166,7 +106,7 @@ impl InstallCommand {
             cmd.run_and_time()
         }
         .and_then(|output| output.into_duration())
-        .with_context(|| format!("cmake command failed: {:#?}", cmd.print_command()))?;
+        .with_context(|| format!("installer failed: {:#?}", cmd.print_command()))?;
 
         debug!("Installer finished");
 
@@ -175,12 +115,9 @@ impl InstallCommand {
             commit: commit.clone(),
             date: date.clone(),
             duration: duration.as_secs(),
-            branch: self.branch.clone(),
         };
-        debug!("Writing installer info to {:?}", info_path);
-        crate::write_json(&info_path, &install_info)?;
 
-        install_info.install(&info_path)?;
+        install_info.install(&install_root)?;
 
         info!(
             "Finished installing {} ({}) in {} minutes.",
@@ -189,9 +126,7 @@ impl InstallCommand {
             duration.as_secs() / 60
         );
 
-        debug!("Installation info written to {:?}", info_path);
-
-        print_prefix_path(info_path.parent().unwrap());
+        print_prefix_path(&install_root);
 
         Ok(())
     }
@@ -200,7 +135,6 @@ impl InstallCommand {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InstallInfo {
     pub name: String,
-    pub branch: String,
     pub commit: String,
     pub date: String,
     pub duration: u64,
@@ -212,8 +146,18 @@ fn print_prefix_path(path: &Path) {
 }
 
 impl InstallInfo {
-    pub fn install(&self, path: &Path) -> Result<()> {
+    pub fn try_read(cmd: &str) -> Result<Self> {
+        Ok(Self {
+            name: Command::parse(&format!("{cmd} name")).run_trim()?,
+            commit: Command::parse(&format!("{cmd} commit")).run_trim()?,
+            date: Command::parse(&format!("{cmd} date")).run_trim()?,
+            duration: Command::parse(&format!("{cmd} duration"))
+                .run_trim()?
+                .parse::<u64>()?,
+        })
+    }
 
+    pub fn install(&self, path: &Path) -> Result<()> {
         let install_path = path.join("bin").join("osimperf-install-info");
         println!("install_path = {:?}", install_path);
 
@@ -222,18 +166,17 @@ impl InstallInfo {
         line.push("#!/bin/bash".to_owned());
         // line.push("set -eo".to_owned());
 
-        let dt_str = format!("{}",self.duration);
-
         let mut line_opt_a = Vec::<String>::new();
         let mut line_opt_b = Vec::<String>::new();
 
         line_opt_a.push(r#"if [ "$#" -eq 1 ] ; then"#.to_owned());
+        let duration = format!("{}", self.duration);
         for (key, value) in [
             ("name", &self.name),
-            ("branch", &self.branch),
             ("commit", &self.commit),
             ("date", &self.date),
             ("path", &path.to_str().unwrap().to_owned()),
+            ("duration", &duration),
         ] {
             line_opt_a.push(format!("  if [ $1 == \"{}\" ] ; then", key));
             line_opt_a.push(format!("    echo {}", value));
@@ -255,6 +198,7 @@ impl InstallInfo {
         }
 
         Command::parse(&format!("chmod +x {}", install_path.to_str().unwrap())).run_trim()?;
+        debug!("osimperf-install-info written to {:?}", install_path);
 
         Ok(())
     }

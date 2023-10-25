@@ -12,29 +12,48 @@ set -o pipefail
 packages="build-essential cmake autotools-dev autoconf pkg-config automake libopenblas-dev liblapack-dev freeglut3-dev libxi-dev libxmu-dev doxygen python3 python3-dev python3-numpy python3-setuptools git byacc libssl-dev libpcre3 libpcre3-dev libtool gfortran ninja-build patchelf openjdk-8-jdk swig"
 
 # Other useful packages.
-packages+=" opensssh-server vim curl tmux"
+packages="vim curl tmux $packages"
+
+sudo apt-get update && sudo apt-get install --yes $packages
 
 # Install grip for markdown display:
 pip install grip
 
-sudo apt-get update && sudo apt-get install --yes "$packages"
-
 # Enable ssh.
-systemctl start ssh
-systemctl enable ssh
+# systemctl start ssh
+# systemctl enable ssh
 
-git submodule update --init --recursive
+# git submodule update --init --recursive
 
 # Install rust.
-echo 1 | $("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh")
+# echo 1 | $("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh")
 
+# # Setup vim: install vimplug
+# curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+#     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 
-# Setup vim: install vimplug
-curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+# # Install osimperf.
+# ./scripts/install-osimperf-service.sh
 
-# Build osimperf from source.
-./scripts/build-osimperf.sh
+# # Install pandas and matplotlib for python.
 
-# Install osimperf.
-./scripts/install-osimperf-service.sh
+# # Set to nightly.
+# env -C osimperf rustup override set nightly
+
+# Install osimperf-cli.
+target="osimperf-cli"
+osimperf_root="$PWD"
+
+cargo install \
+	--bin $target\
+	--path "osimperf/$target" \
+	--root "$osimperf_root"
+
+cp "scripts/osimperf-default-install-opensim" "$osimperf_root/bin/osimperf-default-install-opensim"
+cp "scripts/csv-plot.py" "$osimperf_root/bin/csv-plot.py"
+
+echo "Use RUST_LOG to set log-level."
+echo "Use OPENSIM_MODELS to point to opensim-models directory."
+
+echo "dont forget to add osimperf to PATH:"
+echo "PATH=$osimperf_root/bin:\$PATH"

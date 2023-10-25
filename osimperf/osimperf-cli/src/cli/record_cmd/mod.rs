@@ -6,13 +6,14 @@ use crate::context::MODELS_ENV_VAR;
 use crate::context::OPENSIM_INSTALL_ENV_VAR;
 
 use crate::{
-    read_json, Durations, write_json, Command, CommandTrait, EnvVars,
-    INSTALL_INFO_FILE_NAME, RESULT_INFO_FILE_NAME,
+    read_json, write_json, Command, CommandTrait, Durations, EnvVars, INSTALL_INFO_FILE_NAME,
+    RESULT_INFO_FILE_NAME,
 };
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use clap::Args;
 use log::log_enabled;
+use log::trace;
 use log::warn;
 use log::{debug, info};
 use rand::prelude::*;
@@ -55,10 +56,6 @@ pub struct RecordCommand {
     /// Run visualization command (if present).
     #[arg(long, short)]
     visualize: bool,
-
-    /// Prefix PATH env var.
-    #[arg(long, short)]
-    prefix_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,8 +64,8 @@ pub struct ResultInfo {
     pub name: String,
     /// Cell name.
     pub cell_name: Option<String>,
-    /// Opensim-core branch name.
-    pub branch: String,
+    /// Opensim install name.
+    pub opensim_name: String,
     /// Opensim-core commit hash.
     pub commit: String,
     /// Opensim-core commit date.
@@ -115,12 +112,20 @@ impl RecordCommand {
     pub fn run(&self) -> Result<()> {
         info!("Start OSimPerf record command");
 
-        // If prefix path is set, get version from PATH.
-        if let Some(prefix_path) = self.prefix_path.as_ref() {
-            super::prefix_path(&["PATH", "LD_LIBRARY_PATH"], prefix_path)?;
+        // Prefix linker path.
+        {
+            let mut prefix_path = Command::parse("osimperf-install-info path").run_trim()?;
+            prefix_path.push_str("/lib");
+            super::prefix_path(&["LD_LIBRARY_PATH"], &prefix_path)?;
+
+            debug!(
+                "Using path env:\nPATH={}\nLD_LIBRARY_PATH={}",
+                std::env::var("PATH")?,
+                std::env::var("LD_LIBRARY_PATH")?
+            );
         }
-        let install_info =
-            super::find_install_info_on_path().context("failed to find install-info")?;
+
+        let install_info = InstallInfo::try_read("osimperf-install-info")?;
         debug!("{:?}", install_info);
 
         let mut tests = Vec::new();
@@ -151,10 +156,10 @@ impl RecordCommand {
             let root_dir = config_path.parent().unwrap();
 
             // Create subdirectory for placing results from this record.
-            let result_dir = root_dir.join(&format!(
-                "osimperf-results_{}_{}_{}",
-                config.name, install_info.date, install_info.commit
-            ));
+            let result_dir =
+                PathBuf::from(Command::parse("osimperf-install-info path").run_trim()?)
+                    .join("results")
+                    .join(&config.name);
 
             // Path to result-info file, placed in results subdirectory.
             let result_info_path = result_dir.join(RESULT_INFO_FILE_NAME);
@@ -171,7 +176,7 @@ impl RecordCommand {
                 .filter(|r| r.config_hash == config_hash)
                 .unwrap_or(ResultInfo {
                     name: config.name.clone(),
-                    branch: install_info.branch.clone(),
+                    opensim_name: install_info.name.clone(),
                     commit: install_info.commit.clone(),
                     date: install_info.date.clone(),
                     durations: Default::default(),
@@ -242,10 +247,12 @@ impl RecordCommand {
                     &test.benchmark_cmd
                 };
                 debug!("{} command:", test.output.name);
-                println!("PATH={} LD_LIBRARY_PATH={} {}",
+                println!(
+                    "PATH={} LD_LIBRARY_PATH={} {}",
                     std::env::var("PATH")?,
                     std::env::var("LD_LIBRARY_PATH")?,
-                    cmd.print_command());
+                    cmd.print_command()
+                );
             }
             return Ok(());
         }
@@ -357,7 +364,11 @@ impl RecordCommand {
                 if test.output.durations.get_mean().unwrap_or(0.) > min_dt {
                     write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
                 } else {
-                    warn!("{} executed in less than {} secs, it probably failed...", test.output.name, min_dt);
+                    warn!(
+                        "{} executed in less than {} secs, it probably failed...",
+                        test.output.name, min_dt
+                    );
+                    trace!("command:\n{}", test.benchmark_cmd.print_command());
                 }
             }
 

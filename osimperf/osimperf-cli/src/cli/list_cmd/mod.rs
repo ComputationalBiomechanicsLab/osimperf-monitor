@@ -50,36 +50,23 @@ impl ListCommand {
         }
 
         if let Some(install) = self.install.as_ref() {
-            let mut arr = Vec::from_iter(
-                find_file_by_name(install, crate::INSTALL_INFO_FILE_NAME)
-                    .drain(..)
-                    .map(|path| absolute(path).expect("failed to create absolute path"))
-                    .map(|path| {
-                        (
-                            read_json::<InstallInfo>(&path).expect(&format!(
-                                "failed to read install info from {}",
-                                path.display()
-                            )),
-                            into_prefix_path(path.parent().unwrap()),
-                        )
-                    }),
-            );
-            arr.sort_by(|(a, _), (b, _)| a.date.cmp(&b.date));
-            let mut i = 0;
-            loop {
-                if i >= arr.len() {
-                    break;
-                }
-                if let Some(j) = find_other(&arr, i) {
-                    let append = arr[j].1.clone();
-                    arr[i].1.push_str(":");
-                    arr[i].1.push_str(&append);
-                    // Remove duplicate version.
-                    arr.remove(j);
-                    continue;
-                }
-                i += 1;
+            let mut arr = Vec::new();
+            for path in find_file_by_name(install, "osimperf-install-info")
+                .drain(..)
+                .map(|path| absolute(path).expect("failed to create absolute path"))
+            {
+                let cmd = path.to_str().unwrap();
+                arr.push((
+                    InstallInfo {
+                        name: Command::parse(&format!("{cmd} name")).run_trim()?,
+                        commit: Command::parse(&format!("{cmd} commit")).run_trim()?,
+                        date: Command::parse(&format!("{cmd} date")).run_trim()?,
+                        duration: 0,
+                    },
+                    Command::parse(&format!("{cmd} path")).run_trim()?,
+                ));
             }
+            arr.sort_by(|(a, _), (b, _)| a.date.cmp(&b.date));
             if let Some(date) = self.date.as_ref() {
                 arr.retain(|(c, _)| &c.date == date);
             }

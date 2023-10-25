@@ -17,7 +17,10 @@ use crate::CommandTrait;
 use crate::INSTALL_INFO_FILE_NAME;
 use anyhow::{anyhow, Context, Result};
 use log::debug;
+use std::io::Lines;
+use std::io::StdinLock;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub fn absolute_path(relative_path: &PathBuf) -> Result<PathBuf> {
     std::fs::canonicalize(relative_path)
@@ -83,4 +86,38 @@ pub fn find_install_info_on_path() -> Result<InstallInfo> {
 
     // Return the active opensim-core version.
     Ok(install_info)
+}
+
+pub struct ArgOrStdinIter {
+    arg: Option<PathBuf>,
+    stdin: Option<Lines<StdinLock<'static>>>,
+}
+
+impl ArgOrStdinIter {
+    pub fn new(arg: &Option<PathBuf>) -> Self {
+        Self {
+            arg: arg.clone(),
+            stdin: if arg.is_none() {
+                Some(std::io::stdin().lines())
+            } else {
+                None
+            },
+        }
+    }
+}
+
+impl Iterator for ArgOrStdinIter {
+    type Item = PathBuf;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(stdin) = self.stdin.as_mut() {
+            stdin
+                .next()
+                .map(|s| s.expect("failed to read stdin"))
+                .map(|s| PathBuf::from_str(&s).expect("failed to create PathBuf from str"))
+        } else {
+            return self.arg.take();
+        }
+        .map(|path| absolute_path(&path).expect("failed to create absolute_path"))
+    }
 }

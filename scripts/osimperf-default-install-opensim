@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Exit immediately if any command exits with a non-zero status
+set -e
+# Exit with a non-zero status if any command in a pipeline fails
+set -o pipefail
+
+echo
+echo "Starting install script for opensim-core"
+
+OSPC_BUILD_DIR=${OSPC_BUILD_DIR:="/tmp/osimperf-opensim-build"}
+INSTALL_DIR=$PWD
+
+echo "Path to opensim-core source: $OSPC_OPENSIM_SRC"
+echo "Path to install: $INSTALL_DIR"
+echo "Path to build: $OSPC_BUILD_DIR"
+
+
+mkdir -p $OSPC_OPENSIM_SRC
+mkdir -p $INSTALL_DIR
+mkdir -p $OSPC_BUILD_DIR
+
+echo
+echo "Start installing dependencies."
+echo
+
+INSTALL_DEPENDENCIES="$OSPC_BUILD_DIR/dependencies"
+BUILD_TYPE="RelWithDebInfo"
+CASADI="OFF"
+TROPTER="OFF"
+
+cmake \
+	-B "$OSPC_BUILD_DIR/dependencies" \
+	-S "$OSPC_OPENSIM_SRC/dependencies" \
+	-DCMAKE_INSTALL_PREFIX="$INSTALL_DEPENDENCIES" \
+	-DCMAKE_BUILD_TYPE=$BUILD_TYPE\
+	-DOPENSIM_WITH_CASADI=$CASADI\
+	-DOPENSIM_WITH_TROPTER=$TROPTER
+
+cmake \
+	--build "$OSPC_BUILD_DIR/dependencies" \
+	-j8
+
+echo "Completed installing dependencies."
+
+echo
+echo "Start installing opensim-core."
+echo
+
+cmake \
+	-B "$OSPC_BUILD_DIR/opensim-core" \
+	-S $OSPC_OPENSIM_SRC \
+	-DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+    -DCMAKE_PREFIX_PATH=$INSTALL_DEPENDENCIES \
+    -DOPENSIM_DEPENDENCIES_DIR=$INSTALL_DEPENDENCIES \
+	-DCMAKE_BUILD_TYPE=$BUILD_TYPE\
+	-DOPENSIM_WITH_CASADI=$CASADI\
+	-DOPENSIM_WITH_TROPTER=$TROPTER \
+    -DOPENSIM_BUILD_INDIVIDUAL_APPS="ON" \
+    -DOPENSIM_INSTALL_UNIX_FHS="ON" \
+    -DBUILD_API_EXAMPLES="ON" \
+    -DBUILD_JAVA_WRAPPING="OFF" \
+    -DBUILD_PYTHON_WRAPPING="OFF" \
+    -DBUILD_API_ONLY="OFF" \
+    -DBUILD_TESTING="OFF" \
+    -DOPENSIM_DOXYGEN_USE_MATHJAX="OFF"
+
+cmake \
+	--build "$OSPC_BUILD_DIR/opensim-core" \
+	--target "install" \
+	-j4
+
+echo "Completed installing opensim-core."
+
+rm -rf $OSPC_BUILD_DIR

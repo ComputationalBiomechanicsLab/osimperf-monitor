@@ -83,6 +83,7 @@ impl Command {
         cmd
     }
 
+    #[must_use]
     pub fn set_run_root(mut self, root: &Path) -> Self {
         self.root = Some(String::from(root.to_str().unwrap()));
         self
