@@ -9,8 +9,8 @@ echo
 echo "Starting install script for opensim-core"
 
 OSPC_BUILD_DIR=${OSPC_BUILD_DIR:="/tmp/osimperf-opensim-build"}
-OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="YES"}
-OSPC_OPENSIM_RM_BUILD_DIR=${OSPC_OPENSIM_RM_BUILD_DIR:="YES"}
+OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="ON"}
+OSPC_OPENSIM_RM_BUILD_DIR=${OSPC_OPENSIM_RM_BUILD_DIR:="ON"}
 OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="4"}
 
 INSTALL_DIR=$PWD
@@ -18,7 +18,6 @@ INSTALL_DIR=$PWD
 echo "Path to opensim-core source: $OSPC_OPENSIM_SRC"
 echo "Path to install: $INSTALL_DIR"
 echo "Path to build: $OSPC_BUILD_DIR"
-
 
 mkdir -p $OSPC_OPENSIM_SRC
 mkdir -p $INSTALL_DIR
@@ -66,10 +65,10 @@ cmake \
 	-DBUILD_JAVA_WRAPPING="OFF" \
 	-DBUILD_PYTHON_WRAPPING="OFF" \
 	-DBUILD_API_ONLY="OFF" \
-	-DBUILD_TESTING="OFF" \
+	-DBUILD_TESTING="$OSPC_OPENSIM_RUN_TESTS" \
 	-DOPENSIM_DOXYGEN_USE_MATHJAX="OFF" \
-	-DOPENSIM_BUILD_TESTING="ON"\
-	-DCMAKE_VERBOSE_MAKEFILE=1\
+	-DOPENSIM_BUILD_TESTING="$OSPC_OPENSIM_RUN_TESTS"\
+	-DCMAKE_VERBOSE_MAKEFILE="ON"\
 	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON"
 
 cmake \
@@ -80,12 +79,12 @@ cmake \
 
 echo "Completed installing opensim-core."
 
-if [ "$OSPC_OPENSIM_RUN_TESTS" == "YES" ]; then
+if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
 	echo "Run opensim-core unit-tests:"
 	env -C "$OSPC_BUILD_DIR/opensim-core-prefix/src/opensim-core-build" ctest --parallel $OSPC_NUM_JOBS --output-on-failure
 fi
 
-if [ "$OSPC_OPENSIM_RM_BUILD_DIR" == "YES" ]; then
+if [ "$OSPC_OPENSIM_RM_BUILD_DIR" == "ON" ]; then
 	echo "Remove build dir: $OSPC_BUILD_DIR"
 	rm -rf $OSPC_BUILD_DIR
 fi
