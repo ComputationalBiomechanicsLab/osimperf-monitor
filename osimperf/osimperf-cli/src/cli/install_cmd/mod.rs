@@ -44,8 +44,6 @@ pub struct InstallCommand {
 
 impl InstallCommand {
     pub fn run(&self) -> Result<()> {
-        info!("Start OSimPerf install command");
-
         // Get path to opensim-core source from argument or environmental variable.
         let source = arg_or_env_var(self.opensim.clone(), "OSPC_OPENSIM_SRC")?
             .context("failed to get path to opensim-source")?;
@@ -53,6 +51,11 @@ impl InstallCommand {
 
         let commit = crate::common::git::read_current_commit(&source)?;
         let date = format_date(&crate::common::git::get_date(&source, &commit)?);
+
+        info!(
+            "OSimPerf: Start install command:\npath to opensim: {:?}\ncommit: {}\ndate: {}",
+            source, commit, date
+        );
 
         // Use directory of config file as root for installer.
         let install_root = if let Some(root) = self.root.clone() {
