@@ -42,6 +42,12 @@ pub struct InstallCommand {
     force: bool,
 }
 
+fn map_absolute(relative: &Option<PathBuf>) -> Option<PathBuf> {
+    relative
+        .as_ref()
+        .map(|p| absolute(p).expect(&format!("Failed to create absolute path to {:?}", p)))
+}
+
 impl InstallCommand {
     pub fn run(&self) -> Result<()> {
         // Get path to opensim-core source from argument or environmental variable.
@@ -58,7 +64,7 @@ impl InstallCommand {
         );
 
         // Use directory of config file as root for installer.
-        let install_root = if let Some(root) = self.root.clone() {
+        let install_root = if let Some(root) = map_absolute(&self.root) {
             root
         } else {
             current_dir()?.join(format!("install_{}_{}_{}", self.name, date, commit))
@@ -86,18 +92,16 @@ impl InstallCommand {
 
         // Set environmental variables.
         let mut env_vars = vec![EnvVar::new("OSPC_OPENSIM_SRC", &source)];
-        if let Some(build) = self.build.as_ref() {
-            env_vars.push(EnvVar::new("OSPC_BUILD_DIR", build));
+        if let Some(build) = map_absolute(&self.build) {
+            env_vars.push(EnvVar::new("OSPC_BUILD_DIR", &build));
         }
 
         create_dir_all(&install_root)?;
         debug!("Created install directory {:?}", install_root);
 
-        let installer = self
-            .installer
-            .as_ref()
-            .and_then(|p| p.to_str())
-            .unwrap_or("osimperf-default-install-opensim");
+        let installer: String = map_absolute(&self.installer)
+            .map(|p| p.to_str().unwrap().to_owned())
+            .unwrap_or("osimperf-default-install-opensim".to_owned());
         let cmd = Command::new(installer)
             .set_envs(&env_vars)
             .set_run_root(&install_root);
