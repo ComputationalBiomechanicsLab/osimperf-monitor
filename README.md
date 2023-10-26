@@ -3,6 +3,7 @@
 ## Installing for Ubuntu
 
 To install dependencies and `osimperf-cli` for Ubuntu:
+
 `./scripts/install-ubuntu.sh` 
 
 # OSimPerf CLI
@@ -16,26 +17,32 @@ Use `osimperf-cli --help` to get more info.
 ## Install Command
 
 To install currently checked out version of opensim-core.
+
 `osimperf-cli install --opensim PATH_TO_OPENSIM_SOURCE`
 
 Or set `OSPC_OPENSIM_SRC` to the opensim source directory, and run:
+
 `osimperf-cli install`
 
 To use a custom install script:
+
 `osimperf-cli install --installer PATH_TO_SCRIPT`
 
 By default a unique subdirectory is created in the current directory using the commit hash.
 To customize the install root directory use:
+
 `osimperf-cli install --root "path_to_install_root/custom_dir-%H-%y_%m_%d"`
 
 The default install script uses the build directory `/tmp/osimperf-build-opensim-core`.
 This can be changed by setting `OSPC_BUILD_DIR`, or by running:
+
 `osimperf-cli install --build BUILD_DIR`
 
 ## Install Info Command
 
 To make sure that the benchmark tests, and other scripts can find the installed version, make sure to prefix the path.
 This can be done by:
+
 `for path in $(osimperf-cli ls --install .); do; export PATH="path:$PATH"; ...`
 
 To verify that the path variable is set, run `osimperf-install-info`.
@@ -43,24 +50,31 @@ To verify that the path variable is set, run `osimperf-install-info`.
 ## Record Command
 
 Assuming the path to `osimperf-install-info` is set correctly, running a benchmark can be done using:
+
 `osimperf-cli record --config CONFIG_FILE`
 
 To collect all `osimperf-test.conf` from the current directory and subdirectories, and run them, ommit the `--config` argument:
+
 `osimperf-cli record`
 
 Which is the same as:
+
 `osimperf-cli record --config "$(osimperf-cli ls --tests .)"`
 
 Overwriting the default number of test iterations:
+
 `osimperf-cli record --iter 10`
 
 Running valgrind:
+
 `osimperf-cli record --grind`
 
 Running visualizer:
+
 `osimperf-cli record --visualize`
 
 To print the executed command:
+
 `osimperf-cli record --print`
 
 ## Benchmarks Config Files
