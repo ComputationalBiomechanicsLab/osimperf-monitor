@@ -1,12 +1,23 @@
 #!/bin/bash
 
 # Exit immediately if any command exits with a non-zero status
-set -e
+set -ex
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
 
 echo
 echo "Starting install script for opensim-core"
+
+# Will install opensim-core in current directory.
+
+# Directory args:
+# OSPC_BUILD_DIR
+# OSPC_OPENSIM_SRC
+
+# Flag args:
+# OSPC_OPENSIM_RUN_TESTS
+# OSPC_OPENSIM_RM_BUILD_DIR
+# OSPC_NUM_JOBS
 
 OSPC_BUILD_DIR=${OSPC_BUILD_DIR:="/tmp/osimperf-opensim-build"}
 OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="OFF"}
@@ -15,9 +26,15 @@ OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="4"}
 
 INSTALL_DIR=$PWD
 
-echo "Path to opensim-core source: $OSPC_OPENSIM_SRC"
-echo "Path to install: $INSTALL_DIR"
-echo "Path to build: $OSPC_BUILD_DIR"
+echo "Installer directories:"
+echo "    OSPC_OPENSIM_SRC=$OSPC_OPENSIM_SRC"
+echo "    INSTALL_DIR=$INSTALL_DIR"
+echo "    OSPC_BUILD_DIR=$OSPC_BUILD_DIR"
+
+echo "Installer flags:"
+echo "    OSPC_OPENSIM_RM_BUILD_DIR=$OSPC_OPENSIM_RM_BUILD_DIR"
+echo "    OSPC_OPENSIM_RUN_TESTS=$OSPC_OPENSIM_RUN_TESTS"
+echo "    OSPC_NUM_JOBS=$OSPC_NUM_JOBS"
 
 mkdir -p $OSPC_OPENSIM_SRC
 mkdir -p $INSTALL_DIR
@@ -81,7 +98,7 @@ echo "Completed installing opensim-core."
 
 # Create symlink to compile_commands.json for IDE.
 ln_from="$OSPC_BUILD_DIR/opensim-core/compile_commands/json"
-ln_to= "$OSPC_OPENSIM_SRC/compile_commands.json"
+ln_to="$OSPC_OPENSIM_SRC/compile_commands.json"
 if [ "$ln_from" != "$ln_to" ]; then
 	ln -sf $ln_from $ln_to
 	echo "Created symlink: from $ln_from to $ln_to"
