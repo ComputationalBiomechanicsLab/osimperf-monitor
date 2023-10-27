@@ -295,6 +295,10 @@ impl RecordCommand {
             tests.iter().for_each(|t| {
                 msg.push_str("\n");
                 msg.push_str(&t.output.name);
+                if log_enabled!(log::Level::Debug) {
+                    msg.push_str("\n");
+                    msg.push_str(&t.grind_cmd.print_command());
+                }
             });
             info!("{msg}");
 
