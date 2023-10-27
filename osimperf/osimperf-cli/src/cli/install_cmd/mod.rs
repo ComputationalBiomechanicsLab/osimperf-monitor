@@ -58,6 +58,13 @@ impl InstallCommand {
         let commit = crate::common::git::read_current_commit(&source)?;
         let date = format_date(&crate::common::git::get_date(&source, &commit)?);
 
+        let mut install_info = InstallInfo {
+            name: self.name.clone(),
+            commit: commit.clone(),
+            date: date.clone(),
+            duration: 0,
+        };
+
         info!(
             "OSimPerf: Start install command:\npath to opensim: {:?}\ncommit: {}\ndate: {}",
             source, commit, date
@@ -79,13 +86,32 @@ impl InstallCommand {
         ))
         .run_trim()
         {
-            if !self.force && commit == prev_version {
+            if !self.force && prev_version == commit {
                 info!("Found installed commit {} ({}).", commit, date);
                 print_prefix_path(&install_root);
                 return Ok(());
             }
             warn!(
                 "Overwriting previously installed commit {} ({}).",
+                prev_version, date
+            );
+        }
+
+        // Check for existence of opensim-cmd.
+        if let Ok(prev_version) = Command::parse(&format!(
+            "{}/bin/opensim-cmd --version",
+            install_root.to_str().unwrap()
+        ))
+        .run_trim()
+        {
+            if !self.force && prev_version.contains(commit.split_at(9).0) {
+                info!("Found installed opensim-cmd {} ({}).", prev_version, date);
+                install_info.install(&install_root)?;
+                print_prefix_path(&install_root);
+                return Ok(());
+            }
+            warn!(
+                "Overwriting previously installed opensim-cmd {} ({}).",
                 prev_version, date
             );
         }
@@ -117,13 +143,7 @@ impl InstallCommand {
 
         debug!("Installer finished");
 
-        let install_info = InstallInfo {
-            name: self.name.clone(),
-            commit: commit.clone(),
-            date: date.clone(),
-            duration: duration.as_secs(),
-        };
-
+        install_info.duration = duration.as_secs();
         install_info.install(&install_root)?;
 
         info!(
