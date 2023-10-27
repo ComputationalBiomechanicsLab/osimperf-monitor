@@ -282,7 +282,9 @@ impl RecordCommand {
         }
 
         if self.grind {
-            tests.retain(|t| t.output.grind.is_none());
+            if !self.force {
+                tests.retain(|t| t.output.grind.is_none());
+            }
 
             if tests.len() == 0 {
                 info!("Nothing to grind");
