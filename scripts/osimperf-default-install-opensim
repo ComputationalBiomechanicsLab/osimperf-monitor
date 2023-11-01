@@ -97,17 +97,17 @@ cmake \
 echo "Completed installing opensim-core."
 
 # Create symlink to compile_commands.json for IDE.
-ln_from="$OSPC_BUILD_DIR/opensim-core/compile_commands/json"
+ln_from="$OSPC_BUILD_DIR/opensim-core/compile_commands.json"
 ln_to="$OSPC_OPENSIM_SRC/compile_commands.json"
 if [ "$ln_from" != "$ln_to" ]; then
 	ln -sf $ln_from $ln_to
 	echo "Created symlink: from $ln_from to $ln_to"
 fi
 
-# if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
-	# echo "Run opensim-core unit-tests:"
-	# env -C "$OSPC_BUILD_DIR/opensim-core-prefix/src/opensim-core-build" ctest --parallel $OSPC_NUM_JOBS --output-on-failure
-# fi
+if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
+	echo "Run opensim-core unit-tests:"
+	env -C "$OSPC_BUILD_DIR/opensim-core" ctest --parallel $OSPC_NUM_JOBS --output-on-failure
+fi
 
 if [ "$OSPC_OPENSIM_RM_BUILD_DIR" == "ON" ]; then
 	echo "Remove build dir: $OSPC_BUILD_DIR"
