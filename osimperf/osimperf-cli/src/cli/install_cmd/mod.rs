@@ -88,6 +88,13 @@ impl InstallCommand {
         {
             if !self.force && prev_version == commit {
                 info!("Found installed commit {} ({}).", commit, date);
+                install_info.duration = Command::parse(&format!(
+                    "{}/bin/osimperf-install-info duration",
+                    install_root.to_str().unwrap()
+                ))
+                .run_trim()?
+                .parse::<u64>()?;
+                install_info.install(&install_root)?;
                 print_prefix_path(&install_root);
                 return Ok(());
             }
