@@ -18,6 +18,9 @@ use std::io::StdinLock;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::Command;
+use crate::CommandTrait;
+
 pub fn absolute_path(relative_path: &PathBuf) -> Result<PathBuf> {
     std::fs::canonicalize(relative_path)
         .with_context(|| format!("failed to create absolute path to {:?}", relative_path))
@@ -80,4 +83,43 @@ impl Iterator for ArgOrStdinIter {
         }
         .map(|path| absolute_path(&path).expect("failed to create absolute_path"))
     }
+}
+
+/// Substitute occurances of `%H`, `%y`, `%m`, `%d` and `%n`.
+pub fn substitute_install_info(mut s: String) -> String {
+    for (key, value) in [
+        (
+            "%H",
+            Command::parse("osimperf-install-info commit")
+                .run_trim()
+                .expect("failed to read commit"),
+        ),
+        (
+            "%n",
+            Command::parse("osimperf-install-info name")
+                .run_trim()
+                .expect("failed to read name"),
+        ),
+        (
+            "%Y",
+            Command::parse("date --date=$(osimperf-install-info date) +%Y")
+                .run_trim()
+                .expect("failed to read year"),
+        ),
+        (
+            "%m",
+            Command::parse("date --date=$(osimperf-install-info date) +%m")
+                .run_trim()
+                .expect("failed to read month"),
+        ),
+        (
+            "%d",
+            Command::parse("date --date=$(osimperf-install-info date) +%d")
+                .run_trim()
+                .expect("failed to read day"),
+        ),
+    ] {
+        s = s.replace(key, &value);
+    }
+    s
 }

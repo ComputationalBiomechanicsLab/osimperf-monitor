@@ -1,10 +1,7 @@
 use super::absolute_path;
 use super::InstallInfo;
 
-use crate::{
-    read_json, write_json, Command, CommandTrait, Durations,
-    RESULT_INFO_FILE_NAME,
-};
+use crate::{read_json, write_json, Command, CommandTrait, Durations, RESULT_INFO_FILE_NAME};
 use anyhow::{Context, Result};
 use clap::Args;
 use log::log_enabled;
@@ -175,11 +172,11 @@ impl RecordCommand {
             let benchmark_cmd = Command::parse(&config.benchmark_cmd).set_run_root(&root_dir);
 
             let grind_cmd_base = "valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --cache-sim=yes --branch-sim=yes";
-            let grind_cmd = Command::parse(&format!(
-                "{grind_cmd_base} --callgrind-out-file={}/callgrind.out {}",
+            let grind_cmd = Command::parse(&super::substitute_install_info(format!(
+                "{grind_cmd_base} --callgrind-out-file={}/callgrind.out.%n_%Y-%m-%d_%H {}",
                 result_dir.to_str().unwrap(),
                 config.benchmark_cmd
-            ))
+            )))
             .set_run_root(&root_dir);
 
             let visualize_cmd = config
