@@ -3,11 +3,9 @@
 mod cli;
 mod command;
 mod common;
-mod context;
 
 pub use command::*;
 pub use common::*;
-pub use context::*;
 
 use cli::{InstallCommand, ListCommand, RecordCommand, PlotCommand, LogCommand, ReadBenchTestSetup};
 
