@@ -6,12 +6,14 @@ pub use single_command::{Command, CommandExecutor};
 
 use anyhow::{anyhow, Context, Result};
 use std::io::BufReader;
+use serde::{Deserialize, Serialize};
 use std::thread;
 use std::{
     fmt::Debug,
     fs::OpenOptions,
     io::{BufRead, Write},
     path::Path,
+    path::PathBuf,
     time::Duration,
 };
 
@@ -220,4 +222,19 @@ pub(crate) fn substitute_all(string: &str, envs: &[crate::EnvVar]) -> String {
         _ = substitute_if_present(&mut out, &dollar_key, &env.value);
     }
     out
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
+pub struct EnvVar {
+    pub key: String,
+    pub value: String,
+}
+
+impl EnvVar {
+    pub fn new(key: &str, value: &PathBuf) -> Self {
+        Self {
+            key: key.to_owned(),
+            value: value.to_str().unwrap().to_owned(),
+        }
+    }
 }

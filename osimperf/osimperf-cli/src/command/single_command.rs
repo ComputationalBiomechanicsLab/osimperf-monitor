@@ -1,5 +1,5 @@
 use super::{substitute_all, CommandExecutorTrait, CommandTrait};
-use crate::EnvVar;
+use super::EnvVar;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;

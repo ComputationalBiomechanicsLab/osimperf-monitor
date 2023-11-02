@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::path::PathBuf;
 
-use crate::{MODELS_ENV_VAR, SETUP_ENV_VAR, CONTEXT_ENV_VAR, OPENSIM_BUILD_ENV_VAR, OPENSIM_SRC_ENV_VAR, OPENSIM_INSTALL_ENV_VAR, INSTALL_ENV_VAR};
+use crate::{MODELS_ENV_VAR, SETUP_ENV_VAR, CONTEXT_ENV_VAR, OPENSIM_BUILD_ENV_VAR, OPENSIM_SRC_ENV_VAR, OPENSIM_INSTALL_ENV_VAR, INSTALL_ENV_VAR, EnvVar};
 
 #[derive(Debug, Clone, Default)]
 struct EnvVars {
@@ -57,20 +57,5 @@ impl EnvVars {
             vars.push(EnvVar::new(INSTALL_ENV_VAR, &p))
         }
         vars
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Hash)]
-pub struct EnvVar {
-    pub key: String,
-    pub value: String,
-}
-
-impl EnvVar {
-    pub fn new(key: &str, value: &PathBuf) -> Self {
-        Self {
-            key: key.to_owned(),
-            value: value.to_str().unwrap().to_owned(),
-        }
     }
 }
