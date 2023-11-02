@@ -43,7 +43,7 @@ impl ListCommand {
                 .drain(..)
                 .map(|path| absolute(path).expect("failed to create absolute path"))
             {
-                let cmd = path.to_str().unwrap();
+                let cmd = path.to_str().unwrap().to_owned();
                 arr.push((
                     InstallInfo {
                         name: Command::parse(&format!("{cmd} name")).run_trim()?,
@@ -51,7 +51,7 @@ impl ListCommand {
                         date: Command::parse(&format!("{cmd} date")).run_trim()?,
                         duration: 0,
                     },
-                    Command::parse(&format!("{cmd} path")).run_trim()?,
+                    cmd
                 ));
             }
             arr.sort_by(|(a, _), (b, _)| a.date.cmp(&b.date));

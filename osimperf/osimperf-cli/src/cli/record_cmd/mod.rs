@@ -90,7 +90,7 @@ impl RecordCommand {
 
         // Prefix linker path.
         {
-            let mut prefix_path = Command::parse("osimperf-install-info path").run_trim()?;
+            let mut prefix_path = Command::parse("osimperf-install-info root").run_trim()?;
             prefix_path.push_str("/lib");
             super::prefix_path(&["LD_LIBRARY_PATH"], &prefix_path)?;
 
@@ -133,7 +133,7 @@ impl RecordCommand {
 
             // Create subdirectory for placing results from this record.
             let result_dir =
-                PathBuf::from(Command::parse("osimperf-install-info path").run_trim()?)
+                PathBuf::from(Command::parse("osimperf-install-info root").run_trim()?)
                     .join("results")
                     .join(&config.name);
 

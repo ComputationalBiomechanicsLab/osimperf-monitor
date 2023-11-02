@@ -19,7 +19,7 @@ set -eo pipefail
 
 echo "Setup benchmarks for $(osimperf-install-info commit) ($(osimperf-install-info date))."
 
-root_dir="$(osimperf-install-info path)"
+root_dir="$(osimperf-install-info root)"
 build_dir="$root_dir/build/osimperf-tools"
 
 mkdir -p $build_dir

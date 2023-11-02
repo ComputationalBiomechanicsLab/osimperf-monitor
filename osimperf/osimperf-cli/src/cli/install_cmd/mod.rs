@@ -205,12 +205,16 @@ impl InstallInfo {
 
         line_opt_a.push(r#"if [ "$#" -eq 1 ] ; then"#.to_owned());
         let duration = format!("{}", self.duration);
+
+        let prefix_path = "\"$(dirname $0)\"".to_owned();
+        let root = "\"$(dirname $(dirname $0))\"".to_owned();
         for (key, value) in [
             ("name", &self.name),
             ("commit", &self.commit),
             ("date", &self.date),
-            ("path", &path.to_str().unwrap().to_owned()),
             ("duration", &duration),
+            ("prefix_path", &prefix_path),
+            ("root", &root),
         ] {
             line_opt_a.push(format!("  if [ $1 == \"{}\" ] ; then", key));
             line_opt_a.push(format!("    echo {}", value));
