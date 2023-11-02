@@ -1,5 +1,5 @@
 use crate::{git::format_date, *};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use clap::Args;
 use log::{debug, info, log_enabled, trace, warn};
 use serde::{Deserialize, Serialize};

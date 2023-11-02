@@ -9,7 +9,7 @@ use std::{
     path::PathBuf,
 };
 
-pub fn print_csv_plot(arg_path: &Option<PathBuf>, mut buf: impl std::io::Write) -> Result<()> {
+pub fn print_csv_plot(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Result<()> {
     info!("Print results to csv plot.");
     let mut file = LineWriter::new(buf);
 

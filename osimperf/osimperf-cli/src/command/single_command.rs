@@ -51,6 +51,14 @@ impl Command {
         self.args.push(arg.to_string());
     }
 
+    pub fn set_arg_if(mut self, key: &str, arg: &Option<String>) -> Command {
+        if let Some(value) = arg {
+            self.add_arg(key);
+            self.add_arg(value);
+        }
+        self
+    }
+
     pub fn add_args<T: ToString>(&mut self, args: impl Iterator<Item = T>) {
         for a in args {
             self.args.push(a.to_string());

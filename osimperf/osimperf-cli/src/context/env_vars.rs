@@ -1,21 +1,11 @@
-use super::Ctxt;
-use crate::InstallId;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::path::PathBuf;
 
-// OSimPerf environmental variables.
-pub const OPENSIM_BUILD_ENV_VAR: &str = "OSIMPERF_OPENSIM_BUILD";
-pub const OPENSIM_SRC_ENV_VAR: &str = "OSIMPERF_OPENSIM_SRC";
-pub const OPENSIM_INSTALL_ENV_VAR: &str = "OSIMPERF_OPENSIM_INSTALL";
-
-pub const INSTALL_ENV_VAR: &str = "OSIMPERF_INSTALL";
-pub const MODELS_ENV_VAR: &str = "OSIMPERF_MODELS";
-pub const SETUP_ENV_VAR: &str = "OSIMPERF_SETUP";
-pub const CONTEXT_ENV_VAR: &str = "OSIMPERF_CONTEXT";
+use crate::{MODELS_ENV_VAR, SETUP_ENV_VAR, CONTEXT_ENV_VAR, OPENSIM_BUILD_ENV_VAR, OPENSIM_SRC_ENV_VAR, OPENSIM_INSTALL_ENV_VAR, INSTALL_ENV_VAR};
 
 #[derive(Debug, Clone, Default)]
-pub struct EnvVars {
+struct EnvVars {
     pub opensim_build: Option<PathBuf>,
     pub opensim_source: Option<PathBuf>,
     pub opensim_install: Option<PathBuf>,

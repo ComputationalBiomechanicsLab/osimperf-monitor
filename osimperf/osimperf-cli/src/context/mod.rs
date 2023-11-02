@@ -10,7 +10,7 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Default)]
-pub struct Ctxt {
+struct Ctxt {
     archive: Option<PathBuf>,
     build: Option<PathBuf>,
     results: Option<PathBuf>,

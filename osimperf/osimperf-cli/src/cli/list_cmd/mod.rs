@@ -1,7 +1,7 @@
 use crate::*;
 use anyhow::Result;
 use clap::Args;
-use std::path::{absolute, Path, PathBuf};
+use std::path::{absolute, PathBuf};
 
 use super::{InstallInfo, ResultInfo};
 
@@ -26,18 +26,6 @@ pub struct ListCommand {
     /// Path to test cases directory.
     #[arg(long, short)]
     tests: Option<PathBuf>,
-}
-
-fn into_prefix_path(path: &Path) -> String {
-    let path = path.to_str().unwrap().to_owned();
-    let mut out = path.clone();
-    out.push_str(":");
-    out.push_str(&path);
-    out.push_str("/bin");
-    out.push_str(":");
-    out.push_str(&path);
-    out.push_str("/lib");
-    out
 }
 
 impl ListCommand {
@@ -105,16 +93,4 @@ impl ListCommand {
         }
         Ok(())
     }
-}
-
-fn find_other(arr: &[(InstallInfo, String)], index: usize) -> Option<usize> {
-    for i in (0..arr.len())
-        // Prevent matching on self.
-        .filter(|&i| i != index)
-        // Check if version matches.
-        .filter(|&i| arr[i].0.commit == arr[index].0.commit)
-    {
-        return Some(i);
-    }
-    None
 }

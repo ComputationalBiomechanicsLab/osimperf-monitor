@@ -6,8 +6,6 @@ use table::print_table;
 
 use super::ArgOrStdinIter;
 use super::ResultInfo;
-use crate::git::Date;
-use crate::*;
 use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs::File, path::PathBuf};
@@ -51,16 +49,4 @@ impl PlotCommand {
 
         Ok(())
     }
-}
-
-#[derive(Clone, Debug, Ord, Eq, PartialOrd, PartialEq)]
-struct Row {
-    name: String,
-    date: Date,
-}
-
-struct TableCell {
-    row: Row,
-    col: String,
-    value: Durations,
 }

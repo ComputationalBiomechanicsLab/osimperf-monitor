@@ -1,4 +1,4 @@
-use super::{format_date, parse_date, Commit, Date};
+use super::{parse_date, Commit, Date};
 use crate::{Command, CommandTrait, PipedCommands};
 use anyhow::{ensure, Context, Result};
 use std::path::Path;

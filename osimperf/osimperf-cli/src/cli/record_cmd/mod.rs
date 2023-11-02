@@ -1,15 +1,10 @@
 use super::absolute_path;
-use super::arg_or_env_var;
 use super::InstallInfo;
 
-use crate::context::MODELS_ENV_VAR;
-use crate::context::OPENSIM_INSTALL_ENV_VAR;
-
 use crate::{
-    read_json, write_json, Command, CommandTrait, Durations, EnvVars, INSTALL_INFO_FILE_NAME,
+    read_json, write_json, Command, CommandTrait, Durations,
     RESULT_INFO_FILE_NAME,
 };
-use anyhow::anyhow;
 use anyhow::{Context, Result};
 use clap::Args;
 use log::log_enabled;
@@ -19,12 +14,8 @@ use log::{debug, info};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
-use std::env::current_dir;
 use std::hash::{Hash, Hasher};
-use std::path::absolute;
 use std::{path::PathBuf, str::FromStr};
-
-static RESULTS_ENV_VAR: &str = "OSIMPERF_RESULTS";
 
 /// OSimPerf record command for running benchmark tests.
 ///
@@ -94,18 +85,6 @@ struct BenchTestCtxt {
     pub grind_cmd: Command,
     pub visualize_cmd: Option<Command>,
     pub output: ResultInfo,
-}
-
-struct GrindTestCtxt {
-    pub name: String,
-    pub cmd: Command,
-}
-
-struct RecordCommandInput {
-    install: PathBuf,
-    results: PathBuf,
-    models: PathBuf,
-    cmds: Vec<Command>,
 }
 
 impl RecordCommand {
@@ -442,20 +421,20 @@ impl Default for ReadBenchTestSetup {
     fn default() -> ReadBenchTestSetup {
         ReadBenchTestSetup {
             name: "foobar".to_owned(),
-            benchmark_cmd: format!("ls ${}", crate::context::CONTEXT_ENV_VAR),
+            benchmark_cmd: format!("ls ${}", crate::CONTEXT_ENV_VAR),
             pre_benchmark_cmds: Some(vec![
-                format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR),
-                format!("ls ${}", crate::context::OPENSIM_BUILD_ENV_VAR),
-                format!("ls ${}", crate::context::OPENSIM_SRC_ENV_VAR),
-                format!("ls ${}", crate::context::MODELS_ENV_VAR),
-                format!("ls ${}", crate::context::SETUP_ENV_VAR),
+                format!("ls ${}", crate::OPENSIM_INSTALL_ENV_VAR),
+                format!("ls ${}", crate::OPENSIM_BUILD_ENV_VAR),
+                format!("ls ${}", crate::OPENSIM_SRC_ENV_VAR),
+                format!("ls ${}", crate::MODELS_ENV_VAR),
+                format!("ls ${}", crate::SETUP_ENV_VAR),
             ]),
             post_benchmark_cmds: Some(vec![
-                format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR),
-                format!("ls ${}", crate::context::MODELS_ENV_VAR),
-                format!("ls ${}", crate::context::SETUP_ENV_VAR),
+                format!("ls ${}", crate::OPENSIM_INSTALL_ENV_VAR),
+                format!("ls ${}", crate::MODELS_ENV_VAR),
+                format!("ls ${}", crate::SETUP_ENV_VAR),
             ]),
-            visualize_cmd: Some(format!("ls ${}", crate::context::OPENSIM_INSTALL_ENV_VAR)),
+            visualize_cmd: Some(format!("ls ${}", crate::OPENSIM_INSTALL_ENV_VAR)),
             cell_name: None,
         }
     }
