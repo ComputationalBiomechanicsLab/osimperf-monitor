@@ -324,13 +324,13 @@ impl RecordCommand {
                 // Randomize test order.
                 tests.shuffle(&mut rng);
                 for test in tests.iter_mut() {
-                    debug!("Running {}", test.output.name);
                     let output = if log_enabled!(log::Level::Trace) {
                         test.benchmark_cmd.run_and_stream(&mut std::io::stdout())?
                     } else {
                         test.benchmark_cmd.run_and_time()?
                     };
                     test.output.durations.add_sample(output.duration);
+                    debug!("Completed {} in {} seconds.", test.output.name, output.duration.as_secs_f64());
                 }
             }
 
