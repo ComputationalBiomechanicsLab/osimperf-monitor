@@ -85,7 +85,7 @@ impl Iterator for ArgOrStdinIter {
     }
 }
 
-/// Substitute occurances of `%H`, `%y`, `%m`, `%d` and `%n`.
+/// Substitute occurances of `%H`, and `%n`.
 pub fn substitute_install_info(mut s: String) -> String {
     for (key, value) in [
         (
@@ -99,24 +99,6 @@ pub fn substitute_install_info(mut s: String) -> String {
             Command::parse("osimperf-install-info name")
                 .run_trim()
                 .expect("failed to read name"),
-        ),
-        (
-            "%Y",
-            Command::parse("date --date=$(osimperf-install-info date) +%Y")
-                .run_trim()
-                .expect("failed to read year"),
-        ),
-        (
-            "%m",
-            Command::parse("date --date=$(osimperf-install-info date) +%m")
-                .run_trim()
-                .expect("failed to read month"),
-        ),
-        (
-            "%d",
-            Command::parse("date --date=$(osimperf-install-info date) +%d")
-                .run_trim()
-                .expect("failed to read day"),
         ),
     ] {
         s = s.replace(key, &value);

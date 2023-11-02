@@ -173,7 +173,7 @@ impl RecordCommand {
 
             let grind_cmd_base = "valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes --cache-sim=yes --branch-sim=yes";
             let grind_cmd = Command::parse(&super::substitute_install_info(format!(
-                "{grind_cmd_base} --callgrind-out-file={}/callgrind.out.%n_%Y-%m-%d_%H {}",
+                "{grind_cmd_base} --callgrind-out-file={}/callgrind.out.%n_%H {}",
                 result_dir.to_str().unwrap(),
                 config.benchmark_cmd
             )))
