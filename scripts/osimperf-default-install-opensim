@@ -9,22 +9,36 @@ echo
 echo "Starting install script for opensim-core"
 
 # Will install opensim-core in current directory.
+INSTALL_DIR=$PWD
 
-# Directory args:
-# OSPC_BUILD_DIR
-# OSPC_OPENSIM_SRC
-
-# Flag args:
-# OSPC_OPENSIM_RUN_TESTS
-# OSPC_OPENSIM_RM_BUILD_DIR
-# OSPC_NUM_JOBS
+# Directory input arguments:
+# - OSPC_BUILD_DIR
+# - OSPC_OPENSIM_SRC
 
 OSPC_BUILD_DIR=${OSPC_BUILD_DIR:="/tmp/osimperf-opensim-build"}
-OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="OFF"}
-OSPC_OPENSIM_RM_BUILD_DIR=${OSPC_OPENSIM_RM_BUILD_DIR:="ON"}
-OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="4"}
+if [ -z $OSPC_OPENSIM_SRC ]; then
+	echo "Path to opensim-core source code not set."
+	exit 1
+fi
 
-INSTALL_DIR=$PWD
+# Set to remove build dir after completion.
+OSPC_OPENSIM_RM_BUILD_DIR=${OSPC_OPENSIM_RM_BUILD_DIR:="ON"}
+
+# Cmake flags.
+CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:="RelWithDebInfo"}
+CMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE:="OFF"}
+
+# OpenSim build flags.
+BUILD_API_EXAMPLES=${BUILD_API_EXAMPLES:="ON"}
+BUILD_API_ONLY=${BUILD_API_ONLY:="OFF"}
+OPENSIM_BUILD_INDIVIDUAL_APPS=${OPENSIM_BUILD_INDIVIDUAL_APPS:="ON"}
+OPENSIM_DOXYGEN_USE_MATHJAX=${OPENSIM_DOXYGEN_USE_MATHJAX:="OFF"}
+OPENSIM_INSTALL_UNIX_FHS=${OPENSIM_INSTALL_UNIX_FHS:="ON"}
+OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="4"}
+OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="OFF"}
+
+OPENSIM_WITH_CASADI=${OPENSIM_WITH_MOCO:="OFF"}
+OPENSIM_WITH_TROPTER=${OPENSIM_WITH_MOCO:="OFF"}
 
 echo "Installer directories:"
 echo "    OSPC_OPENSIM_SRC=$OSPC_OPENSIM_SRC"
@@ -44,22 +58,21 @@ echo
 echo "Start installing dependencies."
 echo
 
-INSTALL_DEPENDENCIES="$OSPC_BUILD_DIR/dependencies"
-BUILD_TYPE="RelWithDebInfo"
-CASADI="OFF"
-TROPTER="OFF"
+DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/opensim-core-dependencies-build"
+DEPENDENCIES_INSTALL_DIR="$OSPC_BUILD_DIR/opensim-core-dependencies-install"
+OPENSIM_BUILD_DIR="$OSPC_BUILD_DIR/opensim-core-build"
 
 cmake \
-	-B "$OSPC_BUILD_DIR/dependencies" \
+	-B "$DEPENDENCIES_BUILD_DIR" \
 	-S "$OSPC_OPENSIM_SRC/dependencies" \
-	-DCMAKE_INSTALL_PREFIX="$INSTALL_DEPENDENCIES" \
-	-DCMAKE_BUILD_TYPE=$BUILD_TYPE\
-	-DOPENSIM_WITH_CASADI=$CASADI\
-	-DOPENSIM_WITH_TROPTER=$TROPTER
+	-DCMAKE_INSTALL_PREFIX=$DEPENDENCIES_INSTALL_DIR \
+	-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE\
+	-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_CASADI\
+	-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_TROPTER
+	# -DSUPERBUILD_ezc3d=on \
+cmake "$DEPENDENCIES_BUILD_DIR" -LAH
 
-cmake \
-	--build "$OSPC_BUILD_DIR/dependencies" \
-	"-j$OSPC_NUM_JOBS"
+cmake --build $DEPENDENCIES_BUILD_DIR "-j$OSPC_NUM_JOBS"
 
 echo "Completed installing dependencies."
 
@@ -68,36 +81,42 @@ echo "Start installing opensim-core."
 echo
 
 cmake \
-	-B "$OSPC_BUILD_DIR/opensim-core" \
+	-G "Unix Makefiles" \
+	-B "$OPENSIM_BUILD_DIR" \
 	-S $OSPC_OPENSIM_SRC \
-	-DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
-	-DCMAKE_PREFIX_PATH=$INSTALL_DEPENDENCIES \
-	-DOPENSIM_DEPENDENCIES_DIR=$INSTALL_DEPENDENCIES \
-	-DCMAKE_BUILD_TYPE=$BUILD_TYPE\
-	-DOPENSIM_WITH_CASADI=$CASADI\
-	-DOPENSIM_WITH_TROPTER=$TROPTER \
-	-DOPENSIM_BUILD_INDIVIDUAL_APPS="ON" \
-	-DOPENSIM_INSTALL_UNIX_FHS="ON" \
-	-DBUILD_API_EXAMPLES="ON" \
-	-DBUILD_JAVA_WRAPPING="OFF" \
-	-DBUILD_PYTHON_WRAPPING="OFF" \
-	-DBUILD_API_ONLY="OFF" \
+	-DBUILD_API_EXAMPLES=$BUILD_API_EXAMPLES \
+	-DBUILD_API_ONLY=$BUILD_API_ONLY \
+	-DBUILD_JAVA_WRAPPING=$BUILD_JAVA_WRAPPING \
+	-DBUILD_PYTHON_WRAPPING=$BUILD_PYTHON_WRAPPING \
 	-DBUILD_TESTING="$OSPC_OPENSIM_RUN_TESTS" \
-	-DOPENSIM_DOXYGEN_USE_MATHJAX="OFF" \
-	-DOPENSIM_BUILD_TESTING="$OSPC_OPENSIM_RUN_TESTS"\
-	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON"
-	# -DCMAKE_VERBOSE_MAKEFILE="ON"\
+	-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON" \
+	-DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+	-DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE \
+	-DOPENSIM_BUILD_INDIVIDUAL_APPS=$OPENSIM_BUILD_INDIVIDUAL_APPS \
+	-DOPENSIM_DEPENDENCIES_DIR=$DEPENDENCIES_INSTALL_DIR \
+	-DOPENSIM_DOXYGEN_USE_MATHJAX=$OPENSIM_DOXYGEN_USE_MATHJAX \
+	-DOPENSIM_INSTALL_UNIX_FHS=$OPENSIM_INSTALL_UNIX_FHS
+	# -DBUILD_JAVA_WRAPPING=on \
+	# -DBUILD_PYTHON_WRAPPING=on \
+	# -DOPENSIM_C3D_PARSER=ezc3d \
+	# -DSWIG_DIR=~/swig/share/swig \
+	# -DSWIG_EXECUTABLE=~/swig/bin/swig
+
+# Note: If you also provide PREFIX_PATH it messes up the paths to the dependencies, and cannot find ipopt anymore.
+# So do not set: -DCMAKE_PREFIX_PATH=$DEPENDENCIES_INSTALL_DIR
+
+cmake "$OPENSIM_BUILD_DIR" -LAH
 
 cmake \
-	--build "$OSPC_BUILD_DIR/opensim-core" \
+	--build $OPENSIM_BUILD_DIR \
 	--target "install" \
-	"-j$OSPC_NUM_JOBS" \
-	-v
+	"-j$OSPC_NUM_JOBS"
 
 echo "Completed installing opensim-core."
 
 # Create symlink to compile_commands.json for IDE.
-ln_from="$OSPC_BUILD_DIR/opensim-core/compile_commands.json"
+ln_from="$OPENSIM_BUILD_DIR/compile_commands.json"
 ln_to="$OSPC_OPENSIM_SRC/compile_commands.json"
 if [ "$ln_from" != "$ln_to" ]; then
 	ln -sf $ln_from $ln_to
@@ -106,7 +125,15 @@ fi
 
 if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
 	echo "Run opensim-core unit-tests:"
-	env -C "$OSPC_BUILD_DIR/opensim-core" ctest --parallel $OSPC_NUM_JOBS --output-on-failure
+	if [ -z "$OSPC_OPENSIM_SELECT_TEST" ]; then
+		env -C $OPENSIM_BUILD_DIR ctest --parallel $OSPC_NUM_JOBS --output-on-failure
+	else
+		for selected_test in $(ls $OPENSIM_BUILD_DIR | grep $OSPC_OPENSIM_SELECT_TEST); do
+			selected_test="$(basename $selected_test)"
+			echo "Run selected test: $selected_test"
+			env -C $OPENSIM_BUILD_DIR "./$selected_test"
+		done
+	fi
 fi
 
 if [ "$OSPC_OPENSIM_RM_BUILD_DIR" == "ON" ]; then
