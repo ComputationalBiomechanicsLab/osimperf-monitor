@@ -58,9 +58,9 @@ echo
 echo "Start installing dependencies."
 echo
 
-DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/opensim-core-dependencies-build"
-DEPENDENCIES_INSTALL_DIR="$OSPC_BUILD_DIR/opensim-core-dependencies-install"
-OPENSIM_BUILD_DIR="$OSPC_BUILD_DIR/opensim-core-build"
+DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/dependencies"
+DEPENDENCIES_INSTALL_DIR="$INSTALL_DIR/opensim-core-dependencies-install"
+OPENSIM_BUILD_DIR="$OSPC_BUILD_DIR/opensim-core"
 
 cmake \
 	-B "$DEPENDENCIES_BUILD_DIR" \
@@ -70,8 +70,11 @@ cmake \
 	-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_CASADI\
 	-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_TROPTER
 	# -DSUPERBUILD_ezc3d=on \
+
+# Print dependencies cmake config.
 cmake "$DEPENDENCIES_BUILD_DIR" -LAH
 
+# Build dependencies.
 cmake --build $DEPENDENCIES_BUILD_DIR "-j$OSPC_NUM_JOBS"
 
 echo "Completed installing dependencies."
@@ -106,14 +109,8 @@ cmake \
 # Note: If you also provide PREFIX_PATH it messes up the paths to the dependencies, and cannot find ipopt anymore.
 # So do not set: -DCMAKE_PREFIX_PATH=$DEPENDENCIES_INSTALL_DIR
 
+# Print opensim-core cmake config.
 cmake "$OPENSIM_BUILD_DIR" -LAH
-
-cmake \
-	--build $OPENSIM_BUILD_DIR \
-	--target "install" \
-	"-j$OSPC_NUM_JOBS"
-
-echo "Completed installing opensim-core."
 
 # Create symlink to compile_commands.json for IDE.
 ln_from="$OPENSIM_BUILD_DIR/compile_commands.json"
@@ -122,6 +119,13 @@ if [ "$ln_from" != "$ln_to" ]; then
 	ln -sf $ln_from $ln_to
 	echo "Created symlink: from $ln_from to $ln_to"
 fi
+
+cmake \
+	--build $OPENSIM_BUILD_DIR \
+	--target "install" \
+	"-j$OSPC_NUM_JOBS"
+
+echo "Completed installing opensim-core."
 
 if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
 	echo "Run opensim-core unit-tests:"
