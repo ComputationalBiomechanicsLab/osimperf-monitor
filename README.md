@@ -1,81 +1,64 @@
 # OSimPerf Monitor
 
-## Installing for Ubuntu
+## Installing (Ubuntu)
 
 To install dependencies and `osimperf-cli` for Ubuntu:
 
 `./scripts/install-ubuntu.sh` 
 
-# OSimPerf CLI
+# Usage
 
-Use `osimperf-cli --help` to get more info.
+```bash
+# Display help:
+osimperf-cli --help
+```
 
-## Git Log Helper Command
+Install commands:
 
-`osimperf-cli git-checkout --date yyyy-mm-dd --opensim PATH_TO_OPENSIM --clone --branch BRANCH_NAME`
+```bash
+# Install opensim-core, creating a subdirectory in current folder:
+osimperf-cli install --opensim path_to_opensim_source
 
-## Install Command
+# Or set path to opensim-core globally:
+export OSPC_OPENSIM_SRC=path_to_opensim_source
+osimperf-cli install
 
-To install currently checked out version of opensim-core.
+# Change install directory:
+osimperf-cli install --root my_install_dir
 
-`osimperf-cli install --opensim PATH_TO_OPENSIM_SOURCE`
+# Use a custom install script:
+osimperf-cli install --installer my_custom_script
 
-Or set `OSPC_OPENSIM_SRC` to the opensim source directory, and run:
+# Change build directory:
+osimperf-cli install --build my_build_dir
+```
 
-`osimperf-cli install`
+Finding things:
 
-To use a custom install script:
 
-`osimperf-cli install --installer PATH_TO_SCRIPT`
+```bash
+# List installed versions by osimperf found in target dir.
+osimperf-cli ls --install dir
 
-By default a unique subdirectory is created in the current directory using the commit hash.
-To customize the install root directory use:
+# List benchmark config files found in target dir.
+osimperf-cli ls --tests dir
 
-`osimperf-cli install --root "path_to_install_root/custom_dir-%H-%y_%m_%d"`
+# List benchmark result files found in target dir.
+osimperf-cli ls --results dir
+```
 
-The default install script uses the build directory `/tmp/osimperf-build-opensim-core`.
-This can be changed by setting `OSPC_BUILD_DIR`, or by running:
+Running benchmarks:
 
-`osimperf-cli install --build BUILD_DIR`
+```bash
+# Running benchmark 10 times (make sure installed version is on path):
+osimperf-cli record --config my_benchmark_file --iter 10
 
-## Install Info Command
+# Or read config files from stdin:
+osimperf-cli ls --tests dir | osimperf-cli record --iter 10
 
-To make sure that the benchmark tests, and other scripts can find the installed version, make sure to prefix the path.
-This can be done by:
-
-`for path in $(osimperf-cli ls --install .); do; export PATH="path:$PATH"; ...`
-
-To verify that the path variable is set, run `osimperf-install-info`.
-
-## Record Command
-
-Assuming the path to `osimperf-install-info` is set correctly, running a benchmark can be done using:
-
-`osimperf-cli record --config CONFIG_FILE`
-
-To collect all `osimperf-test.conf` from the current directory and subdirectories, and run them, ommit the `--config` argument:
-
-`osimperf-cli record`
-
-Which is the same as:
-
-`osimperf-cli record --config "$(osimperf-cli ls --tests .)"`
-
-Overwriting the default number of test iterations:
-
-`osimperf-cli record --iter 10`
-
-Running valgrind:
-
-`osimperf-cli record --grind`
-
-Running visualizer:
-
-`osimperf-cli record --visualize`
-
-To print the executed command:
-
-`osimperf-cli record --print`
+# Trigger valgrind:
+osimperf-cli ls --tests dir | osimperf-cli record --grind
+```
 
 ## Benchmarks Config Files
 
@@ -84,21 +67,24 @@ DESCRIPTION HERE
 ## Plotting Results
 
 A table of results as a markdown file:
+
 `osimperf-cli plot --table "table.md"`
 
 A timeline plot of results:
+
 `osimperf-cli plot --figure`
 
 Which results to include can be filtered:
+
 `osimperf-cli plot --figure --results "$(osimperf-cli ls --results . | grep Rajagopal)"`
 
 ## Relevant Environmental Variables
 
 Consider adding these to `.bashrc` to simplify the work:
 
-`OSPC_OPENSIM_MODELS`: Directory to [opensim-models]() source.
-`OSPC_OPENSIM_SOURCE`: Directory to [opensim-core]() source.
-`OSPC_BUILD_DIR`: To overwrite default build directory.
+- `OSPC_OPENSIM_MODELS`: Directory to [opensim-models]() source.
+- `OSPC_OPENSIM_SOURCE`: Directory to [opensim-core]() source.
+- `OSPC_BUILD_DIR`: To overwrite default build directory.
 
 # Examples
 
