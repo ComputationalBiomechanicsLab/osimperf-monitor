@@ -105,23 +105,23 @@ impl InstallCommand {
         }
 
         // Check for existence of opensim-cmd.
-        if let Ok(prev_version) = Command::parse(&format!(
-            "{}/bin/opensim-cmd --version",
-            install_root.to_str().unwrap()
-        ))
-        .run_trim()
-        {
-            if !self.force && prev_version.contains(commit.split_at(9).0) {
-                info!("Found installed opensim-cmd {} ({}).", prev_version, date);
-                install_info.install(&install_root)?;
-                print_prefix_path(&install_root);
-                return Ok(());
-            }
-            warn!(
-                "Overwriting previously installed opensim-cmd {} ({}).",
-                prev_version, date
-            );
-        }
+        // if let Ok(prev_version) = Command::parse(&format!(
+        //     "{}/bin/opensim-cmd --version",
+        //     install_root.to_str().unwrap()
+        // ))
+        // .run_trim()
+        // {
+        //     if !self.force && prev_version.contains(commit.split_at(9).0) {
+        //         info!("Found installed opensim-cmd {} ({}).", prev_version, date);
+        //         install_info.install(&install_root)?;
+        //         print_prefix_path(&install_root);
+        //         return Ok(());
+        //     }
+        //     warn!(
+        //         "Overwriting previously installed opensim-cmd {} ({}).",
+        //         prev_version, date
+        //     );
+        // }
 
         // Set environmental variables.
         let mut env_vars = vec![EnvVar::new("OSPC_OPENSIM_SRC", &source)];
