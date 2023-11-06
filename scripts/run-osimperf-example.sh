@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-set -e pipefail
+set -exo pipefail
 
 # Example script: Paths are not portable.
 
@@ -13,7 +13,8 @@ export RUST_LOG="trace"
 
 # Build main.
 git -C $OSPC_OPENSIM_SRC switch "main"
-osimperf-cli install
+git -C $OSPC_OPENSIM_SRC pull
+osimperf-cli install --root "install_opensim_main"
 
 # Build every month.
 # date="2023-08-01"
