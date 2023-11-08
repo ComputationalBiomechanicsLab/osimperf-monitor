@@ -1,22 +1,21 @@
 #!/bin/bash
+set -eo pipefail
 
-# Exit immediately if any command exits with a non-zero status
-set -e
-# Exit with a non-zero status if any command in a pipeline fails
-set -o pipefail
+source_dir=$(dirname $(dirname $(realpath "$0")))
+install_dir=$PWD
 
-targets="osimperf-cli"
+target="osimperf-cli"
+cargo install \
+	--bin $target\
+	--path "$source_dir/osimperf/$target" \
+	--root "$install_dir"
 
-perf_home=$PWD
+cp "scripts/osimperf-default-install-opensim" "$install_dir/bin/osimperf-default-install-opensim"
+cp "scripts/csv-plot.py" "$install_dir/bin/csv-plot.py"
+cp "scripts/setup-benchmarks.sh" "$install_dir/bin/osimperf-setup-benchmarks"
 
-for target in $targets; do
-	cargo install \
-		--bin $target\
-		--path "osimperf/$target" \
-		--root "."
+echo "Use RUST_LOG to set log-level."
+echo "Use OPENSIM_MODELS to point to opensim-models directory."
 
-	# cd "osimperf/$target/package"
-	# OSIMPERF_HOME=$perf_home ./configure.sh
-	# cd -
-
-done
+echo "dont forget to add osimperf to PATH:"
+echo "PATH=$install_dir/bin:\$PATH"

@@ -19,6 +19,9 @@ set -eo pipefail
 
 echo "Setup benchmarks for $(osimperf-install-info commit) ($(osimperf-install-info date))."
 
+# todo move this to config.
+OSIMPERF_HOME=$(dirname $(dirname $(realpath "$0")))
+
 root_dir="$(osimperf-install-info root)"
 build_dir="$root_dir/build/osimperf-tools"
 
@@ -28,7 +31,7 @@ mkdir -p "$root_dir/results"
 
 cmake \
 	-B "$build_dir" \
-	-S "source" \
+	-S "$OSIMPERF_HOME/source" \
 	-DCMAKE_PREFIX_PATH="$root_dir/include" \
 	-DCMAKE_INSTALL_PREFIX=$root_dir \
 	-DCMAKE_BUILD_TYPE="RelWithDebInfo"
@@ -39,6 +42,6 @@ cmake \
 	-j8
 
 echo "Copied benchmarks scripts to $root_dir/run"
-cp -r "benchmarks" "$root_dir/run"
+cp -r "$OSIMPERF_HOME/benchmarks" "$root_dir/run"
 
 echo "Setup benchmarks complete."
