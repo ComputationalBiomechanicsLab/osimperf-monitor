@@ -297,7 +297,7 @@ impl RecordCommand {
         if self.iter > 0 {
             // Filter tests that are complete.
             if !self.force {
-                tests.retain(|t| t.output.durations.len() != self.iter);
+                tests.retain(|t| t.output.durations.len() < self.iter);
             }
 
             if tests.len() == 0 {
