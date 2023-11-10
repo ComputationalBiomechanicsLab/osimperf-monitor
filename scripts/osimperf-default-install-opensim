@@ -60,6 +60,9 @@ echo
 echo "Start installing dependencies."
 echo
 
+# Check global variable.
+RECONFIGURE=${OSPC_CLEAN:="OFF"}
+
 ShouldReconfigureCmake() {
 	BUILD_DIR="$1"; shift
 
@@ -67,19 +70,22 @@ ShouldReconfigureCmake() {
 	RECONFIGURE=${OSPC_CLEAN:="OFF"}
 
 	# If build dir does not exist, we should.
-	if [ -d $BUILD_DIR ]; then
+	if [ ! -d $BUILD_DIR ]; then
 		RECONFIGURE="ON"
 	fi
 
 	# Try running cmake --build, if fails, try to reconfigure.
 	if [ $RECONFIGURE == "OFF" ]; then
-		if cmake --build $BUILD_DIR "-j$OSPC_NUM_JOBS" "$@" ; then
+		set +e
+		cmake --build $BUILD_DIR "-j$OSPC_NUM_JOBS" $@
+		# If build was not succesful, reconfigure.
+		if [ $? -eq 0 ]; then
 			RECONFIGURE="OFF"
 		else
 			RECONFIGURE="ON"
 		fi
+		set -e
 	fi
-	echo $RECONFIGURE
 }
 
 DEPENDENCIES_INSTALL_DIR="$INSTALL_DIR/opensim-core-dependencies-install"
@@ -94,7 +100,8 @@ else
 
 	DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/dependencies"
 
-	if [ $(ShouldReconfigureCmake() $DEPENDENCIES_BUILD_DIR) == "ON" ]; then
+	ShouldReconfigureCmake $DEPENDENCIES_BUILD_DIR
+	if [ $RECONFIGURE == "ON" ]; then
 
 		cmake \
 			-B "$DEPENDENCIES_BUILD_DIR" \
@@ -122,7 +129,9 @@ echo
 echo "Start installing opensim-core."
 echo
 
-if [ $(ShouldReconfigureCmake() $OPENSIM_BUILD_DIR --target "install") == "ON" ]; then
+ShouldReconfigureCmake $OPENSIM_BUILD_DIR --target install
+if [ $RECONFIGURE == "ON" ]; then
+	exit 1
 	cmake \
 		-G "Unix Makefiles" \
 		-B "$OPENSIM_BUILD_DIR" \
