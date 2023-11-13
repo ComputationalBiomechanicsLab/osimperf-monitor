@@ -9,39 +9,37 @@ set -e
 set -o pipefail
 
 # Opensim core dependencies
-packages=\
-	"autoconf"\
-	"automake"\
-	"autotools-dev"\
-	"build-essential"\
-	"byacc"\
-	"cmake"\
-	"doxygen"\
-	"freeglut3-dev"\
-	"gfortran"\
-	"git"\
-	"liblapack-dev"\
-	"libopenblas-dev"\
-	"libpcre3"\
-	"libpcre3-dev"\
-	"libssl-dev"\
-	"libtool"\
-	"libxi-dev"\
-	"libxmu-dev"\
-	"ninja-build"\
-	"openjdk-8-jdk"\
-	"patchelf"\
-	"pkg-config"\
-	"python3"\
-	"python3-dev"\
-	"python3-numpy"\
-	"python3-setuptools"\
-	"swig"
-
-# Other useful packages.
-packages="vim curl tmux $packages"
-
-sudo apt-get update && sudo apt-get install --yes $packages
+sudo apt-get update && sudo apt-get install --yes \
+	autoconf\
+	automake\
+	autotools-dev\
+	build-essential\
+	byacc\
+	cmake\
+	doxygen\
+	freeglut3-dev\
+	gfortran\
+	git\
+	liblapack-dev\
+	libopenblas-dev\
+	libpcre3\
+	libpcre3-dev\
+	libssl-dev\
+	libtool\
+	libxi-dev\
+	libxmu-dev\
+	ninja-build\
+	openjdk-8-jdk\
+	patchelf\
+	pkg-config\
+	python3\
+	python3-dev\
+	python3-numpy\
+	python3-setuptools\
+	tmux\
+	curl\
+	pip\
+	swig
 
 # Install grip for markdown display:
 pip install grip

@@ -90,11 +90,9 @@ export OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR="/home/pep/opensim/osimperf/opensim
 if [ -v OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR ]; then
 	rsync -av $OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR/ $DEPENDENCIES_INSTALL_DIR
 else
-	exit 1
-
 	DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/dependencies"
 
-	if [ $(ShouldReconfigureCmake() $DEPENDENCIES_BUILD_DIR) == "ON" ]; then
+	if [ $(ShouldReconfigureCmake $DEPENDENCIES_BUILD_DIR) == "ON" ]; then
 
 		cmake \
 			-B "$DEPENDENCIES_BUILD_DIR" \
@@ -122,7 +120,7 @@ echo
 echo "Start installing opensim-core."
 echo
 
-if [ $(ShouldReconfigureCmake() $OPENSIM_BUILD_DIR --target "install") == "ON" ]; then
+if [ $(ShouldReconfigureCmake $OPENSIM_BUILD_DIR --target "install") == "ON" ]; then
 	cmake \
 		-G "Unix Makefiles" \
 		-B "$OPENSIM_BUILD_DIR" \
