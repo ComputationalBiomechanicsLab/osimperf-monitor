@@ -7,14 +7,40 @@ use anyhow::Result;
 use std::io::LineWriter;
 use std::{io::Write, path::PathBuf};
 
-pub fn print_table(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Result<()> {
+fn compute_percentage(reference: &Option<Vec<ResultInfo>>, cell: &TableCell) -> Option<f64> {
+    if let Some(r) = reference
+        .as_ref()?
+        .iter()
+        .filter(|r| r.opensim_name != cell.opensim_name)
+        .find(|r| r.name == cell.test_name)
+    {
+        return Some(
+            (cell.value.get_mean()? - r.durations.get_mean()?) / cell.value.get_mean()? * 100.,
+        );
+    }
+    None
+}
+
+pub fn print_table(
+    arg_path: &Option<PathBuf>,
+    buf: impl std::io::Write,
+    ref_name: &str,
+) -> Result<()> {
     let mut buf = LineWriter::new(buf);
 
     let mut results = Vec::new();
     let mut rows = Vec::new();
     let mut cols = Vec::new();
+
+    let mut reference: Option<Vec<ResultInfo>> = None;
     for path in ArgOrStdinIter::new(arg_path) {
         let result = crate::read_json::<ResultInfo>(&path)?;
+
+        if ref_name == result.opensim_name {
+            reference
+                .get_or_insert_with(|| Vec::new())
+                .push(result.clone());
+        }
 
         let row = Row {
             name: format!(
@@ -40,8 +66,11 @@ pub fn print_table(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Resu
             col: name,
             row,
             value: result.durations,
+            opensim_name: result.opensim_name,
+            test_name: result.name,
         });
     }
+    println!("reference = {:?}", reference);
 
     rows.sort_by(|a, b| a.date.cmp(&b.date));
     rows.reverse();
@@ -49,7 +78,7 @@ pub fn print_table(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Resu
 
     let mut line = String::new();
 
-    if rows.len() > 1 {
+    if false {
         line.push_str("| |");
         for col in cols.iter() {
             line.push_str(col);
@@ -76,11 +105,20 @@ pub fn print_table(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Resu
                     .iter()
                     .find(|result| &result.row == row && &result.col == col)
                 {
-                    line.push_str(&format!(
-                        " {:.3} ({:.3}) |",
-                        cell.value.get_mean().unwrap_or(f64::NAN),
-                        cell.value.get_stddev().unwrap_or(f64::NAN),
-                    ));
+                    if let Some(percentage) = compute_percentage(&reference, &cell) {
+                        line.push_str(&format!(
+                            " {:.3} ({:.3}) {:.1}% |",
+                            cell.value.get_mean().unwrap_or(f64::NAN),
+                            cell.value.get_stddev().unwrap_or(f64::NAN),
+                            percentage,
+                        ));
+                    } else {
+                        line.push_str(&format!(
+                            " {:.3} ({:.3}) |",
+                            cell.value.get_mean().unwrap_or(f64::NAN),
+                            cell.value.get_stddev().unwrap_or(f64::NAN),
+                        ));
+                    }
                 } else {
                     line.push_str(" |");
                 }
@@ -119,11 +157,20 @@ pub fn print_table(arg_path: &Option<PathBuf>, buf: impl std::io::Write) -> Resu
                     .iter()
                     .find(|result| &result.col == row && &result.row == col)
                 {
-                    line.push_str(&format!(
-                        " {:.3} ({:.3}) |",
-                        cell.value.get_mean().unwrap_or(f64::NAN),
-                        cell.value.get_stddev().unwrap_or(f64::NAN),
-                    ));
+                    if let Some(percentage) = compute_percentage(&reference, &cell) {
+                        line.push_str(&format!(
+                            " {:.3} ({:.3}) {:.1}% |",
+                            cell.value.get_mean().unwrap_or(f64::NAN),
+                            cell.value.get_stddev().unwrap_or(f64::NAN),
+                            percentage,
+                        ));
+                    } else {
+                        line.push_str(&format!(
+                            " {:.3} ({:.3}) |",
+                            cell.value.get_mean().unwrap_or(f64::NAN),
+                            cell.value.get_stddev().unwrap_or(f64::NAN),
+                        ));
+                    }
                 } else {
                     line.push_str(" |");
                 }
@@ -145,5 +192,7 @@ struct Row {
 struct TableCell {
     row: Row,
     col: String,
+    opensim_name: String,
+    test_name: String,
     value: Durations,
 }

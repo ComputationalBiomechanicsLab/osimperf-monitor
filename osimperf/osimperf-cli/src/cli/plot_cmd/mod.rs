@@ -35,13 +35,13 @@ impl PlotCommand {
                 )
             })?;
             if self.table {
-                print_table(&self.results, &mut file)?;
+                print_table(&self.results, &mut file, "Latest")?;
             } else {
                 print_csv_plot(&self.results, &mut file)?;
             }
         } else {
             if self.table {
-                print_table(&self.results, std::io::stdout())?;
+                print_table(&self.results, std::io::stdout(), "Latest")?;
             } else {
                 print_csv_plot(&self.results, std::io::stdout())?;
             }
