@@ -22,8 +22,8 @@ use std::{path::PathBuf, str::FromStr};
 #[derive(Debug, Args)]
 pub struct RecordCommand {
     /// Number of test iterations.
-    #[arg(long, short, default_value_t = 0)]
-    iter: usize,
+    #[arg(long, short)]
+    iter: Option<usize>,
 
     /// Path to benchmark config file, or directory.
     #[arg(long, short)]
@@ -82,6 +82,7 @@ struct BenchTestCtxt {
     pub grind_cmd: Command,
     pub visualize_cmd: Option<Command>,
     pub output: ResultInfo,
+    pub repeats: usize,
 }
 
 impl RecordCommand {
@@ -192,6 +193,7 @@ impl RecordCommand {
                 visualize_cmd,
                 output: result_info,
                 result_dir,
+                repeats: self.iter.unwrap_or(config.repeats.unwrap_or(3)),
             });
 
             // Break if --test argument was used, otherwise continue reading from stdin.
@@ -255,6 +257,8 @@ impl RecordCommand {
 
                 cmd.run_trim()?;
             }
+
+            return Ok(());
         }
 
         if self.grind {
@@ -294,10 +298,10 @@ impl RecordCommand {
             info!("Grind complete.");
         }
 
-        if self.iter > 0 {
+        if true {
             // Filter tests that are complete.
             if !self.force {
-                tests.retain(|t| t.output.durations.len() < self.iter);
+                tests.retain(|t| t.output.durations.len() < t.repeats);
             }
 
             if tests.len() == 0 {
@@ -306,10 +310,11 @@ impl RecordCommand {
             }
 
             // Print list of tests that will be ran.
-            let mut msg = format!("Prepare to run benchmarks ({}X):", self.iter);
+            let mut msg = format!("Prepare to run benchmarks:");
             tests.iter().for_each(|t| {
                 msg.push_str("\n");
                 msg.push_str(&t.output.name);
+                msg.push_str(&format!(" ({}X)", t.repeats));
             });
             info!("{msg}");
 
@@ -320,10 +325,10 @@ impl RecordCommand {
 
             // Run tests repeatedly.
             let mut rng = rand::thread_rng();
-            for _ in 0..self.iter {
+            while tests.iter().filter(|t| t.output.durations.len() < t.repeats).count() > 0 {
                 // Randomize test order.
                 tests.shuffle(&mut rng);
-                for test in tests.iter_mut() {
+                for test in tests.iter_mut().filter(|t| t.output.durations.len() < t.repeats) {
                     let output = if log_enabled!(log::Level::Trace) {
                         test.benchmark_cmd.run_and_stream(&mut std::io::stdout())?
                     } else {
@@ -412,6 +417,8 @@ pub struct ReadBenchTestSetup {
     pub post_benchmark_cmds: Option<Vec<String>>,
     /// Optional visualization cmd.
     pub visualize_cmd: Option<String>,
+    /// Number of repeats for this test.
+    pub repeats: Option<usize>,
 }
 
 impl Default for ReadBenchTestSetup {
@@ -433,6 +440,7 @@ impl Default for ReadBenchTestSetup {
             ]),
             visualize_cmd: Some(format!("ls ${}", crate::OPENSIM_INSTALL_ENV_VAR)),
             cell_name: None,
+            repeats: None,
         }
     }
 }
