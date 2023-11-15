@@ -38,4 +38,5 @@ cmake \
 	-j8
 
 mkdir -p results
+# This is used to generate the model.
 ./bin/BasicMillard -d 0.1 -a 1e-3 -r 1e-2 -s 20 > results/plot-log
