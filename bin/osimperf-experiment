@@ -1,0 +1,35 @@
+#!/usr/bin/bash
+set -eou pipefail
+
+export OSPC_OPENSIM_MODELS="$HOME/opensim/opensim-models"
+
+export RUST_LOG="trace"
+
+filter=$1; shift
+
+for info in $(osimperf-cli ls --install $PWD); do
+	# Read install root.
+	path=$($info root)
+
+	opensim="$path/../opensim-core"
+	if [ -d $opensim ]; then
+		cmake --build $path/../build/opensim-core --target install -j30
+		# osimperf-cli install \
+		# 	--name $($info name) \
+		# 	--opensim $opensim \
+		# 	--installer "$path/../install-opensim" \
+		# 	--root "$path"
+	else
+		echo "could not find opensim-core source"
+		exit 1
+	fi
+
+	# Setup required stuff for benchmarks.
+	PATH="$path/bin:$PATH" osimperf-setup-benchmarks
+
+	# Setup benchmarks.
+	osimperf-cli ls --tests "$path" | PATH="$path/bin:$PATH" osimperf-cli record
+
+	osimperf-cli ls --tests "$path" | grep $filter | PATH="$path/bin:$PATH" osimperf-cli record $@
+
+done
