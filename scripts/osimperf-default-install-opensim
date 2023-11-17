@@ -36,9 +36,12 @@ OPENSIM_DOXYGEN_USE_MATHJAX=${OPENSIM_DOXYGEN_USE_MATHJAX:="OFF"}
 OPENSIM_INSTALL_UNIX_FHS=${OPENSIM_INSTALL_UNIX_FHS:="ON"}
 OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="25"}
 OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="OFF"}
+OPENSIM_WITH_MOCO=${OPENSIM_WITH_MOCO:="OFF"}
 
-OPENSIM_WITH_CASADI=${OPENSIM_WITH_MOCO:="ON"}
-OPENSIM_WITH_TROPTER=${OPENSIM_WITH_MOCO:="ON"}
+BUILD_TESTING=${BUILD_TESTING:="ON"}
+if [ $OSPC_OPENSIM_RUN_TESTS == "ON" ]; then
+	BUILD_TESTING="ON"
+fi
 
 echo "Installer directories:"
 echo "    OSPC_OPENSIM_SRC=$OSPC_OPENSIM_SRC"
@@ -88,14 +91,21 @@ ShouldReconfigureCmake() {
 	fi
 }
 
+BUILD_DEPENDENCIES_FROM_SOURCE="OFF"
+
 DEPENDENCIES_INSTALL_DIR="$INSTALL_DIR/opensim-core-dependencies-install"
-
-# TODO HOTFIX!
-
-export OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR="/home/pep/opensim/osimperf/opensim-main-install/opensim-core-dependencies-install"
-if [ -v OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR ]; then
+if [ $BUILD_DEPENDENCIES_FROM_SOURCE = "OFF" ]; then
+	# TODO HOTFIX!
+	if [ $OPENSIM_WITH_MOCO == "ON" ]; then
+		OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR="/home/pep/opensim/opensim-dependencies-install-moco"
+	else
+		OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR="/home/pep/opensim/opensim-dependencies-install"
+	fi
+	echo "Path to dependencies install: $OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR"
 	rsync -av $OSPC_OPENSIM_DEPENDENCIES_INSTALL_DIR/ $DEPENDENCIES_INSTALL_DIR
 else
+	echo "Start building dependencies from source."
+	echo "PANIC: not implemented!"
 	exit 1
 
 	DEPENDENCIES_BUILD_DIR="$OSPC_BUILD_DIR/dependencies"
@@ -108,8 +118,8 @@ else
 			-S "$OSPC_OPENSIM_SRC/dependencies" \
 			-DCMAKE_INSTALL_PREFIX=$DEPENDENCIES_INSTALL_DIR \
 			-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE\
-			-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_CASADI\
-			-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_TROPTER
+			-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_MOCO\
+			-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_MOCO
 			# -DSUPERBUILD_ezc3d=on \
 		
 		# Print dependencies cmake config.
@@ -129,9 +139,16 @@ echo
 echo "Start installing opensim-core."
 echo
 
+OPT_PREFIX_PATH_ARG=""
+if [ $OPENSIM_WITH_MOCO == "OFF" ]; then
+	OPT_PREFIX_PATH_ARG="-DCMAKE_PREFIX_PATH=$DEPENDENCIES_INSTALL_DIR"
+else
+	OPT_PREFIX_PATH_ARG="-DOPENSIM_DEPENDENCIES_DIR=$DEPENDENCIES_INSTALL_DIR"
+fi
+echo "Adding arg: $OPT_PREFIX_PATH_ARG"
+
 ShouldReconfigureCmake $OPENSIM_BUILD_DIR --target install
 if [ $RECONFIGURE == "ON" ]; then
-	exit 1
 	cmake \
 		-G "Unix Makefiles" \
 		-B "$OPENSIM_BUILD_DIR" \
@@ -140,15 +157,17 @@ if [ $RECONFIGURE == "ON" ]; then
 		-DBUILD_API_ONLY=$BUILD_API_ONLY \
 		-DBUILD_JAVA_WRAPPING=$BUILD_JAVA_WRAPPING \
 		-DBUILD_PYTHON_WRAPPING=$BUILD_PYTHON_WRAPPING \
-		-DBUILD_TESTING="ON" \
+		-DBUILD_TESTING=$BUILD_TESTING \
 		-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS="ON" \
 		-DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
 		-DCMAKE_VERBOSE_MAKEFILE=$CMAKE_VERBOSE_MAKEFILE \
 		-DOPENSIM_BUILD_INDIVIDUAL_APPS=$OPENSIM_BUILD_INDIVIDUAL_APPS \
-		-DOPENSIM_DEPENDENCIES_DIR=$DEPENDENCIES_INSTALL_DIR \
 		-DOPENSIM_DOXYGEN_USE_MATHJAX=$OPENSIM_DOXYGEN_USE_MATHJAX \
-		-DOPENSIM_INSTALL_UNIX_FHS=$OPENSIM_INSTALL_UNIX_FHS
+		-DOPENSIM_INSTALL_UNIX_FHS=$OPENSIM_INSTALL_UNIX_FHS \
+		-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_MOCO \
+		-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_MOCO \
+		$OPT_PREFIX_PATH_ARG
 		# -DBUILD_JAVA_WRAPPING=on \
 		# -DBUILD_PYTHON_WRAPPING=on \
 		# -DOPENSIM_C3D_PARSER=ezc3d \
@@ -184,11 +203,12 @@ if [ "$OSPC_OPENSIM_RUN_TESTS" == "ON" ]; then
 	if [ -z "$OSPC_OPENSIM_SELECT_TEST" ]; then
 		env -C $OPENSIM_BUILD_DIR ctest --parallel $OSPC_NUM_JOBS --output-on-failure
 	else
-		for selected_test in $(ls $OPENSIM_BUILD_DIR | grep $OSPC_OPENSIM_SELECT_TEST); do
-			selected_test="$(basename $selected_test)"
-			echo "Run selected test: $selected_test"
-			env -C $OPENSIM_BUILD_DIR "./$selected_test"
-		done
+		env -C $OPENSIM_BUILD_DIR ctest --parallel $OSPC_NUM_JOBS --output-on-failure -VV -R $OSPC_OPENSIM_SELECT_TEST
+		# for selected_test in $(ls $OPENSIM_BUILD_DIR | grep $OSPC_OPENSIM_SELECT_TEST); do
+		# 	selected_test="$(basename $selected_test)"
+		# 	echo "Run selected test: $selected_test"
+		# 	env -C $OPENSIM_BUILD_DIR "./$selected_test"
+		# done
 	fi
 fi
 
