@@ -104,7 +104,7 @@ impl<'a> RowIterator<'a> {
         let index = self.index.unwrap_or_default();
         match self.direction {
             TableOrientation::InstallsOnRow => &self.table.installed[index].cell_name,
-            TableOrientation::BenchmarksOnRow => &self.table.benchmarks[index].name,
+            TableOrientation::BenchmarksOnRow => &self.table.benchmarks[index].cell_name,
         }
     }
 }
@@ -142,7 +142,7 @@ impl<'a> ColIterator<'a> {
         let index = self.col_index.unwrap_or_default();
         match self.direction {
             TableOrientation::BenchmarksOnRow => &self.table.installed[index].cell_name,
-            TableOrientation::InstallsOnRow => &self.table.benchmarks[index].name,
+            TableOrientation::InstallsOnRow => &self.table.benchmarks[index].cell_name,
         }
     }
 }
