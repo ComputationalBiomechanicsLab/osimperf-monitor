@@ -26,6 +26,9 @@ pub struct ListCommand {
     /// Path to test cases directory.
     #[arg(long, short)]
     tests: Option<PathBuf>,
+
+    #[arg(long, short)]
+    opensim_log: bool,
 }
 
 impl ListCommand {
@@ -88,7 +91,17 @@ impl ListCommand {
                 });
             }
             for file in arr.iter() {
+                if self.opensim_log {
+                    let result_info = read_json::<ResultInfo>(&file).expect(&format!(
+                        "failed to read result info from {}",
+                        file.display()
+                    ));
+                    if let Some(log) = result_info.opensim_log {
+                println!("{}", log.to_str().unwrap());
+                    }
+                } else {
                 println!("{}", file.to_str().unwrap());
+                }
             }
         }
         Ok(())
