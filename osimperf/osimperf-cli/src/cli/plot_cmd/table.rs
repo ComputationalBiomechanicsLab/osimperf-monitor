@@ -14,8 +14,8 @@ pub fn print_table(table: &Table, buf: impl std::io::Write) -> Result<()> {
     // Print column headers.
     line.push_str("| |");
     for row in table {
-        for col in table {
-            line.push_str(&col.col_name());
+        for col in row {
+            line.push_str(&col.col_name);
             line.push_str("|");
         }
         break;
@@ -25,8 +25,11 @@ pub fn print_table(table: &Table, buf: impl std::io::Write) -> Result<()> {
 
     line.clear();
     line.push_str("|---|");
-    for _ in table {
+    for row in table {
+        for _ in row {
         line.push_str("---|");
+        }
+        break;
     }
     line.push_str("\n");
     buf.write_all(line.as_bytes())?;
