@@ -206,24 +206,27 @@ impl<'a> Iterator for ColIterator<'a> {
             TableOrientation::BenchmarksOnRow => &self.table.benchmarks[row_index],
         };
 
-        // println!("find: date = {}", installed_node.date);
-        // println!("find: name = {}", benchmark_node.name);
-        // println!("find: results = {:#?}", self.table.results.iter().find(|res| res.name == benchmark_node.name));
-
         Some(TableCell {
-            result: self.table.results.iter().find(|res| {
-                ((res.opensim_name == installed_node.name) && (res.date == installed_node.date))
-                    && (res.name == benchmark_node.name)
-            }),
+            result: self.table.results.iter().find(|res| is_eq_cell(res, installed_node, benchmark_node)
+                    ),
             reference: self
                 .table
                 .reference
                 .as_ref()
-                .and_then(|x| x.iter().find(|res| res.name == benchmark_node.name)),
+                .and_then(|x| x.iter().find(|res| res.name == benchmark_node.name && !is_eq_cell(res, installed_node, benchmark_node))),
             row_name: self.row_name(),
             col_name: self.col_name(),
         })
     }
+}
+
+fn is_eq_cell(
+    res: &ResultInfo,
+    installed_node: &InstallNode,
+    benchmark_node: &BenchmarkNode,
+) -> bool {
+    ((res.opensim_name == installed_node.name) && (res.date == installed_node.date))
+        && (res.name == benchmark_node.name)
 }
 
 impl<'a> TableCell<'a> {
@@ -238,13 +241,13 @@ impl<'a> TableCell<'a> {
     }
 
     pub fn log_diff(&self) -> Option<f64> {
-        let file_a =
-            std::fs::File::open(self.result?.opensim_log.as_ref()?).expect("failed to open result file");
+        let file_a = std::fs::File::open(self.result?.opensim_log.as_ref()?)
+            .expect("failed to open result file");
         let data_a = crate::parse_logs::Data::read_opensim_file(file_a)
             .expect("failed to parse result file");
 
-        let file_b =
-            std::fs::File::open(self.reference?.opensim_log.as_ref()?).expect("failed to open result file");
+        let file_b = std::fs::File::open(self.reference?.opensim_log.as_ref()?)
+            .expect("failed to open result file");
         let data_b = crate::parse_logs::Data::read_opensim_file(file_b)
             .expect("failed to parse result file");
 

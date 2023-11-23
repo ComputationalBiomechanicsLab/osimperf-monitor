@@ -48,13 +48,16 @@ impl Channel {
             let dt = t1 - t0;
             let dy = y1 - y0;
 
-            return Some(y0 + dy / dt * (time - t0));
+            let y = y0 + dy / dt * (time - t0);
+            return Some(y);
         }
         None
     }
 
     pub fn find_absolute_difference(&self, others: &[Self]) -> Option<f64> {
-        others.iter().find_map(|other| self.absolute_difference(other))
+        others
+            .iter()
+            .find_map(|other| self.absolute_difference(other))
     }
 
     pub fn absolute_difference(&self, other: &Self) -> Option<f64> {
@@ -62,20 +65,15 @@ impl Channel {
             return None;
         }
 
-        let mut sum = 0.;
-        let mut count = 0;
-        for abs_diff in self
+        let mut max_diff = None;
+        for (a, b) in self
             .data
             .iter()
-            .map(|x| other.find_interpolate(x.time).map(|y| y - x.value))
-            .map(|d| d.unwrap_or_default().abs())
+            .filter_map(|x| other.find_interpolate(x.time).map(|b| (x.value, b)))
         {
-            count += 1;
-            sum += abs_diff;
+            let s = max_diff.get_or_insert(0.);
+            *s = (a - b).abs().max(*s);
         }
-        if count == 0 {
-            return Some(f64::NAN);
-        }
-        Some(sum / count as f64)
+        max_diff
     }
 }
