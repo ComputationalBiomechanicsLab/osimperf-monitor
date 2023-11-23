@@ -68,7 +68,7 @@ impl<'a> IntoIterator for &'a Table {
     fn into_iter(self) -> Self::IntoIter {
         RowIterator {
             table: self,
-            direction: TableOrientation::InstallsOnRow,
+            direction: TableOrientation::BenchmarksOnRow,
             index: None,
         }
     }
