@@ -2,6 +2,7 @@ use super::absolute_path;
 use super::InstallInfo;
 
 use crate::{read_json, write_json, Command, CommandTrait, Durations, RESULT_INFO_FILE_NAME};
+use anyhow::ensure;
 use anyhow::{Context, Result};
 use clap::Args;
 use log::log_enabled;
@@ -66,6 +67,8 @@ pub struct ResultInfo {
     pub grind: Option<std::time::Duration>,
     /// Test config hash.
     pub config_hash: u64,
+    /// Output opensim log file.
+    pub opensim_log: Option<PathBuf>
 }
 
 impl ResultInfo {
@@ -161,6 +164,7 @@ impl RecordCommand {
                     config_hash,
                     setup: false,
                     cell_name: config.cell_name.clone(),
+                    opensim_log: config.opensim_log.map(|file| root_dir.join(file)),
                 });
 
             // Setup pre-benchmark, benchmark, grind, and visualize commands for this benchmark.
@@ -347,16 +351,10 @@ impl RecordCommand {
                     test.output.durations.get_mean().unwrap_or(f64::NAN),
                     test.output.durations.get_stddev().unwrap_or(f64::NAN)
                 );
-                let min_dt = 0.1;
-                if test.output.durations.get_mean().unwrap_or(0.) > min_dt {
-                    write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
-                } else {
-                    warn!(
-                        "{} executed in less than {} secs, it probably failed...",
-                        test.output.name, min_dt
-                    );
-                    trace!("command:\n{}", test.benchmark_cmd.print_command());
+                if let Some(log) = test.output.opensim_log.as_ref() {
+                    ensure!(log.exists(), format!("could not find expected opensim-log: {:?}", log));
                 }
+                write_json(&test.result_dir.join(RESULT_INFO_FILE_NAME), &test.output)?;
             }
 
             info!("Benchmark complete");
@@ -419,6 +417,7 @@ pub struct ReadBenchTestSetup {
     pub visualize_cmd: Option<String>,
     /// Number of repeats for this test.
     pub repeats: Option<usize>,
+    pub opensim_log: Option<PathBuf>,
 }
 
 impl Default for ReadBenchTestSetup {
@@ -441,6 +440,7 @@ impl Default for ReadBenchTestSetup {
             visualize_cmd: Some(format!("ls ${}", crate::OPENSIM_INSTALL_ENV_VAR)),
             cell_name: None,
             repeats: None,
+            opensim_log: None,
         }
     }
 }

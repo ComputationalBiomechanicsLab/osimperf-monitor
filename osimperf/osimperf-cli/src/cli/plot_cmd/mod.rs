@@ -1,8 +1,10 @@
+mod table_iter;
 mod plot;
 mod table;
 
 use plot::print_csv_plot;
 use table::print_table;
+use table_iter::*;
 
 use super::ArgOrStdinIter;
 use super::ResultInfo;
@@ -27,6 +29,9 @@ pub struct PlotCommand {
 
 impl PlotCommand {
     pub fn run(&self) -> Result<()> {
+        let reference = "Latest".to_string();
+        let table = Table::new(&self.results, &Some(reference))?;
+
         if let Some(path) = self.out.as_ref() {
             let mut file = File::create(path).with_context(|| {
                 format!(
@@ -35,13 +40,13 @@ impl PlotCommand {
                 )
             })?;
             if self.table {
-                print_table(&self.results, &mut file, "Latest")?;
+                print_table(&table, &mut file)?;
             } else {
                 print_csv_plot(&self.results, &mut file)?;
             }
         } else {
             if self.table {
-                print_table(&self.results, std::io::stdout(), "Latest")?;
+                print_table(&table, std::io::stdout())?;
             } else {
                 print_csv_plot(&self.results, std::io::stdout())?;
             }

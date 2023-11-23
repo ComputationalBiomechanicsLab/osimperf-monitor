@@ -3,6 +3,7 @@
 mod cli;
 mod command;
 mod common;
+pub mod parse_logs;
 
 pub use command::*;
 pub use common::*;

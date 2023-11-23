@@ -23,10 +23,18 @@ impl Table {
                 reference.push(result.clone());
             }
 
-            let name = result.cell_name.clone().unwrap_or(result.name.clone());
+            let cell_name = result.cell_name.clone().unwrap_or(result.name.clone());
 
-            if out.benchmarks.iter().find(|&x| x.name == name).is_none() {
-                out.benchmarks.push(BenchmarkNode { name: name.clone() });
+            if out
+                .benchmarks
+                .iter()
+                .find(|&x| x.name == result.name)
+                .is_none()
+            {
+                out.benchmarks.push(BenchmarkNode {
+                    name: result.name.clone(),
+                    cell_name,
+                });
             }
 
             if out
@@ -69,6 +77,7 @@ impl<'a> IntoIterator for &'a Table {
 #[derive(Clone, Debug)]
 pub struct BenchmarkNode {
     name: String,
+    cell_name: String,
 }
 
 #[derive(Clone, Debug)]
@@ -91,7 +100,7 @@ pub struct RowIterator<'a> {
 }
 
 impl<'a> RowIterator<'a> {
-    pub fn row_name(&self) -> &'a str{
+    pub fn row_name(&self) -> &'a str {
         let index = self.index.unwrap_or_default();
         match self.direction {
             TableOrientation::InstallsOnRow => &self.table.installed[index].cell_name,
@@ -125,11 +134,11 @@ impl<'a> IntoIterator for &'a RowIterator<'a> {
 }
 
 impl<'a> ColIterator<'a> {
-    pub fn row_name(&self) -> &'a str{
+    pub fn row_name(&self) -> &'a str {
         &self.row_name
     }
 
-    pub fn col_name(&self) -> &'a str{
+    pub fn col_name(&self) -> &'a str {
         let index = self.col_index.unwrap_or_default();
         match self.direction {
             TableOrientation::BenchmarksOnRow => &self.table.installed[index].cell_name,
@@ -145,7 +154,6 @@ pub struct TableCell<'a> {
     pub row_name: &'a str,
     pub col_name: &'a str,
 }
-
 
 impl<'a> Iterator for RowIterator<'a> {
     type Item = ColIterator<'a>;
@@ -198,19 +206,65 @@ impl<'a> Iterator for ColIterator<'a> {
             TableOrientation::BenchmarksOnRow => &self.table.benchmarks[row_index],
         };
 
+        // println!("find: date = {}", installed_node.date);
+        // println!("find: name = {}", benchmark_node.name);
+        // println!("find: results = {:#?}", self.table.results.iter().find(|res| res.name == benchmark_node.name));
+
         Some(TableCell {
             result: self.table.results.iter().find(|res| {
                 ((res.opensim_name == installed_node.name) && (res.date == installed_node.date))
                     && (res.name == benchmark_node.name)
             }),
-            reference: self.table.reference.as_ref().and_then(|x| {
-                x.iter().find(|res| {
-                    ((res.opensim_name == installed_node.name) && (res.date == installed_node.date))
-                        && (res.name == benchmark_node.name)
-                })
-            }),
+            reference: self
+                .table
+                .reference
+                .as_ref()
+                .and_then(|x| x.iter().find(|res| res.name == benchmark_node.name)),
             row_name: self.row_name(),
             col_name: self.col_name(),
         })
+    }
+}
+
+impl<'a> TableCell<'a> {
+    pub fn percentage(&self) -> Option<f64> {
+        let reference = self.reference?;
+        let result = self.result?;
+        Some(
+            (result.durations.get_mean()? - reference.durations.get_mean()?)
+                / result.durations.get_mean()?
+                * 100.,
+        )
+    }
+
+    pub fn log_diff(&self) -> Option<f64> {
+        let file_a =
+            std::fs::File::open(self.result?.opensim_log.as_ref()?).expect("failed to open result file");
+        let data_a = crate::parse_logs::Data::read_opensim_file(file_a)
+            .expect("failed to parse result file");
+
+        let file_b =
+            std::fs::File::open(self.reference?.opensim_log.as_ref()?).expect("failed to open result file");
+        let data_b = crate::parse_logs::Data::read_opensim_file(file_b)
+            .expect("failed to parse result file");
+
+        let diff = crate::parse_logs::Diff::new(&data_a, &data_b).expect("failed to compute diff");
+        let sum: f64 = diff.channels.iter().filter_map(|x| x.diff).sum();
+
+        Some(sum)
+    }
+
+    pub fn write_cell_str(&self, s: &mut String) -> Option<()> {
+        s.push_str(&format!(
+            " {:.3} ({:.3})",
+            self.result?.durations.get_mean().unwrap_or(f64::NAN),
+            self.result?.durations.get_stddev().unwrap_or(f64::NAN),
+        ));
+
+        s.push_str(&format!(" {:.1}%", self.percentage()?));
+
+        s.push_str(&format!(" E{:.1}", self.log_diff()?));
+
+        Some(())
     }
 }
