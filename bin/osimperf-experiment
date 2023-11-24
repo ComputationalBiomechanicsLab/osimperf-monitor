@@ -3,11 +3,11 @@ set -eou pipefail
 
 export OSPC_OPENSIM_MODELS="$HOME/opensim/opensim-models"
 
-export RUST_LOG="trace"
+export RUST_LOG=${RUST_LOG:="debug"}
 
 filter=$1; shift
 
-for info in $(osimperf-cli ls --install $PWD); do
+for info in $(osimperf-cli ls --install $PWD | grep $filter); do
 	# Read install root.
 	path=$($info root)
 
@@ -28,8 +28,7 @@ for info in $(osimperf-cli ls --install $PWD); do
 	PATH="$path/bin:$PATH" osimperf-setup-benchmarks
 
 	# Setup benchmarks.
-	osimperf-cli ls --tests "$path" | PATH="$path/bin:$PATH" osimperf-cli record
-
-	osimperf-cli ls --tests "$path" | grep $filter | PATH="$path/bin:$PATH" osimperf-cli record $@
+		# osimperf-cli ls --tests "$path" | PATH="$path/bin:$PATH" nice -n 0 osimperf-cli record $@
+	osimperf-cli ls --tests "$path" | grep $filter | PATH="$path/bin:$PATH" nice -n 0 osimperf-cli record $@
 
 done
