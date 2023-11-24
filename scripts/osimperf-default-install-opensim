@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit immediately if any command exits with a non-zero status
-set -ex
+set -e
 # Exit with a non-zero status if any command in a pipeline fails
 set -o pipefail
 
@@ -142,8 +142,6 @@ echo
 OPT_PREFIX_PATH_ARG=""
 if [ $OPENSIM_WITH_MOCO == "OFF" ]; then
 	OPT_PREFIX_PATH_ARG="-DCMAKE_PREFIX_PATH=$DEPENDENCIES_INSTALL_DIR"
-else
-	OPT_PREFIX_PATH_ARG="-DOPENSIM_DEPENDENCIES_DIR=$DEPENDENCIES_INSTALL_DIR"
 fi
 echo "Adding arg: $OPT_PREFIX_PATH_ARG"
 
@@ -167,6 +165,7 @@ if [ $RECONFIGURE == "ON" ]; then
 		-DOPENSIM_INSTALL_UNIX_FHS=$OPENSIM_INSTALL_UNIX_FHS \
 		-DOPENSIM_WITH_CASADI=$OPENSIM_WITH_MOCO \
 		-DOPENSIM_WITH_TROPTER=$OPENSIM_WITH_MOCO \
+		-DOPENSIM_DEPENDENCIES_DIR=$DEPENDENCIES_INSTALL_DIR \
 		$OPT_PREFIX_PATH_ARG
 		# -DBUILD_JAVA_WRAPPING=on \
 		# -DBUILD_PYTHON_WRAPPING=on \
