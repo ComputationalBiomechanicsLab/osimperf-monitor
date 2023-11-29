@@ -37,6 +37,7 @@ OPENSIM_INSTALL_UNIX_FHS=${OPENSIM_INSTALL_UNIX_FHS:="ON"}
 OSPC_NUM_JOBS=${OSPC_NUM_JOBS:="25"}
 OSPC_OPENSIM_RUN_TESTS=${OSPC_OPENSIM_RUN_TESTS:="OFF"}
 OPENSIM_WITH_MOCO=${OPENSIM_WITH_MOCO:="OFF"}
+OPENSIM_BUILD_DOXYGEN=${OPENSIM_BUILD_DOXYGEN:="OFF"}
 
 BUILD_TESTING=${BUILD_TESTING:="ON"}
 if [ $OSPC_OPENSIM_RUN_TESTS == "ON" ]; then
@@ -177,14 +178,20 @@ if [ $RECONFIGURE == "ON" ]; then
 	# So do not set: -DCMAKE_PREFIX_PATH=$DEPENDENCIES_INSTALL_DIR
 	
 	# Print opensim-core cmake config.
-	cmake "$OPENSIM_BUILD_DIR" -LAH
-	
 	cmake \
 		--build $OPENSIM_BUILD_DIR \
 		--target "install" \
 		"-j$OSPC_NUM_JOBS"
-else
-	cmake "$OPENSIM_BUILD_DIR" -LAH
+
+fi
+cmake "$OPENSIM_BUILD_DIR" -LAH
+
+if [ $OPENSIM_BUILD_DOXYGEN == "ON" ]; then
+	cmake \
+		--build $OPENSIM_BUILD_DIR \
+		--target "doxygen" \
+		"-j$OSPC_NUM_JOBS"
+	env -C "$OPENSIM_BUILD_DIR/html_developer" firefox "$OPENSIM_BUILD_DIR/html_developer/index.html"
 fi
 
 # Create symlink to compile_commands.json for IDE.
