@@ -243,15 +243,18 @@ impl<'a> TableCell<'a> {
     pub fn log_diff(&self) -> Option<f64> {
         let file_a = std::fs::File::open(self.result?.opensim_log.as_ref()?)
             .expect("failed to open result file");
-        let data_a = crate::parse_logs::Data::read_opensim_file(file_a)
+        let data_a = crate::parse_logs::Data::read_opensim_file(&file_a)
             .expect("failed to parse result file");
 
         let file_b = std::fs::File::open(self.reference?.opensim_log.as_ref()?)
             .expect("failed to open result file");
-        let data_b = crate::parse_logs::Data::read_opensim_file(file_b)
+        let data_b = crate::parse_logs::Data::read_opensim_file(&file_b)
             .expect("failed to parse result file");
 
-        let diff = crate::parse_logs::Diff::new(&data_a, &data_b).expect("failed to compute diff");
+        let diff = crate::parse_logs::Diff::new(&data_a, &data_b)
+            .with_context(|| format!("file-a = {:?}", file_a))
+            .with_context(|| format!("file-b = {:?}", file_b))
+            .expect("failed to compute diff");
         let sum: f64 = diff.channels.iter().filter_map(|x| x.diff).sum();
 
         Some(sum)

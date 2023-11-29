@@ -144,12 +144,14 @@ impl Diff {
         for channel in a.channels.iter() {
             let label = channel.label().to_owned();
             let diff = if let Some(diff_a) = channel.find_absolute_difference(&b.channels) {
-                let diff_b = b
+                let i = b
                     .find_label(channel.label())
-                    .map(|i| b.channels[i].find_absolute_difference(&a.channels))
-                    .flatten()
-                    .context("found label in b but not in a")?;
-                Some((diff_a + diff_b) / 2.)
+                    .with_context(|| format!("found label in b but not in a"))?;
+                if let Some(diff_b) = b.channels[i].find_absolute_difference(&a.channels) {
+                    Some((diff_a + diff_b) / 2.)
+                } else {
+                    Some(diff_a)
+                }
             } else {
                 None
             };
